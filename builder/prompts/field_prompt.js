@@ -28,10 +28,10 @@
 import * as readline from 'node:readline';
 import {
   COL_ORANGE, COL_YELLOW, COL_MUTED, COL_DIM, COL_CYAN, COL_BASE,
-  COL_BORDER, COL_GREEN, COL_BG_ACTIVE,
+  COL_BORDER, COL_GREEN, COL_BG_ACTIVE, COL_BG_PANEL, COL_BG_ROW,
 } from '../layout/colors.js';
 import {
-  fg, bold, italic, dim, FieldTypeBadge, RequiredBadge, padEnd, visibleLength,
+  fg, bold, italic, dim, FieldTypeBadge, RequiredBadge, padEnd, visibleLength, bg,
 } from '../layout/components.js';
 
 // ─── Shared readline for non-TTY (piped / script) mode ───────────────────────
@@ -165,9 +165,11 @@ export function renderFakeInput(buffer = '', errorMsg = '', active = true, width
   const content = ` ${prefix}${text}${cursor}`;
   const padded  = padEnd(content, inner);
 
-  const top  = b('╭') + b('─'.repeat(inner)) + b('╮');
-  const mid  = b('│') + padded + b('│');
-  const bot  = b('╰') + b('─'.repeat(inner)) + b('╯');
+  const bgColor = active ? COL_BG_ACTIVE : COL_BG_PANEL;
+
+  const top  = bg(b('╭') + b('─'.repeat(inner)) + b('╮'), bgColor);
+  const mid  = bg(b('│') + padded + b('│'), bgColor);
+  const bot  = bg(b('╰') + b('─'.repeat(inner)) + b('╯'), bgColor);
   const hint = dim(' Enter to confirm · ? for help');
 
   const lines = [top, mid, bot, hint];
@@ -188,9 +190,12 @@ export function renderSubmittedInput(value, width = 50) {
   const inner   = width - 2;
   const display = `  ${fg('✓', COL_GREEN)}  ${fg(value || dim('(skipped)'), value ? COL_BASE : COL_DIM)}`;
   const padded  = padEnd(display, inner);
-  const top     = b('╭') + b('─'.repeat(inner)) + b('╮');
-  const mid     = b('│') + padded + b('│');
-  const bot     = b('╰') + b('─'.repeat(inner)) + b('╯');
+
+  const bgColor = COL_BG_ROW;
+
+  const top     = bg(b('╭') + b('─'.repeat(inner)) + b('╮'), bgColor);
+  const mid     = bg(b('│') + padded + b('│'), bgColor);
+  const bot     = bg(b('╰') + b('─'.repeat(inner)) + b('╯'), bgColor);
   return [top, mid, bot].join('\n');
 }
 

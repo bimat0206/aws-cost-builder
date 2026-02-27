@@ -80,43 +80,23 @@ function printModeStart(mode) {
 
 /**
  * Print the startup splash screen (design mock screen-01).
- *
- * Visual structure:
- *   ╭─────────────────────────────────────────────────────╮
- *   │  ◆  AWS Cost Profile Builder                        │
- *   │     Automate · Reuse · Git-friendly                 │
- *   ╰─────────────────────────────────────────────────────╯
  */
 function printSplash() {
-  const width = 58;
-  const inner = width - 2;   // 56 visible chars between left and right borders
-  const b = (s) => fg(s, COL_CYAN);
-
-  // Content segments (ANSI-coloured); padEnd measures visible width correctly
-  const diamond  = bold(fg('◆  ', COL_ORANGE));
-  const title    = bold(fg('AWS Cost Profile Builder', COL_CYAN));
-  const tagline  = dim('Automate · Reuse · Git-friendly JSON profiles');
-  const version  = dim('v1.3  ·  local CLI  ·  AWS Pricing Calculator');
-
-  const topBorder = b('╭') + b('─'.repeat(inner)) + b('╮');
-  const botBorder = b('╰') + b('─'.repeat(inner)) + b('╯');
-
-  // Each content line: left border + padded content (56 cols) + right border
-  const line = (content) => b('│') + padEnd(content, inner) + b('│');
-
-  const blankLine = line('');
-  const titleLine = line('  ' + diamond + title);
-  const tagLine   = line('      ' + tagline);
-  const verLine   = line('      ' + version);
-
   print('');
-  print(topBorder);
-  print(blankLine);
-  print(titleLine);
-  print(tagLine);
-  print(verLine);
-  print(blankLine);
-  print(botBorder);
+  // "Local CLI Tool · v1.3"
+  print('  ' + dim('LOCAL CLI TOOL · v1.3'.split('').join(' '))); // simple letter spacing sim
+  print('');
+
+  // "AWS Cost Builder"
+  // Since we can't do true gradients easily in basic ANSI without a library,
+  // we'll stick to the dominant cyan color from the design.
+  print('  ' + bold(fg('AWS Cost Builder', COL_CYAN)));
+
+  // "Automate AWS Pricing Calculator · Reusable profiles · Git-friendly JSON"
+  print('  ' + dim('Automate AWS Pricing Calculator · Reusable profiles · Git-friendly JSON'));
+
+  // Separator line
+  print('  ' + dim('─'.repeat(60)));
   print('');
 }
 
@@ -179,10 +159,6 @@ async function promptInteractiveModeSelection() {
   // Print splash
   printSplash();
 
-  // Print section heading
-  print(`  ${bold(fg('◆ Select a mode', COL_ORANGE))}`);
-  print('');
-
   // Build display labels (with right-aligned badge)
   const displayLabels = MODE_OPTIONS.map((opt) => {
     const label  = bold(fg(opt.label.padEnd(12), opt.color));
@@ -192,7 +168,7 @@ async function promptInteractiveModeSelection() {
   });
 
   const selectedDisplay = await selectPrompt({
-    label: 'Mode',
+    label: '◆ Select a mode to begin',
     options: displayLabels.map((d) => d.display),
     defaultValue: displayLabels[0].display,
     descriptions: {},
