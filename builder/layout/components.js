@@ -23,6 +23,7 @@ import {
   COL_BORDER,
   COL_SECTION,
   FIELD_TYPE_COLORS,
+  COL_BG_ROW,
 } from './colors.js';
 
 // ─── ANSI 24-bit (truecolor) helpers ─────────────────────────────────────────
@@ -165,9 +166,9 @@ export function DiamondHeader(title) {
   const innerWidth = Math.max(24, Math.min(74, visibleLength(heading) + 2));
   const border = (s) => fg(s, COL_SECTION);
 
-  const top = border('╭') + border('─'.repeat(innerWidth)) + border('╮');
-  const mid = border('│') + padEnd(` ${heading}`, innerWidth) + border('│');
-  const bot = border('╰') + border('─'.repeat(innerWidth)) + border('╯');
+  const top = bg(border('╭') + border('─'.repeat(innerWidth)) + border('╮'), COL_BG_ROW);
+  const mid = bg(border('│') + padEnd(` ${heading}`, innerWidth) + border('│'), COL_BG_ROW);
+  const bot = bg(border('╰') + border('─'.repeat(innerWidth)) + border('╯'), COL_BG_ROW);
 
   return [top, mid, bot].join('\n');
 }
