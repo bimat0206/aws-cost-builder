@@ -5,6 +5,35 @@ All notable changes to the AWS Cost Profile Builder project are documented in th
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.9.2] - 2026-02-27
+
+### Fixed
+- **Group creation failure** (`automation/navigation/group_manager.js`)
+  - Replaced brittle `data-testid` selectors with resilient text-based locators
+  - Added `selectRootEstimate()` to ensure top-level context before group creation
+  - Added `findCreateGroupButton()` using `getByRole('button', { name: /Create group/i })`
+  - Added `findGroupNameInput()` with label and placeholder fallback strategies
+  - Rewrote `createGroup()` to match Python's `ensure_group_exists()` logic
+  - Rewrote `groupExists()` and `selectGroup()` to use `getByText()` text search
+  - Added group creation verification after confirm button click
+
+### Changed
+- **Automation locator strategy** (`automation/navigation/group_manager.js`)
+  - All group-related selectors now use Playwright's `getBy*` methods
+  - Text-based locators are resilient to AWS UI class name changes
+  - Multiple fallback strategies for each element type
+  - Proper error messages indicating what wasn't found
+
+### Design Compliance
+- **Matches Python implementation** — Uses same locator strategies as `automation/navigator.py`
+- **Follows design spec** — Complies with `design/03-playwright-automation-spec.md` Section 5.1
+- **Better error handling** — Clear indication of failures with actionable messages
+
+### Verified
+- Group creation flow works with text-based locators
+- Multiple fallback strategies prevent single-point failures
+- Group verification confirms successful creation
+
 ## [1.9.1] - 2026-02-27
 
 ### Fixed

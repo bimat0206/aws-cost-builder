@@ -1,0 +1,1144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>AWS Cost Builder — Full Flow Design Mock</title>
+<script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: #0d0f13; font-family: 'JetBrains Mono','Fira Code','Cascadia Code',monospace; }
+@keyframes blink   { 0%,100%{opacity:1}    50%{opacity:0}    }
+@keyframes fadeIn  { from{opacity:0;transform:translateY(4px)} to{opacity:1;transform:translateY(0)} }
+@keyframes scanline{ 0%{transform:translateY(-100%)} 100%{transform:translateY(100vh)} }
+@keyframes pulse   { 0%,100%{opacity:1}    50%{opacity:.4}   }
+::-webkit-scrollbar      { width:4px }
+::-webkit-scrollbar-track{ background:#1a1d23 }
+::-webkit-scrollbar-thumb{ background:#3e4451; border-radius:2px }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect } = React;
+
+/* ═══════════════════════════ COLOUR TOKENS ═══════════════════════════ */
+const C = {
+  bg:"#0d0f13", bgTerm:"#1e2127", bgPanel:"#21252b", bgActive:"#2c313c", bgRow:"#252a33",
+  border:"#3e4451", borderCyan:"#56b6c2", borderMag:"#c678dd", borderOrange:"#e5c07b",
+  borderGreen:"#98c379", borderRed:"#e06c75",
+  dim:"#5c6370", muted:"#abb2bf", base:"#dcdfe4",
+  cyan:"#56b6c2", green:"#98c379", orange:"#e06c75",
+  yellow:"#e5c07b", magenta:"#c678dd", blue:"#61afef",
+};
+
+/* ═══════════════════════════ SCREEN LIST ════════════════════════════ */
+const SCREENS = [
+  {id:"splash",        label:"01 · Splash / Mode Select",    group:"Startup"},
+  {id:"meta",          label:"02 · Project Metadata",        group:"Builder"},
+  {id:"group_pick",    label:"03 · Group + Service Picker",  group:"Builder"},
+  {id:"region",        label:"04 · Region Selection",        group:"Builder"},
+  {id:"number_field",  label:"05 · Number Field",            group:"Builder"},
+  {id:"select_field",  label:"06 · Select Field",            group:"Builder"},
+  {id:"compound",      label:"07 · Compound Value+Unit",     group:"Builder"},
+  {id:"toggle_p1",     label:"08 · S3 Toggle Phase 1",       group:"Builder"},
+  {id:"toggle_p2",     label:"09 · S3 Toggle Phase 2",       group:"Builder"},
+  {id:"inline_help",   label:"10 · Inline Help (?)",         group:"Builder"},
+  {id:"section_review",label:"11 · Post-Section Review",     group:"Builder"},
+  {id:"service_review",label:"12 · Post-Service Review",     group:"Builder"},
+  {id:"final_review",  label:"13 · Final Profile Review",    group:"Builder"},
+  {id:"saved",         label:"14 · Profile Saved",           group:"Builder"},
+  {id:"preflight_ok",  label:"15 · Preflight Pass",          group:"Runner"},
+  {id:"preflight_fail",label:"16 · Preflight Failure",       group:"Runner"},
+  {id:"running",       label:"17 · Browser Automation Live", group:"Runner"},
+  {id:"partial_fail",  label:"18 · Partial Failure",         group:"Runner"},
+  {id:"run_success",   label:"19 · Run Complete",            group:"Runner"},
+  {id:"artifact",      label:"20 · Run Artifact Viewer",     group:"Runner"},
+];
+
+/* ═══════════════════════════ PRIMITIVES ════════════════════════════ */
+const panelStyle = (border, extra={}) => ({
+  border:`1px solid ${border}`, borderRadius:4, margin:5, padding:"8px 10px",
+  background:C.bgPanel, display:"flex", flexDirection:"column",
+  overflow:"hidden", ...extra,
+});
+
+function Panel({border=C.border,children,style={}}) {
+  return <div style={{...panelStyle(border), overflowY:"auto", ...style}}>{children}</div>;
+}
+function PTitle({color,children}) {
+  return <div style={{color,borderBottom:`1px solid ${color}`,marginBottom:6,paddingBottom:2,
+    fontWeight:"bold",fontSize:11,letterSpacing:1,textTransform:"uppercase",flexShrink:0}}>{children}</div>;
+}
+function Badge({label,color}) {
+  return <span style={{background:color+"22",border:`1px solid ${color}55`,color,
+    borderRadius:3,fontSize:10,padding:"1px 6px",fontWeight:"bold"}}>{label}</span>;
+}
+function DiamondHeader({label,subtitle,color=C.yellow}) {
+  return (
+    <div style={{border:`1px solid ${C.borderOrange}`,borderRadius:3,padding:"5px 10px",
+      marginBottom:8,background:"#252a33",flexShrink:0}}>
+      <span style={{color:C.yellow,fontWeight:"bold"}}>◆ </span>
+      <span style={{color,fontWeight:"bold"}}>{label}</span>
+      {subtitle&&<span style={{color:C.dim,fontSize:11,marginLeft:8}}>{subtitle}</span>}
+    </div>
+  );
+}
+function Breadcrumb({group,service}) {
+  return (
+    <div style={{color:C.dim,fontSize:11,marginBottom:6,fontWeight:"bold",flexShrink:0}}>
+      Group: <span style={{color:C.muted}}>{group}</span>
+      <span style={{margin:"0 4px"}}>›</span>
+      Service: <span style={{color:C.muted}}>{service}</span>
+    </div>
+  );
+}
+function ProgBar({current,total,secCur,secTot}) {
+  const pct=Math.round((current/total)*100);
+  return (
+    <div style={{marginBottom:8,flexShrink:0}}>
+      <div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}>
+        <span style={{color:C.dim,fontSize:11}}>Section {secCur} of {secTot}</span>
+        <span style={{color:C.cyan,fontSize:11}}>[{current}/{total}]</span>
+      </div>
+      <div style={{background:C.border,borderRadius:2,height:3}}>
+        <div style={{background:C.cyan,width:`${pct}%`,height:"100%",borderRadius:2,transition:"width .3s"}}/>
+      </div>
+    </div>
+  );
+}
+function FakeInput({value="",active=true}) {
+  return (
+    <div>
+      <div style={{border:`1px solid ${active?C.cyan:C.border}`,borderRadius:3,padding:"5px 10px",
+        background:C.bgActive,display:"flex",alignItems:"center",gap:6,marginTop:4}}>
+        <span style={{color:C.dim}}>›</span>
+        <span style={{color:C.base}}>{value}</span>
+        {active&&<span style={{width:8,height:14,background:C.cyan,display:"inline-block",
+          animation:"blink 1s step-end infinite"}}/>}
+      </div>
+      <div style={{color:C.dim,fontSize:10,marginTop:3}}>Enter to confirm · ? for help</div>
+    </div>
+  );
+}
+function FieldBlock({label,type="NUMBER",unit,def,note,required=true,value="",active=true}) {
+  const tc={NUMBER:C.cyan,SELECT:C.yellow,TEXT:C.cyan,TOGGLE:C.green,COMBOBOX:C.magenta,RADIO:C.yellow};
+  return (
+    <div style={{marginBottom:12}}>
+      <div style={{display:"flex",alignItems:"center",flexWrap:"wrap",gap:5,marginBottom:4}}>
+        <span style={{color:C.orange,fontWeight:"bold"}}>{label}</span>
+        <Badge label={type} color={tc[type]||C.dim}/>
+        {required?<Badge label="required" color={C.orange}/>:<Badge label="optional" color={C.dim}/>}
+      </div>
+      {unit&&<div style={{color:C.dim,fontSize:11,marginBottom:2}}>Unit: <span style={{color:C.yellow}}>{unit}</span></div>}
+      {def!==undefined&&<div style={{color:C.dim,fontSize:11,marginBottom:2}}>Default: <span style={{color:C.muted}}>{String(def)}</span></div>}
+      {note&&<div style={{color:C.dim,fontSize:11,marginBottom:4,fontStyle:"italic"}}>Note: {note}</div>}
+      <FakeInput value={value} active={active}/>
+    </div>
+  );
+}
+function SelectList({label,options,initSel=0,descriptions={}}) {
+  const [sel,setSel]=useState(initSel);
+  return (
+    <div style={{marginBottom:12}}>
+      {label&&<div style={{color:C.orange,fontWeight:"bold",marginBottom:6}}>{label}</div>}
+      <div style={{border:`1px solid ${C.border}`,borderRadius:4,overflow:"hidden"}}>
+        {options.map((opt,i)=>{
+          const on=i===sel;
+          return (
+            <div key={i} onClick={()=>setSel(i)} style={{padding:"5px 10px",cursor:"pointer",
+              background:on?C.bgActive:"transparent",
+              borderLeft:`3px solid ${on?C.green:C.border}`}}>
+              <span style={{color:on?C.green:C.dim,fontWeight:"bold",marginRight:6}}>{on?"●":"○"}</span>
+              <span style={{color:on?C.base:C.muted}}>{opt}</span>
+              {descriptions[opt]&&<div style={{color:C.dim,fontSize:11,marginLeft:20,marginTop:1}}>{descriptions[opt]}</div>}
+            </div>
+          );
+        })}
+      </div>
+      <div style={{color:C.dim,fontSize:10,marginTop:3}}>↑↓ to move · Enter to select</div>
+    </div>
+  );
+}
+function EventLog({events=[]}) {
+  if(!events.length) return null;
+  return (
+    <div style={{borderBottom:`1px solid ${C.border}`,marginBottom:8,paddingBottom:6,flexShrink:0}}>
+      {events.map((e,i)=><div key={i} style={{color:e.color||C.muted,fontSize:11,lineHeight:1.8}}>{e.text}</div>)}
+    </div>
+  );
+}
+
+/* ═════════════════════════ YAML PREVIEW ═══════════════════════════ */
+function YamlPreview({lines,footer=""}) {
+  const yc=l=>{
+    if(l.t==="p") return C.dim;
+    if(l.t==="k") return C.blue;
+    if(l.t==="s") return C.green;
+    if(l.v==="true"||l.v==="false") return C.magenta;
+    if(l.v&&!isNaN(Number(l.v))) return C.yellow;
+    return C.base;
+  };
+  return (
+    <div style={{...panelStyle(C.borderCyan),width:310,minWidth:310,maxWidth:310}}>
+      <PTitle color={C.cyan}>YAML Preview</PTitle>
+      <div style={{overflowY:"auto",flex:1}}>
+        {lines.map((l,i)=>{
+          const isA=!!l.active;
+          return (
+            <div key={i} style={{display:"flex",background:isA?C.bgActive:"transparent",padding:"1px 0",borderRadius:2}}>
+              <span style={{color:C.dim,width:22,textAlign:"right",marginRight:5,fontSize:11,flexShrink:0}}>{i+1}</span>
+              <span style={{color:isA?C.cyan:C.dim,marginRight:4,flexShrink:0}}>{isA?"▶":" "}</span>
+              <span>
+                <span style={{color:C.dim}}>{l.k.match(/^(\s*)/)[0]}</span>
+                <span style={{color:isA?C.cyan:C.blue,fontWeight:isA?"bold":"normal"}}>{l.k.trim()}</span>
+                {l.v!==null
+                  ?<><span style={{color:C.dim}}>: </span><span style={{color:yc(l)}}>{l.v}</span></>
+                  :<span style={{color:C.dim}}>:</span>}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+      <div style={{color:C.dim,fontSize:10,marginTop:5,borderTop:`1px solid ${C.border}`,paddingTop:3,flexShrink:0}}>{footer}</div>
+    </div>
+  );
+}
+
+function Term({yaml,yamlFooter,children}) {
+  const termStyle={fontFamily:"'JetBrains Mono','Fira Code',monospace",fontSize:13,lineHeight:1.5,
+    background:C.bgTerm,color:C.base,display:"flex",width:"100%",
+    height:"calc(100vh - 72px)",overflow:"hidden",animation:"fadeIn .2s ease"};
+  return (
+    <div style={termStyle}>
+      {yaml&&<YamlPreview lines={yaml} footer={yamlFooter}/>}
+      <div style={{...panelStyle(C.borderMag),flex:1,overflowY:"auto"}}>
+        <PTitle color={C.magenta}>Prompt</PTitle>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════════════════════ SCREENS ═════════════════════════════ */
+
+/* 01 Splash */
+function S_Splash() {
+  return (
+    <div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",
+      background:`linear-gradient(160deg,#0d0f13 0%,#1a1d23 100%)`,
+      height:"calc(100vh - 72px)",position:"relative",overflow:"hidden",animation:"fadeIn .3s ease"}}>
+      <div style={{position:"absolute",top:0,left:0,right:0,height:2,
+        background:`linear-gradient(transparent,${C.cyan}40,transparent)`,
+        animation:"scanline 5s linear infinite",pointerEvents:"none"}}/>
+      <div style={{textAlign:"center",maxWidth:560}}>
+        <div style={{color:C.cyan,fontSize:10,letterSpacing:8,textTransform:"uppercase",marginBottom:8,opacity:.6}}>
+          Local CLI Tool · v1.0
+        </div>
+        <div style={{fontSize:28,fontWeight:"bold",letterSpacing:2,marginBottom:4,
+          background:`linear-gradient(90deg,${C.cyan},${C.blue},${C.magenta})`,
+          WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent"}}>
+          AWS Cost Builder
+        </div>
+        <div style={{color:C.muted,fontSize:13,marginBottom:28,letterSpacing:1}}>
+          Automate AWS Pricing Calculator · Reusable profiles · Git-friendly JSON
+        </div>
+        <div style={{color:C.dim,fontSize:11,marginBottom:16,letterSpacing:2}}>─────────────────────────────────────────</div>
+        <div style={{color:C.yellow,fontSize:11,marginBottom:14,fontWeight:"bold"}}>◆ Select a mode to begin</div>
+        {[
+          {key:"--build",   label:"Mode A — Builder",  desc:"Create a new cost profile interactively", color:C.cyan},
+          {key:"--run",     label:"Mode B — Runner",   desc:"Automate browser with an existing profile",color:C.green},
+          {key:"--dry-run", label:"Mode C — Dry Run",  desc:"Validate + resolve without opening browser",color:C.yellow},
+        ].map((m,i)=>(
+          <div key={i} style={{border:`1px solid ${m.color}44`,borderLeft:`3px solid ${m.color}`,
+            borderRadius:4,padding:"8px 14px",marginBottom:8,textAlign:"left",
+            background:m.color+"0a",display:"flex",alignItems:"center",gap:16}}>
+            <span style={{color:m.color,fontWeight:"bold",width:110,flexShrink:0}}>{m.key}</span>
+            <span style={{color:C.muted,fontSize:12}}>
+              <span style={{color:C.base,fontWeight:"bold"}}>{m.label}</span>
+              <span style={{color:C.dim}}> — {m.desc}</span>
+            </span>
+          </div>
+        ))}
+        <div style={{color:C.dim,fontSize:11,marginTop:20}}>
+          python main.py <span style={{color:C.cyan}}>--build</span>
+          {"  |  "}python main.py <span style={{color:C.green}}>--run</span> --profile profiles/web_tier.json
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* 02 Meta */
+function S_Meta() {
+  const lines=[
+    {t:"k",k:"schema_version",v:'"2.0"'},
+    {t:"p",k:"project_name",v:'"?"',active:true},
+    {t:"p",k:"description",v:'"?"'},
+    {t:"k",k:"groups",v:null},
+  ];
+  return (
+    <Term yaml={lines} yamlFooter="project root · step 1 of 3">
+      <DiamondHeader label="Project Setup" subtitle="Step 1 of 3"/>
+      <div style={{color:C.dim,fontSize:11,marginBottom:12}}>
+        Give your estimate a name and optional description. These appear in profiles and run artifacts.
+      </div>
+      <FieldBlock label="Project name" type="TEXT" def="" required={true}
+        note="e.g. 'Web Tier — Production Estimate Q3'" active={true}/>
+      <FieldBlock label="Description" type="TEXT" required={false}
+        note="Optional. Shown in run artifacts and YAML preview." active={false}/>
+    </Term>
+  );
+}
+
+/* 03 Group + Service Picker */
+function S_GroupPick() {
+  const [checked,setChecked]=useState([0,2,4]);
+  const services=["Amazon EC2","Amazon S3","Amazon RDS for MySQL","Amazon CloudFront","AWS Lambda","Amazon ECS","Amazon ElastiCache","Amazon Route 53"];
+  const toggle=i=>setChecked(c=>c.includes(i)?c.filter(x=>x!==i):[...c,i].sort());
+  return (
+    <Term yaml={null}>
+      <DiamondHeader label="Group & Service Configuration" subtitle="Step 2 of 3"/>
+      <div style={{display:"flex",gap:12,flex:1,minHeight:0}}>
+        <div style={{width:200,flexShrink:0}}>
+          <div style={{color:C.yellow,fontWeight:"bold",fontSize:11,marginBottom:8}}>◆ Group Details</div>
+          <div style={{color:C.dim,fontSize:11,marginBottom:4}}>Group name</div>
+          <div style={{border:`1px solid ${C.cyan}`,borderRadius:3,padding:"4px 8px",background:C.bgActive,
+            color:C.base,display:"flex",alignItems:"center",gap:6,marginBottom:10}}>
+            <span style={{color:C.dim}}>›</span><span>Production</span>
+            <span style={{width:8,height:14,background:C.cyan,display:"inline-block",animation:"blink 1s step-end infinite"}}/>
+          </div>
+          <div style={{color:C.dim,fontSize:11,marginBottom:4}}>Parent group (optional)</div>
+          <div style={{border:`1px solid ${C.border}`,borderRadius:3,padding:"4px 8px",background:"#252a33",color:C.dim,marginBottom:16}}>— none —</div>
+          <div style={{color:C.green,fontSize:11}}>✓ {checked.length} services selected</div>
+          <div style={{color:C.dim,fontSize:10,marginTop:4}}>Enter to confirm group</div>
+        </div>
+        <div style={{flex:1}}>
+          <div style={{color:C.yellow,fontWeight:"bold",fontSize:11,marginBottom:8}}>◆ Select Services</div>
+          <div style={{color:C.dim,fontSize:11,marginBottom:8}}>Space to toggle · Enter to confirm · Type to filter</div>
+          <div style={{border:`1px solid ${C.border}`,borderRadius:4,overflow:"auto",maxHeight:290}}>
+            {services.map((s,i)=>{
+              const on=checked.includes(i);
+              return (
+                <div key={i} onClick={()=>toggle(i)} style={{padding:"6px 12px",cursor:"pointer",
+                  background:on?C.bgActive:"transparent",borderLeft:`3px solid ${on?C.green:C.border}`,
+                  display:"flex",alignItems:"center",gap:8}}>
+                  <span style={{color:on?C.green:C.dim,fontWeight:"bold",width:16,flexShrink:0}}>{on?"◆":"◇"}</span>
+                  <span style={{color:on?C.base:C.muted}}>{s}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    </Term>
+  );
+}
+
+/* 04 Region */
+function S_Region() {
+  const lines=[
+    {t:"k",k:"schema_version",v:'"2.0"'},{t:"s",k:"project_name",v:"Web Tier Estimate"},
+    {t:"k",k:"groups",v:null},{t:"s",k:"  - group_name",v:"Production"},
+    {t:"k",k:"    services",v:null},{t:"s",k:"      - service_name",v:"Amazon EC2"},
+    {t:"p",k:"        region",v:'"?"',active:true},
+    {t:"s",k:"      - service_name",v:"Amazon S3"},{t:"p",k:"        region",v:'"?"'},
+    {t:"s",k:"      - service_name",v:"Amazon RDS"},{t:"p",k:"        region",v:'"?"'},
+  ];
+  return (
+    <Term yaml={lines} yamlFooter="Service 1 of 3 · region selection">
+      <DiamondHeader label="Region Selection" subtitle="Amazon EC2 · Service 1 of 3"/>
+      <div style={{color:C.dim,fontSize:11,marginBottom:12}}>
+        Select the AWS region for <span style={{color:C.cyan}}>Amazon EC2</span>. Only supported regions shown.
+      </div>
+      <SelectList options={[
+        "US East (N. Virginia) — us-east-1","US West (Oregon) — us-west-2",
+        "EU (Ireland) — eu-west-1","EU (Frankfurt) — eu-central-1",
+        "Asia Pacific (Tokyo) — ap-northeast-1","Asia Pacific (Singapore) — ap-southeast-1",
+      ]} initSel={0}/>
+      <div style={{border:`1px solid ${C.borderOrange}`,borderRadius:3,padding:"5px 10px",background:"#252a33"}}>
+        <span style={{color:C.dim,fontSize:11}}>Tip: Enter <span style={{color:C.yellow}}>global</span> to skip region for this service.</span>
+      </div>
+    </Term>
+  );
+}
+
+/* 05 Number Field */
+function S_NumberField() {
+  const lines=[
+    {t:"k",k:"schema_version",v:'"2.0"'},{t:"s",k:"project_name",v:"Web Tier Estimate"},
+    {t:"k",k:"groups",v:null},{t:"s",k:"  - group_name",v:"Production"},
+    {t:"k",k:"    services",v:null},{t:"s",k:"      - service_name",v:"Amazon EC2"},
+    {t:"s",k:"        region",v:"us-east-1"},{t:"k",k:"        dimensions",v:null},
+    {t:"s",k:"          Tenancy",v:null},{t:"s",k:"            user_value",v:'"Shared Instances"'},
+    {t:"s",k:"          Operating system",v:null},{t:"s",k:"            user_value",v:'"Linux"'},
+    {t:"s",k:"          Workloads",v:null},{t:"s",k:"            user_value",v:'"Constant usage"'},
+    {t:"p",k:"          Number of instances",v:null,active:true},{t:"p",k:"            user_value",v:'"?"'},
+    {t:"p",k:"          Instance type",v:null},{t:"p",k:"            user_value",v:'"?"'},
+  ];
+  return (
+    <Term yaml={lines} yamlFooter="Line 16/20 · amazon_ec2 · us-east-1">
+      <Breadcrumb group="Production" service="Amazon EC2"/>
+      <ProgBar current={4} total={19} secCur={1} secTot={5}/>
+      <DiamondHeader label="Compute" subtitle="Section 1 of 5 · 8 fields"/>
+      <FieldBlock label="Number of instances" type="NUMBER" unit="instances" def={1} required={true}
+        note="Total vCPU and memory is computed from instance type × count." value="3" active={true}/>
+    </Term>
+  );
+}
+
+/* 06 Select Field */
+function S_SelectField() {
+  const lines=[
+    {t:"k",k:"schema_version",v:'"2.0"'},{t:"s",k:"project_name",v:"Web Tier Estimate"},
+    {t:"k",k:"groups",v:null},{t:"s",k:"  - group_name",v:"Production"},
+    {t:"k",k:"    services",v:null},{t:"s",k:"      - service_name",v:"Amazon EC2"},
+    {t:"s",k:"        region",v:"us-east-1"},{t:"k",k:"        dimensions",v:null},
+    {t:"p",k:"          Tenancy",v:null},{t:"p",k:"            user_value",v:'"?"'},
+    {t:"p",k:"          Operating system",v:null,active:true},{t:"p",k:"            user_value",v:'"?"'},
+    {t:"p",k:"          Workloads",v:null},{t:"p",k:"            user_value",v:'"?"'},
+  ];
+  return (
+    <Term yaml={lines} yamlFooter="Line 13/18 · amazon_ec2 · us-east-1">
+      <Breadcrumb group="Production" service="Amazon EC2"/>
+      <ProgBar current={2} total={19} secCur={1} secTot={5}/>
+      <DiamondHeader label="Compute" subtitle="Section 1 of 5 · 8 fields"/>
+      <SelectList label="Operating system"
+        options={["Linux","Windows Server","RHEL","Ubuntu Pro","SUSE"]}
+        initSel={0}
+        descriptions={{"Linux":"Standard EC2 pricing. No additional OS license cost.",
+          "Windows Server":"Includes Windows Server license in hourly rate.",
+          "RHEL":"Includes Red Hat Enterprise Linux license.",
+          "Ubuntu Pro":"Includes Ubuntu Pro security subscription.",
+          "SUSE":"Includes SUSE Linux Enterprise Server license."}}/>
+    </Term>
+  );
+}
+
+/* 07 Compound */
+function S_Compound() {
+  const lines=[
+    {t:"k",k:"schema_version",v:'"2.0"'},{t:"s",k:"project_name",v:"Web Tier Estimate"},
+    {t:"k",k:"groups",v:null},{t:"s",k:"  - group_name",v:"Production"},
+    {t:"k",k:"    services",v:null},{t:"s",k:"      - service_name",v:"Amazon EC2"},
+    {t:"s",k:"        region",v:"us-east-1"},{t:"k",k:"        dimensions",v:null},
+    {t:"s",k:"          Number of instances",v:null},{t:"s",k:"            user_value",v:"3"},
+    {t:"s",k:"          Instance type",v:null},{t:"s",k:"            user_value",v:'"t3.medium"'},
+    {t:"p",k:"          Inbound Data Transfer",v:null,active:true},{t:"p",k:"            user_value",v:'"?"'},
+    {t:"p",k:"          Inbound Data Transfer Unit",v:null},{t:"p",k:"            user_value",v:'"GB per month"'},
+    {t:"p",k:"          Outbound Data Transfer",v:null},{t:"p",k:"            user_value",v:'"?"'},
+  ];
+  return (
+    <Term yaml={lines} yamlFooter="Line 19/26 · amazon_ec2 · Data Transfer section">
+      <Breadcrumb group="Production" service="Amazon EC2"/>
+      <ProgBar current={8} total={19} secCur={3} secTot={5}/>
+      <DiamondHeader label="Data Transfer" subtitle="Section 3 of 5 · 4 fields"/>
+      <div style={{marginBottom:12}}>
+        <div style={{display:"flex",alignItems:"center",gap:5,marginBottom:6}}>
+          <span style={{color:C.orange,fontWeight:"bold"}}>Inbound Data Transfer</span>
+          <Badge label="NUMBER+UNIT" color={C.cyan}/>
+          <Badge label="optional" color={C.dim}/>
+        </div>
+        <div style={{border:`1px solid ${C.borderOrange}`,borderRadius:3,padding:"6px 10px",background:"#252a33",marginBottom:6}}>
+          <div style={{color:C.yellow,fontSize:11,fontWeight:"bold",marginBottom:2}}>◆ Compound input</div>
+          <div style={{color:C.dim,fontSize:11}}>These two catalog fields are presented as one combined prompt. Type a number followed by a unit.</div>
+        </div>
+        <div style={{color:C.dim,fontSize:11,marginBottom:2}}>Supported units: <span style={{color:C.yellow}}>GB per month</span>, <span style={{color:C.yellow}}>TB per month</span></div>
+        <div style={{color:C.dim,fontSize:11,marginBottom:2}}>Default: <span style={{color:C.muted}}>0 GB per month</span></div>
+        <div style={{color:C.dim,fontSize:11,marginBottom:6,fontStyle:"italic"}}>
+          e.g. <span style={{color:C.green}}>500 GB</span> · <span style={{color:C.green}}>2 TB</span> · <span style={{color:C.green}}>500</span> (uses default unit)
+        </div>
+        <div style={{border:`1px solid ${C.cyan}`,borderRadius:3,padding:"5px 10px",background:C.bgActive,
+          display:"flex",alignItems:"center",gap:6}}>
+          <span style={{color:C.dim}}>›</span>
+          <span style={{color:C.base}}>500 GB</span>
+          <span style={{width:8,height:14,background:C.cyan,display:"inline-block",animation:"blink 1s step-end infinite"}}/>
+        </div>
+        <div style={{color:C.dim,fontSize:10,marginTop:3}}>Enter to confirm · ? for help</div>
+      </div>
+    </Term>
+  );
+}
+
+/* 08 Toggle Phase 1 */
+function S_ToggleP1() {
+  const [checked,setChecked]=useState([0,1,7]);
+  const sections=[
+    {n:"S3 Standard",d:"General purpose. Frequently accessed data."},
+    {n:"S3 Standard-IA",d:"Infrequent access, rapid retrieval."},
+    {n:"S3 Intelligent-Tiering",d:"Auto cost optimization by access pattern."},
+    {n:"S3 Glacier Instant",d:"Archive with millisecond retrieval."},
+    {n:"S3 Glacier Flexible",d:"Low-cost archive, minutes–hours retrieval."},
+    {n:"S3 Glacier Deep Archive",d:"Lowest cost; 12h retrieval."},
+    {n:"Management & Analytics",d:"Inventory, analytics, object tagging."},
+    {n:"Data Transfer",d:"Outbound and inbound transfer costs."},
+    {n:"Replication",d:"Cross-region and same-region replication."},
+  ];
+  const toggle=i=>setChecked(c=>c.includes(i)?c.filter(x=>x!==i):[...c,i].sort());
+  const lines=sections.map((s,i)=>({t:checked.includes(i)?"s":"p",k:`  ${s.n}`,v:checked.includes(i)?"true":"false"}));
+  const allLines=[
+    {t:"s",k:"service_name",v:"Amazon S3"},{t:"s",k:"region",v:"us-east-1"},
+    {t:"k",k:"dimensions",v:null},...lines
+  ];
+  return (
+    <Term yaml={allLines} yamlFooter="amazon_s3 · toggle_two_step · phase 1">
+      <Breadcrumb group="Production" service="Amazon S3"/>
+      <DiamondHeader label="Select Feature Sections" subtitle={`Phase 1 of 2 — ${checked.length} enabled`}/>
+      <div style={{color:C.dim,fontSize:11,marginBottom:8}}>Click to toggle · Enter to proceed to Phase 2</div>
+      <div style={{border:`1px solid ${C.border}`,borderRadius:4,overflow:"auto",maxHeight:320}}>
+        {sections.map((s,i)=>{
+          const on=checked.includes(i);
+          return (
+            <div key={i} onClick={()=>toggle(i)} style={{padding:"6px 12px",cursor:"pointer",
+              background:on?C.bgActive:"transparent",borderLeft:`3px solid ${on?C.green:C.border}`,
+              display:"flex",alignItems:"flex-start",gap:8}}>
+              <span style={{color:on?C.green:C.dim,fontWeight:"bold",marginTop:1,flexShrink:0}}>{on?"◆":"◇"}</span>
+              <div>
+                <div style={{color:on?C.base:C.muted}}>{s.n}</div>
+                <div style={{color:C.dim,fontSize:11}}>{s.d}</div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      <div style={{color:C.dim,fontSize:10,marginTop:6}}>Space/click to toggle · Enter to confirm and begin Phase 2</div>
+    </Term>
+  );
+}
+
+/* 09 Toggle Phase 2 */
+function S_ToggleP2() {
+  const lines=[
+    {t:"s",k:"service_name",v:"Amazon S3"},{t:"s",k:"region",v:"us-east-1"},
+    {t:"s",k:"S3 Standard",v:"true"},{t:"s",k:"S3 Standard-IA",v:"true"},{t:"s",k:"Data Transfer",v:"true"},
+    {t:"k",k:"S3 Standard storage",v:null,active:true},{t:"p",k:"  user_value",v:'"?"'},
+    {t:"p",k:"S3 Standard PUT requests",v:null},{t:"p",k:"  user_value",v:'"?"'},
+    {t:"p",k:"S3 Standard GET requests",v:null},{t:"p",k:"  user_value",v:'"?"'},
+  ];
+  return (
+    <Term yaml={lines} yamlFooter="amazon_s3 · phase 2 · S3 Standard (1/3)">
+      <Breadcrumb group="Production" service="Amazon S3"/>
+      <div style={{border:`1px solid ${C.borderOrange}`,borderRadius:3,padding:"4px 10px",marginBottom:8,
+        background:"#252a33",fontSize:11,color:C.dim,flexShrink:0}}>
+        Phase 2 of 2 · Enabled:
+        <span style={{color:C.green,marginLeft:6}}>◆ S3 Standard</span>
+        <span style={{color:C.dim,marginLeft:4}}>◆ S3 Standard-IA</span>
+        <span style={{color:C.dim,marginLeft:4}}>◆ Data Transfer</span>
+      </div>
+      <ProgBar current={1} total={12} secCur={1} secTot={3}/>
+      <DiamondHeader label="S3 Standard" subtitle="Enabled section 1 of 3 · 4 fields"/>
+      <FieldBlock label="S3 Standard storage" type="NUMBER" unit="GB per month" def={0} required={false}
+        note="Total bytes stored per month in this storage class." active={true}/>
+    </Term>
+  );
+}
+
+/* 10 Inline Help */
+function S_InlineHelp() {
+  const lines=[
+    {t:"k",k:"schema_version",v:'"2.0"'},{t:"s",k:"project_name",v:"Web Tier Estimate"},
+    {t:"k",k:"groups",v:null},{t:"s",k:"  - group_name",v:"Production"},
+    {t:"k",k:"    services",v:null},{t:"s",k:"      - service_name",v:"Amazon EC2"},
+    {t:"s",k:"        region",v:"us-east-1"},{t:"k",k:"        dimensions",v:null},
+    {t:"s",k:"          Tenancy",v:null},{t:"s",k:"            user_value",v:'"Shared Instances"'},
+    {t:"s",k:"          Operating system",v:null},{t:"s",k:"            user_value",v:'"Linux"'},
+    {t:"p",k:"          Number of instances",v:null,active:true},{t:"p",k:"            user_value",v:'"?"'},
+  ];
+  return (
+    <Term yaml={lines} yamlFooter="Line 14/16 · amazon_ec2 · inline help shown">
+      <Breadcrumb group="Production" service="Amazon EC2"/>
+      <ProgBar current={4} total={19} secCur={1} secTot={5}/>
+      <div style={{borderBottom:`1px solid ${C.dim}`,marginBottom:10,paddingBottom:8,flexShrink:0}}>
+        <div style={{color:C.dim,fontSize:10,marginBottom:4}}>─── scrollback ─── (print_above — visible in terminal history)</div>
+        <div style={{color:C.yellow,fontSize:11}}>  [?] Help: Number of instances</div>
+        <div style={{border:`1px solid ${C.borderOrange}`,borderRadius:3,padding:"8px 12px",marginTop:4,background:"#252a33"}}>
+          <div style={{color:C.dim,fontSize:11,marginBottom:3}}>Key: <span style={{color:C.muted}}>Number of instances</span></div>
+          <div style={{color:C.dim,fontSize:11,marginBottom:3}}>
+            Type: <span style={{color:C.cyan}}>NUMBER</span>{"  "}|{"  "}Unit: <span style={{color:C.yellow}}>instances</span>{"  "}|{"  "}Default: <span style={{color:C.muted}}>1</span>
+          </div>
+          <div style={{color:C.dim,fontSize:11,marginBottom:3}}>Required: <span style={{color:C.orange}}>yes</span></div>
+          <div style={{color:C.dim,fontSize:11}}>
+            Note: <span style={{color:C.muted}}>Specifies how many EC2 instances of the selected type will run. Total monthly cost is this count × per-instance rate. Integers only.</span>
+          </div>
+        </div>
+      </div>
+      <DiamondHeader label="Compute" subtitle="Section 1 of 5 · 8 fields"/>
+      <FieldBlock label="Number of instances" type="NUMBER" unit="instances" def={1} required={true} active={true}/>
+    </Term>
+  );
+}
+
+/* 11 Post-Section Review */
+function S_SectionReview() {
+  const rows=[
+    {f:"Tenancy",v:"Shared Instances",u:""},
+    {f:"Operating system",v:"Linux",u:""},
+    {f:"Workloads",v:"Constant usage",u:""},
+    {f:"Number of instances",v:"3",u:"instances"},
+    {f:"Instance type",v:"t3.medium",u:""},
+    {f:"Storage amount",v:"30",u:"GB/vol"},
+    {f:"Provisioned IOPS",v:"—",u:"skipped"},
+    {f:"Monitoring",v:"false",u:""},
+  ];
+  const lines=[
+    {t:"k",k:"schema_version",v:'"2.0"'},{t:"s",k:"project_name",v:"Web Tier Estimate"},
+    {t:"k",k:"groups",v:null},{t:"s",k:"  - group_name",v:"Production"},
+    {t:"k",k:"    services",v:null},{t:"s",k:"      - service_name",v:"Amazon EC2"},
+    {t:"s",k:"        region",v:"us-east-1"},{t:"k",k:"        dimensions",v:null},
+    {t:"s",k:"          Tenancy",v:null},{t:"s",k:"            user_value",v:'"Shared Instances"'},
+    {t:"s",k:"          Operating system",v:null},{t:"s",k:"            user_value",v:'"Linux"'},
+    {t:"s",k:"          Workloads",v:null},{t:"s",k:"            user_value",v:'"Constant usage"'},
+    {t:"s",k:"          Number of instances",v:null},{t:"s",k:"            user_value",v:"3"},
+    {t:"s",k:"          Instance type",v:null},{t:"s",k:"            user_value",v:'"t3.medium"'},
+    {t:"s",k:"          Storage amount",v:null},{t:"s",k:"            user_value",v:"30"},
+  ];
+  return (
+    <Term yaml={lines} yamlFooter="amazon_ec2 · section 1 complete">
+      <EventLog events={[{text:"[✓] Section 'Compute' completed — 8 fields set",color:C.green}]}/>
+      <DiamondHeader label="Section Review" subtitle="Compute · Section 1 of 5"/>
+      <div style={{overflowY:"auto",flex:1}}>
+        <table style={{width:"100%",borderCollapse:"collapse",fontSize:12,marginBottom:12}}>
+          <thead><tr>{["Field","Value","Unit"].map(h=>(
+            <th key={h} style={{color:C.dim,textAlign:"left",padding:"3px 8px",
+              borderBottom:`1px solid ${C.border}`,fontWeight:"normal"}}>{h}</th>
+          ))}</tr></thead>
+          <tbody>{rows.map((r,i)=>(
+            <tr key={i} style={{background:i%2===0?"transparent":C.bgRow}}>
+              <td style={{padding:"3px 8px",color:C.muted}}>{r.f}</td>
+              <td style={{padding:"3px 8px",color:r.u==="skipped"?C.dim:C.green}}>{r.v}</td>
+              <td style={{padding:"3px 8px",color:r.u==="skipped"?C.dim:C.yellow,fontSize:11}}>{r.u||"—"}</td>
+            </tr>
+          ))}</tbody>
+        </table>
+        <SelectList label="What would you like to do?"
+          options={["Continue to next section","Redo this section","Edit a specific field"]} initSel={0}/>
+      </div>
+    </Term>
+  );
+}
+
+/* 12 Post-Service Review */
+function S_ServiceReview() {
+  const rows=[
+    {sec:"Compute",f:"Tenancy",v:"Shared Instances",src:"user"},
+    {sec:"Compute",f:"Operating system",v:"Linux",src:"user"},
+    {sec:"Compute",f:"Number of instances",v:"3",src:"user"},
+    {sec:"Compute",f:"Instance type",v:"t3.medium",src:"user"},
+    {sec:"EBS",f:"Storage amount",v:"30 GB",src:"user"},
+    {sec:"EBS",f:"Volume type",v:"gp3",src:"default"},
+    {sec:"Data Transfer",f:"Inbound transfer",v:"500 GB/mo",src:"user"},
+    {sec:"Data Transfer",f:"Outbound transfer",v:"200 GB/mo",src:"user"},
+    {sec:"Monitoring",f:"Detailed monitoring",v:"false",src:"default"},
+    {sec:"Monitoring",f:"Provisioned IOPS",v:"—",src:"skipped"},
+  ];
+  const srcColor={user:C.green,default:C.cyan,skipped:C.dim};
+  return (
+    <Term yaml={null}>
+      <EventLog events={[{text:"[✓] All 5 sections complete — Amazon EC2 · us-east-1",color:C.green}]}/>
+      <DiamondHeader label="Service Review" subtitle="Amazon EC2 · 10 dimensions resolved"/>
+      <div style={{overflowY:"auto",flex:1}}>
+        <table style={{width:"100%",borderCollapse:"collapse",fontSize:12,marginBottom:12}}>
+          <thead><tr>{["Section","Field","Value","Source"].map(h=>(
+            <th key={h} style={{color:C.dim,textAlign:"left",padding:"3px 8px",
+              borderBottom:`1px solid ${C.border}`,fontWeight:"normal"}}>{h}</th>
+          ))}</tr></thead>
+          <tbody>{rows.map((r,i)=>{
+            const showSec=i===0||rows[i-1].sec!==r.sec;
+            return (
+              <tr key={i} style={{background:i%2===0?"transparent":C.bgRow}}>
+                <td style={{padding:"3px 8px",color:showSec?C.yellow:C.dim,fontSize:11,fontWeight:showSec?"bold":"normal"}}>{showSec?r.sec:""}</td>
+                <td style={{padding:"3px 8px",color:C.muted}}>{r.f}</td>
+                <td style={{padding:"3px 8px",color:srcColor[r.src]}}>{r.v}</td>
+                <td style={{padding:"3px 8px"}}><Badge label={r.src} color={srcColor[r.src]}/></td>
+              </tr>
+            );
+          })}</tbody>
+        </table>
+        <SelectList label="What would you like to do?"
+          options={["Save this service and continue","Edit a specific field","Start this service over"]} initSel={0}/>
+      </div>
+    </Term>
+  );
+}
+
+/* 13 Final Review */
+function S_FinalReview() {
+  const lines=[
+    {t:"k",k:"schema_version",v:'"2.0"'},{t:"s",k:"project_name",v:"Web Tier Estimate"},
+    {t:"s",k:"description",v:'"Load-balanced 3-tier app on EC2 + RDS"'},
+    {t:"k",k:"groups",v:null},{t:"s",k:"  - group_name",v:"Production"},
+    {t:"k",k:"    services",v:null},
+    {t:"s",k:"      - service_name",v:"Amazon EC2"},{t:"s",k:"        region",v:"us-east-1"},
+    {t:"k",k:"        dimensions",v:null},
+    {t:"s",k:"          Tenancy",v:null},{t:"s",k:"            user_value",v:'"Shared Instances"'},
+    {t:"s",k:"          Number of instances",v:null},{t:"s",k:"            user_value",v:"3"},
+    {t:"s",k:"      - service_name",v:"Amazon S3"},{t:"s",k:"        region",v:"us-east-1"},
+    {t:"s",k:"          S3 Standard storage",v:null},{t:"s",k:"            user_value",v:"500"},
+    {t:"s",k:"      - service_name",v:"Amazon RDS"},{t:"s",k:"        region",v:"us-east-1"},
+    {t:"s",k:"          Instance type",v:null},{t:"s",k:"            user_value",v:'"db.t3.medium"'},
+  ];
+  return (
+    <Term yaml={lines} yamlFooter="profile complete · 3 services · 26 dimensions">
+      <DiamondHeader label="Final Profile Review" subtitle="Web Tier Estimate · 1 group · 3 services"/>
+      <div style={{overflowY:"auto",flex:1}}>
+        <table style={{width:"100%",borderCollapse:"collapse",fontSize:12,marginBottom:12}}>
+          <thead><tr>{["Service","Region","Dims","Status"].map(h=>(
+            <th key={h} style={{color:C.dim,textAlign:"left",padding:"3px 8px",
+              borderBottom:`1px solid ${C.border}`,fontWeight:"normal"}}>{h}</th>
+          ))}</tr></thead>
+          <tbody>{[
+            {name:"Amazon EC2",region:"us-east-1",dims:11},
+            {name:"Amazon S3",region:"us-east-1",dims:8},
+            {name:"Amazon RDS",region:"us-east-1",dims:7},
+          ].map((s,i)=>(
+            <tr key={i} style={{background:i%2===0?"transparent":C.bgRow}}>
+              <td style={{padding:"3px 8px",color:C.muted}}>{s.name}</td>
+              <td style={{padding:"3px 8px",color:C.blue,fontSize:11}}>{s.region}</td>
+              <td style={{padding:"3px 8px",color:C.yellow}}>{s.dims}</td>
+              <td style={{padding:"3px 8px"}}><Badge label="✓ ready" color={C.green}/></td>
+            </tr>
+          ))}</tbody>
+        </table>
+        <SelectList label="Ready to save?" options={["Save profile","Edit a service","Start over"]} initSel={0}/>
+      </div>
+    </Term>
+  );
+}
+
+/* 14 Saved */
+function S_Saved() {
+  return (
+    <div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",
+      background:C.bgTerm,height:"calc(100vh - 72px)",animation:"fadeIn .3s ease"}}>
+      <div style={{textAlign:"center",maxWidth:500}}>
+        <div style={{width:64,height:64,borderRadius:"50%",border:`3px solid ${C.green}`,
+          display:"flex",alignItems:"center",justifyContent:"center",
+          margin:"0 auto 20px",fontSize:28,color:C.green}}>✓</div>
+        <div style={{color:C.green,fontSize:18,fontWeight:"bold",marginBottom:8,letterSpacing:1}}>Profile saved successfully</div>
+        <div style={{color:C.dim,fontSize:12,marginBottom:24}}>Web Tier Estimate · 1 group · 3 services · 26 dimensions</div>
+        <div style={{border:`1px solid ${C.border}`,borderRadius:4,padding:"10px 14px",background:C.bgPanel,textAlign:"left",marginBottom:16}}>
+          <div style={{color:C.dim,fontSize:11,marginBottom:4}}>Profile written to:</div>
+          <div style={{color:C.cyan,fontSize:12}}>profiles/<span style={{color:C.green}}>web_tier_estimate_20260225.json</span></div>
+        </div>
+        <div style={{border:`1px solid ${C.borderOrange}`,borderRadius:3,padding:"8px 12px",background:"#252a33",textAlign:"left"}}>
+          <div style={{color:C.yellow,fontWeight:"bold",fontSize:11,marginBottom:6}}>◆ Next steps</div>
+          <div style={{color:C.dim,fontSize:11,lineHeight:2}}>
+            <div><span style={{color:C.green}}>python main.py --run</span> --profile profiles/web_tier_estimate_20260225.json</div>
+            <div><span style={{color:C.yellow}}>python main.py --dry-run</span> --profile profiles/web_tier_estimate_20260225.json</div>
+            <div><span style={{color:C.blue}}>git add</span> profiles/web_tier_estimate_20260225.json</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* 15 Preflight OK */
+function S_PreflightOk() {
+  const rows=[
+    {s:"Amazon EC2",r:"us-east-1",d:11,ok:11,skip:0},
+    {s:"Amazon S3",r:"us-east-1",d:8,ok:8,skip:0},
+    {s:"Amazon RDS",r:"us-east-1",d:7,ok:7,skip:0},
+  ];
+  return (
+    <div style={{background:C.bgTerm,height:"calc(100vh - 72px)",display:"flex",flexDirection:"column",animation:"fadeIn .2s ease"}}>
+      <Panel border={C.border} style={{flex:1,margin:10}}>
+        <PTitle color={C.cyan}>Preflight — Value Resolution Report</PTitle>
+        <div style={{display:"flex",gap:20,marginBottom:12,flexShrink:0,
+          padding:"8px 10px",background:C.bgRow,borderRadius:4}}>
+          {[{l:"Profile",v:"web_tier_estimate_20260225.json",c:C.blue},{l:"Services",v:"3",c:C.yellow},
+            {l:"Dims",v:"26",c:C.muted},{l:"Resolved",v:"26",c:C.green},{l:"Unresolved",v:"0",c:C.green}
+          ].map(s=>(
+            <div key={s.l} style={{textAlign:"center"}}>
+              <div style={{color:C.dim,fontSize:10,marginBottom:2}}>{s.l}</div>
+              <div style={{color:s.c,fontWeight:"bold",fontSize:13}}>{s.v}</div>
+            </div>
+          ))}
+        </div>
+        <table style={{width:"100%",borderCollapse:"collapse",fontSize:12,marginBottom:12,flexShrink:0}}>
+          <thead><tr>{["Service","Region","Resolved","Skipped","Status"].map(h=>(
+            <th key={h} style={{color:C.dim,textAlign:"left",padding:"3px 8px",
+              borderBottom:`1px solid ${C.border}`,fontWeight:"normal"}}>{h}</th>
+          ))}</tr></thead>
+          <tbody>{rows.map((r,i)=>(
+            <tr key={i} style={{background:i%2===0?"transparent":C.bgRow}}>
+              <td style={{padding:"3px 8px",color:C.muted}}>{r.s}</td>
+              <td style={{padding:"3px 8px",color:C.blue,fontSize:11}}>{r.r}</td>
+              <td style={{padding:"3px 8px",color:C.green}}>{r.ok}/{r.d}</td>
+              <td style={{padding:"3px 8px",color:C.dim}}>{r.skip}</td>
+              <td style={{padding:"3px 8px"}}><Badge label="✓ ready" color={C.green}/></td>
+            </tr>
+          ))}</tbody>
+        </table>
+        <div style={{border:`1px solid ${C.green}44`,borderRadius:3,padding:"8px 12px",
+          background:C.green+"0a",marginBottom:12,flexShrink:0}}>
+          <span style={{color:C.green,fontWeight:"bold"}}>✓ All required dimensions resolved</span>
+          <span style={{color:C.dim,fontSize:11,marginLeft:8}}>Ready to launch browser</span>
+        </div>
+        <SelectList label="Proceed?" options={["Launch browser automation","Abort"]} initSel={0}/>
+      </Panel>
+    </div>
+  );
+}
+
+/* 16 Preflight Fail */
+function S_PreflightFail() {
+  const unresolved=[
+    {s:"Amazon RDS for MySQL",r:"us-east-1",d:"Instance type",t:"COMBOBOX"},
+    {s:"Amazon RDS for MySQL",r:"us-east-1",d:"Deployment option",t:"SELECT"},
+    {s:"Amazon CloudFront",r:"global",d:"Data transfer out",t:"NUMBER"},
+  ];
+  return (
+    <div style={{background:C.bgTerm,height:"calc(100vh - 72px)",display:"flex",flexDirection:"column",animation:"fadeIn .2s ease"}}>
+      <Panel border={C.borderRed} style={{flex:1,margin:10}}>
+        <PTitle color={C.orange}>Preflight — Resolution Failure</PTitle>
+        <div style={{border:`1px solid ${C.orange}44`,borderRadius:3,padding:"8px 12px",
+          background:C.orange+"0a",marginBottom:12,flexShrink:0}}>
+          <span style={{color:C.orange,fontWeight:"bold"}}>✗ Preflight failed</span>
+          <span style={{color:C.muted,fontSize:11,marginLeft:8}}>3 required dimension(s) unresolved · Browser will not launch</span>
+        </div>
+        <div style={{overflowY:"auto",flex:1}}>
+          {unresolved.map((u,i)=>(
+            <div key={i} style={{border:`1px solid ${C.orange}33`,borderLeft:`3px solid ${C.orange}`,
+              borderRadius:3,padding:"8px 12px",background:"#2a1f1f",marginBottom:8}}>
+              <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:4}}>
+                <span style={{color:C.orange}}>✗</span>
+                <span style={{color:C.base,fontWeight:"bold"}}>{u.d}</span>
+                <Badge label={u.t} color={C.yellow}/>
+                <Badge label="required" color={C.orange}/>
+              </div>
+              <div style={{color:C.dim,fontSize:11}}>
+                Service: <span style={{color:C.muted}}>{u.s}</span>{"  "}·{"  "}Region: <span style={{color:C.blue}}>{u.r}</span>
+              </div>
+              <div style={{color:C.dim,fontSize:11,marginTop:3}}>
+                Fix: set <span style={{color:C.cyan}}>user_value</span> in profile, or <span style={{color:C.yellow}}>--set "group.service.{u.d}=&lt;value&gt;"</span>
+              </div>
+            </div>
+          ))}
+          <div style={{border:`1px solid ${C.border}`,borderRadius:3,padding:"8px 12px",background:C.bgPanel,marginTop:8}}>
+            <div style={{color:C.yellow,fontWeight:"bold",fontSize:11,marginBottom:6}}>◆ Resolution options</div>
+            <div style={{color:C.dim,fontSize:11,lineHeight:2}}>
+              <div>1. Edit profile JSON: set <span style={{color:C.cyan}}>user_value</span> on each unresolved dimension</div>
+              <div>2. Use <span style={{color:C.yellow}}>--set</span> flag at runtime to supply values without editing file</div>
+              <div>3. Re-run <span style={{color:C.green}}>--build</span> to recreate the profile interactively</div>
+              <div>4. Use <span style={{color:C.magenta}}>prompt_message</span> to mark for interactive entry at run start</div>
+            </div>
+          </div>
+        </div>
+      </Panel>
+    </div>
+  );
+}
+
+/* 17 Running */
+function S_Running() {
+  const [tick,setTick]=useState(0);
+  useEffect(()=>{const t=setInterval(()=>setTick(x=>(x+1)%4),500);return()=>clearInterval(t);},[]);
+  const dots=["","·","··","···"][tick];
+  const services=[
+    {name:"Amazon EC2",status:"done",dims:11,filled:11},
+    {name:"Amazon S3",status:"active",dims:8,filled:3},
+    {name:"Amazon RDS",status:"queued",dims:7,filled:0},
+  ];
+  const steps=[
+    {done:true,label:"Navigate to https://calculator.aws/#/estimate"},
+    {done:true,label:"Create group: Production"},
+    {done:true,label:"Add service: Amazon EC2"},
+    {done:true,label:"Set region: US East (N. Virginia)"},
+    {done:true,label:"Fill 11 dimensions — Amazon EC2"},
+    {done:true,label:"Add service: Amazon S3"},
+    {done:true,label:"Set region: US East (N. Virginia)"},
+    {done:false,label:`Fill dimension: S3 Standard storage${dots}`,active:true},
+  ];
+  return (
+    <div style={{background:C.bgTerm,height:"calc(100vh - 72px)",display:"flex",flexDirection:"column",animation:"fadeIn .2s ease"}}>
+      <Panel border={C.border} style={{flex:1,margin:10}}>
+        <PTitle color={C.cyan}>Browser Automation — Live</PTitle>
+        <div style={{display:"flex",gap:8,marginBottom:12,flexShrink:0}}>
+          {services.map((s,i)=>(
+            <div key={i} style={{flex:1,border:`1px solid ${s.status==="done"?C.green:s.status==="active"?C.cyan:C.border}`,
+              borderRadius:3,padding:"6px 10px",background:s.status==="active"?C.bgActive:"transparent"}}>
+              <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:3}}>
+                <span style={{color:s.status==="done"?C.green:s.status==="active"?C.cyan:C.dim,fontSize:14}}>
+                  {s.status==="done"?"✓":s.status==="active"?"⟳":"○"}
+                </span>
+                <span style={{color:s.status==="queued"?C.dim:C.muted,fontSize:11}}>{s.name}</span>
+              </div>
+              {s.status!=="queued"&&(
+                <div style={{background:C.border,borderRadius:2,height:3}}>
+                  <div style={{background:s.status==="done"?C.green:C.cyan,
+                    width:`${(s.filled/s.dims)*100}%`,height:"100%",borderRadius:2}}/>
+                </div>
+              )}
+              <div style={{color:C.dim,fontSize:10,marginTop:3}}>
+                {s.status==="queued"?"queued":`${s.filled}/${s.dims} dims`}
+              </div>
+            </div>
+          ))}
+        </div>
+        <div style={{flex:1,overflowY:"auto",borderTop:`1px solid ${C.border}`,paddingTop:8}}>
+          {steps.map((s,i)=>(
+            <div key={i} style={{display:"flex",alignItems:"center",gap:8,padding:"3px 0",
+              color:s.active?C.cyan:s.done?C.dim:C.dim,fontSize:12}}>
+              <span style={{color:s.active?C.cyan:s.done?C.green:C.dim,width:14,flexShrink:0}}>
+                {s.active?"▶":s.done?"✓":" "}
+              </span>
+              <span style={{fontWeight:s.active?"bold":"normal"}}>{s.label}</span>
+            </div>
+          ))}
+        </div>
+        <div style={{borderTop:`1px solid ${C.border}`,paddingTop:6,marginTop:6,
+          display:"flex",alignItems:"center",gap:8,flexShrink:0}}>
+          <span style={{width:10,height:10,borderRadius:"50%",background:C.cyan,
+            display:"inline-block",animation:"pulse 1s ease-in-out infinite"}}/>
+          <span style={{color:C.cyan,fontSize:11}}>Browser running — do not close terminal{dots}</span>
+          <span style={{color:C.dim,fontSize:11,marginLeft:"auto"}}>Ctrl+C to abort</span>
+        </div>
+      </Panel>
+    </div>
+  );
+}
+
+/* 18 Partial Fail */
+function S_PartialFail() {
+  const services=[
+    {name:"Amazon EC2",status:"success",filled:11,skip:0,fail:0,err:null},
+    {name:"Amazon S3",status:"partial_success",filled:6,skip:0,fail:2,err:{step:"find_in_page",dim:"S3 Glacier storage",ss:"s3_glacier_fail.png"}},
+    {name:"Amazon RDS",status:"success",filled:7,skip:0,fail:0,err:null},
+  ];
+  return (
+    <div style={{background:C.bgTerm,height:"calc(100vh - 72px)",display:"flex",flexDirection:"column",animation:"fadeIn .2s ease"}}>
+      <Panel border={C.border} style={{flex:1,margin:10}}>
+        <PTitle color={C.yellow}>Run Complete — Partial Success</PTitle>
+        <div style={{border:`1px solid ${C.yellow}44`,borderRadius:3,padding:"8px 12px",
+          background:C.yellow+"0a",marginBottom:12,flexShrink:0}}>
+          <span style={{color:C.yellow,fontWeight:"bold"}}>! partial_success</span>
+          <span style={{color:C.muted,fontSize:11,marginLeft:8}}>2 of 3 services fully filled · 1 partial · 2 dims failed</span>
+        </div>
+        <div style={{overflowY:"auto",flex:1}}>
+          {services.map((s,i)=>{
+            const sc=s.status==="success"?C.green:s.status==="partial_success"?C.yellow:C.orange;
+            return (
+              <div key={i} style={{border:`1px solid ${sc}33`,borderLeft:`3px solid ${sc}`,
+                borderRadius:3,padding:"8px 12px",marginBottom:8,background:i%2===0?"transparent":C.bgRow}}>
+                <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:s.err?4:0}}>
+                  <span style={{color:sc,fontSize:14}}>{s.status==="success"?"✓":"!"}</span>
+                  <span style={{color:C.muted,fontWeight:"bold"}}>{s.name}</span>
+                  <Badge label={s.status} color={sc}/>
+                  <span style={{color:C.dim,fontSize:11,marginLeft:"auto"}}>
+                    filled:{s.filled} skip:{s.skip} fail:{s.fail}
+                  </span>
+                </div>
+                {s.err&&(
+                  <div style={{border:`1px solid ${C.orange}33`,borderRadius:3,padding:"5px 8px",
+                    background:"#2a1f1f",fontSize:11,marginTop:4}}>
+                    <div style={{color:C.orange,marginBottom:2}}>
+                      ✗ Failed step: <span style={{color:C.yellow}}>{s.err.step}</span>{"  "}Dimension: <span style={{color:C.yellow}}>{s.err.dim}</span>
+                    </div>
+                    <div style={{color:C.dim}}>Label not found after 2 retries · Screenshot: outputs/screenshots/{s.err.ss}</div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+          <div style={{border:`1px solid ${C.border}`,borderRadius:3,padding:"8px 12px",background:C.bgPanel,marginTop:8}}>
+            <div style={{color:C.yellow,fontWeight:"bold",fontSize:11,marginBottom:6}}>◆ Artifacts written</div>
+            <div style={{color:C.dim,fontSize:11,lineHeight:2}}>
+              <div>outputs/<span style={{color:C.cyan}}>run_result.json</span> — full execution record</div>
+              <div>outputs/screenshots/<span style={{color:C.yellow}}>s3_glacier_fail.png</span> — failure evidence</div>
+            </div>
+          </div>
+        </div>
+      </Panel>
+    </div>
+  );
+}
+
+/* 19 Run Success */
+function S_RunSuccess() {
+  return (
+    <div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",
+      background:C.bgTerm,height:"calc(100vh - 72px)",animation:"fadeIn .3s ease"}}>
+      <div style={{textAlign:"center",maxWidth:520}}>
+        <div style={{width:64,height:64,borderRadius:"50%",border:`3px solid ${C.green}`,
+          display:"flex",alignItems:"center",justifyContent:"center",
+          margin:"0 auto 20px",fontSize:28,color:C.green}}>✓</div>
+        <div style={{color:C.green,fontSize:18,fontWeight:"bold",marginBottom:6,letterSpacing:1}}>Run complete — success</div>
+        <div style={{color:C.dim,fontSize:12,marginBottom:24}}>3 services · 26 dimensions filled · 0 failed · 0 skipped</div>
+        {[
+          {l:"Calculator URL",v:"https://calculator.aws/#/estimate/...",c:C.cyan},
+          {l:"Run ID",v:"run_20260225_143512",c:C.blue},
+          {l:"Duration",v:"3m 42s",c:C.yellow},
+          {l:"Artifact",v:"outputs/run_result.json",c:C.green},
+        ].map((r,i)=>(
+          <div key={i} style={{display:"flex",alignItems:"center",padding:"5px 12px",
+            background:i%2===0?C.bgPanel:C.bgRow,
+            border:`1px solid ${C.border}`,borderTop:i>0?0:undefined,
+            borderRadius:i===0?4:i===3?"0 0 4px 4px":0,marginBottom:i===3?16:0}}>
+            <span style={{color:C.dim,fontSize:11,width:140,flexShrink:0}}>{r.l}</span>
+            <span style={{color:r.c,fontSize:12}}>{r.v}</span>
+          </div>
+        ))}
+        <div style={{border:`1px solid ${C.borderOrange}`,borderRadius:3,padding:"8px 12px",background:"#252a33",textAlign:"left"}}>
+          <div style={{color:C.yellow,fontWeight:"bold",fontSize:11,marginBottom:6}}>◆ Next steps</div>
+          <div style={{color:C.dim,fontSize:11,lineHeight:2}}>
+            <div>Open the calculator URL above to review your estimate</div>
+            <div>Inspect <span style={{color:C.cyan}}>outputs/run_result.json</span> for the full execution record</div>
+            <div>Use <span style={{color:C.green}}>--set</span> to re-run with modified values without editing the profile</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* 20 Artifact Viewer */
+function S_Artifact() {
+  const meta=[
+    {k:"schema_version",v:"2.0"},{k:"run_id",v:"run_20260225_143512"},
+    {k:"profile_name",v:"web_tier_estimate_20260225.json"},
+    {k:"status",v:"success",vc:C.green},{k:"started_at",v:"2026-02-25T14:31:30Z"},
+    {k:"completed_at",v:"2026-02-25T14:35:12Z"},{k:"duration",v:"3m 42s",vc:C.yellow},
+    {k:"calculator_url",v:"https://calculator.aws/#/estimate/...",vc:C.cyan},
+  ];
+  const services=[
+    {g:"Production",n:"Amazon EC2",r:"us-east-1",st:"success",f:11,sk:0,fl:0},
+    {g:"Production",n:"Amazon S3",r:"us-east-1",st:"success",f:8,sk:0,fl:0},
+    {g:"Production",n:"Amazon RDS",r:"us-east-1",st:"success",f:7,sk:0,fl:0},
+  ];
+  return (
+    <div style={{background:C.bgTerm,height:"calc(100vh - 72px)",display:"flex",flexDirection:"column",animation:"fadeIn .2s ease"}}>
+      <Panel border={C.border} style={{flex:1,margin:10}}>
+        <PTitle color={C.blue}>Run Artifact — outputs/run_result.json</PTitle>
+        <div style={{display:"flex",gap:12,flex:1,minHeight:0}}>
+          <div style={{width:330,flexShrink:0,overflowY:"auto"}}>
+            <div style={{color:C.yellow,fontWeight:"bold",fontSize:11,marginBottom:8}}>◆ Run Metadata</div>
+            {meta.map((m,i)=>(
+              <div key={i} style={{display:"flex",padding:"3px 0",borderBottom:`1px solid ${C.border}`}}>
+                <span style={{color:C.dim,fontSize:11,width:120,flexShrink:0}}>{m.k}</span>
+                <span style={{color:m.vc||C.muted,fontSize:11}}>{m.v}</span>
+              </div>
+            ))}
+            <div style={{marginTop:12,border:`1px solid ${C.green}44`,borderRadius:3,padding:"6px 10px",background:C.green+"0a"}}>
+              <div style={{display:"flex",gap:20}}>
+                {[{l:"Filled",v:26,c:C.green},{l:"Skipped",v:0,c:C.dim},{l:"Failed",v:0,c:C.orange}].map(s=>(
+                  <div key={s.l} style={{textAlign:"center"}}>
+                    <div style={{color:s.c,fontWeight:"bold",fontSize:14}}>{s.v}</div>
+                    <div style={{color:C.dim,fontSize:10}}>{s.l}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+          <div style={{flex:1,overflowY:"auto"}}>
+            <div style={{color:C.yellow,fontWeight:"bold",fontSize:11,marginBottom:8}}>◆ Per-Service Results</div>
+            <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
+              <thead><tr>{["Group","Service","Region","Status","Filled","Skip","Fail"].map(h=>(
+                <th key={h} style={{color:C.dim,textAlign:"left",padding:"3px 6px",
+                  borderBottom:`1px solid ${C.border}`,fontWeight:"normal",fontSize:11}}>{h}</th>
+              ))}</tr></thead>
+              <tbody>{services.map((s,i)=>{
+                const sc=s.st==="success"?C.green:s.st==="partial_success"?C.yellow:C.orange;
+                return (
+                  <tr key={i} style={{background:i%2===0?"transparent":C.bgRow}}>
+                    <td style={{padding:"3px 6px",color:C.dim,fontSize:11}}>{s.g}</td>
+                    <td style={{padding:"3px 6px",color:C.muted}}>{s.n}</td>
+                    <td style={{padding:"3px 6px",color:C.blue,fontSize:11}}>{s.r}</td>
+                    <td style={{padding:"3px 6px"}}><Badge label={s.st} color={sc}/></td>
+                    <td style={{padding:"3px 6px",color:C.green,textAlign:"center"}}>{s.f}</td>
+                    <td style={{padding:"3px 6px",color:C.dim,textAlign:"center"}}>{s.sk}</td>
+                    <td style={{padding:"3px 6px",color:s.fl>0?C.orange:C.dim,textAlign:"center"}}>{s.fl}</td>
+                  </tr>
+                );
+              })}</tbody>
+            </table>
+          </div>
+        </div>
+      </Panel>
+    </div>
+  );
+}
+
+/* ═══════════════════════════ SCREEN MAP ══════════════════════════ */
+const MAP = {
+  splash:S_Splash, meta:S_Meta, group_pick:S_GroupPick, region:S_Region,
+  number_field:S_NumberField, select_field:S_SelectField, compound:S_Compound,
+  toggle_p1:S_ToggleP1, toggle_p2:S_ToggleP2, inline_help:S_InlineHelp,
+  section_review:S_SectionReview, service_review:S_ServiceReview,
+  final_review:S_FinalReview, saved:S_Saved, preflight_ok:S_PreflightOk,
+  preflight_fail:S_PreflightFail, running:S_Running, partial_fail:S_PartialFail,
+  run_success:S_RunSuccess, artifact:S_Artifact,
+};
+
+/* ═══════════════════════════ SIDEBAR ════════════════════════════ */
+function Sidebar({current,onSelect}) {
+  const groups=[...new Set(SCREENS.map(s=>s.group))];
+  return (
+    <div style={{width:215,flexShrink:0,background:"#161a1f",
+      borderRight:`1px solid ${C.border}`,overflowY:"auto",display:"flex",flexDirection:"column"}}>
+      <div style={{padding:"10px 12px",borderBottom:`1px solid ${C.border}`}}>
+        <div style={{color:C.cyan,fontWeight:"bold",fontSize:12,letterSpacing:1,marginBottom:1}}>AWS Cost Builder</div>
+        <div style={{color:C.dim,fontSize:10}}>Full Flow Mock · 20 screens</div>
+      </div>
+      {groups.map(g=>(
+        <div key={g}>
+          <div style={{padding:"7px 12px 2px",color:C.dim,fontSize:10,letterSpacing:2,textTransform:"uppercase",fontWeight:"bold"}}>{g}</div>
+          {SCREENS.filter(s=>s.group===g).map(s=>{
+            const on=s.id===current;
+            return (
+              <div key={s.id} onClick={()=>onSelect(s.id)} style={{
+                padding:"4px 12px 4px 16px",cursor:"pointer",
+                background:on?"#2c313c":"transparent",
+                borderLeft:`2px solid ${on?C.cyan:"transparent"}`,
+                color:on?C.base:C.dim,fontSize:11,lineHeight:1.5,transition:"all .12s",
+              }}>{s.label}</div>
+            );
+          })}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/* ═══════════════════════════ APP ════════════════════════════════ */
+function App() {
+  const [screen,setScreen]=useState("splash");
+  const idx=SCREENS.findIndex(s=>s.id===screen);
+  const prev=idx>0?SCREENS[idx-1]:null;
+  const next=idx<SCREENS.length-1?SCREENS[idx+1]:null;
+  const Screen=MAP[screen]||S_Splash;
+  return (
+    <div style={{display:"flex",height:"100vh",overflow:"hidden",background:C.bg}}>
+      <Sidebar current={screen} onSelect={setScreen}/>
+      <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden"}}>
+        <div style={{background:"#161a1f",borderBottom:`1px solid ${C.border}`,
+          padding:"0 12px",display:"flex",alignItems:"center",height:36,flexShrink:0,gap:8}}>
+          <button onClick={()=>prev&&setScreen(prev.id)} disabled={!prev} style={{
+            background:"transparent",border:`1px solid ${prev?C.border:"transparent"}`,
+            color:prev?C.muted:C.dim,borderRadius:3,padding:"1px 10px",fontSize:11,cursor:prev?"pointer":"default"}}>
+            ← prev
+          </button>
+          <span style={{color:C.dim,fontSize:11,flex:1,textAlign:"center"}}>
+            <span style={{color:C.yellow}}>{SCREENS[idx]?.label}</span>
+            <span style={{color:C.dim,marginLeft:8,fontSize:10}}>{idx+1} / {SCREENS.length}</span>
+          </span>
+          <button onClick={()=>next&&setScreen(next.id)} disabled={!next} style={{
+            background:"transparent",border:`1px solid ${next?C.border:"transparent"}`,
+            color:next?C.muted:C.dim,borderRadius:3,padding:"1px 10px",fontSize:11,cursor:next?"pointer":"default"}}>
+            next →
+          </button>
+        </div>
+        <div style={{flex:1,overflow:"hidden"}} key={screen}>
+          <Screen/>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+</script>
+</body>
+</html>
