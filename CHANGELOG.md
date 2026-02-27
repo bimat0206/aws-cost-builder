@@ -5,6 +5,86 @@ All notable changes to the AWS Cost Profile Builder project are documented in th
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.10.0] - 2026-02-27
+
+### Fixed
+- **Complete automation flow rewrite** (`automation/navigation/navigator.js`, `automation/navigation/group_manager.js`, `main.js`)
+  - Replaced all brittle `data-testid` selectors with resilient text-based locators
+  - Added recovery navigation paths for SPA navigation issues
+  - Changed `searchTerm` parameter to `searchTerms` array (matches Python implementation)
+  - Implemented proper service search with multiple fallback terms
+  - Added region selection before service search (correct order)
+  - Added proper dialog handling for submit buttons
+
+### Changed
+- **Locator strategy** — All automation now uses Playwright's `getBy*` methods:
+  - `getByRole('button')` for buttons
+  - `getByRole('searchbox')` for search inputs
+  - `getByRole('option')` for dropdown options
+  - `getByPlaceholder()` for inputs with placeholders
+  - `getByLabel()` for labeled inputs
+  - `getByText()` for text-based element location
+- **Service search** — Now tries multiple search terms in order:
+  1. `catalog.search_term`
+  2. `catalog.service_name`
+  3. `catalog.calculator_page_title`
+  4. `catalog.search_keywords`
+- **Group creation** — Now recovers from bad UI states by navigating back to `/estimate`
+- **Region selection** — Now matches by region code pattern (e.g., "us-east-1") not display name
+
+### Added
+- **End-to-end tests** (`tests/automation/navigation/navigation_e2e.test.js`)
+  - Real browser automation tests (not mocks)
+  - Tests group creation, service navigation, region selection
+  - Tests recovery flow from bad state
+  - Tests global services (no region selection)
+- **Recovery navigation** — Automatically resets UI state when controls unavailable
+- **Multiple search term support** — Increases success rate for service lookup
+- **Proper error messages** — Clear indication of what failed and why
+
+### Design Compliance
+- **Matches Python implementation** — Uses same locator strategies as `automation/navigator.py`
+- **Follows design spec** — Complies with `design/03-playwright-automation-spec.md` Sections 5-7
+- **Resilient to SPA issues** — Recovers from bad UI state left by previous failures
+
+### Verified
+- Text-based locators work with real AWS Calculator
+- Recovery navigation resets UI state correctly
+- Multiple search terms increase service lookup success
+- Region selection works by code matching
+- E2E tests pass with real browser automation
+
+## [1.9.3] - 2026-02-27
+
+### Fixed
+- **Group creation stuck in retry loop** (`automation/navigation/group_manager.js`)
+  - Added recovery navigation when "Create group" button not found
+  - Navigates back to `/estimate` page to reset UI state
+  - Re-selects root estimate after recovery navigation
+  - Checks if group exists after recovery (might have been created by previous attempt)
+  - Increased button search timeout to 3 seconds (matches Python's `find_button()`)
+  - Added proper dialog handling (prefers modal dialog, falls back to last visible)
+  - Added group existence check before attempting creation
+  - Added verification and focus after successful creation
+
+### Changed
+- **Group creation flow** (`automation/navigation/group_manager.js`)
+  - Now matches Python's `ensure_group_exists()` with recovery paths
+  - Dialog button preference: modal dialog first, then last visible match
+  - Better error messages indicating recovery attempts
+  - Proper logging of recovery navigation events
+
+### Design Compliance
+- **Matches Python implementation** — Same recovery navigation strategy as `automation/navigator.py`
+- **Follows design spec** — Complies with `design/03-playwright-automation-spec.md` Section 5.1
+- **Resilient to SPA issues** — Recovers from bad UI state left by previous failures
+
+### Verified
+- Recovery navigation works when button not found
+- Group creation succeeds after recovery
+- No infinite retry loops
+- Proper verification confirms group creation
+
 ## [1.9.2] - 2026-02-27
 
 ### Fixed

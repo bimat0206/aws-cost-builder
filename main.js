@@ -469,7 +469,7 @@ export async function runRunnerMode(opts) {
         });
 
         const catalog = catalogByService.get(service.service_name);
-        const searchTerm = catalog?.search_term ?? service.service_name;
+        const searchTerms = catalog ? [catalog.search_term, catalog.service_name, catalog.calculator_page_title, ...(catalog.search_keywords || [])].filter(Boolean) : [service.service_name];
         const context = {
           runId,
           screenshotsDir,
@@ -481,7 +481,7 @@ export async function runRunnerMode(opts) {
           await navigateToService(session.page, {
             groupName: group.group_name,
             serviceName: service.service_name,
-            searchTerm,
+            searchTerms,
             region: service.region,
             context,
           });

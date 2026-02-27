@@ -69,14 +69,19 @@ async function selectRootEstimate(page) {
 
 /**
  * Find the "Create group" button using text search.
+ * Matches Python's find_button() logic.
  * @param {import('playwright').Page} page
  * @returns {Promise<import('playwright').Locator>}
  */
 async function findCreateGroupButton(page) {
   // Use text-based search like Python's find_button
-  const button = page.getByRole('button', { name: /Create group/i }).first();
-  await button.waitFor({ state: 'visible', timeout: 2000 });
-  return button;
+  try {
+    const button = page.getByRole('button', { name: /Create group/i }).first();
+    await button.waitFor({ state: 'visible', timeout: 3000 });
+    return button;
+  } catch (error) {
+    throw new Error(`"Create group" button not found: ${error.message}`);
+  }
 }
 
 /**
@@ -114,59 +119,94 @@ async function findGroupNameInput(page) {
 
 /**
  * Create a new group in the AWS Calculator.
- * Matches Python's ensure_group_exists logic.
+ * Matches Python's ensure_group_exists logic with recovery paths.
  * @param {import('playwright').Page} page
  * @param {string} groupName
  * @returns {Promise<void>}
  */
-async function createGroup(page, groupName) {
+export async function createGroup(page, groupName) {
   logEvent('INFO', 'EVT-GRP-01', { name: groupName, status: 'creating' });
+
+  const name = (groupName || '').trim();
+  if (!name) {
+    throw new Error('Empty group name is not allowed');
+  }
 
   // Ensure we're at root estimate level
   await selectRootEstimate(page);
 
-  // Find and click "Create group" button
-  const createGroupButton = await findCreateGroupButton(page);
-  await createGroupButton.click();
-  await page.waitForTimeout(500);
+  // Check if group already exists
+  const alreadyExists = await groupExists(page, name);
+  if (alreadyExists) {
+    await selectGroup(page, name);
+    logEvent('INFO', 'EVT-GRP-01', { name, status: 'already_exists' });
+    return;
+  }
 
-  // Enter group name
-  const nameInput = await findGroupNameInput(page);
-  await nameInput.fill(groupName);
-  await page.waitForTimeout(300);
-
-  // Find and click confirm button (various possible labels)
-  const confirmButtons = [
-    page.getByRole('button', { name: /Create/i }).first(),
-    page.getByRole('button', { name: /Add/i }).first(),
-    page.getByText('Create', { exact: true }).first(),
-  ];
-
-  let confirmed = false;
-  for (const button of confirmButtons) {
+  try {
+    let createGroupButton;
     try {
-      await button.waitFor({ state: 'visible', timeout: 1000 });
-      await button.click();
-      confirmed = true;
-      break;
-    } catch {
-      continue;
+      createGroupButton = await findCreateGroupButton(page);
+    } catch (error) {
+      // Recovery path: previous service might have failed and left us in
+      // createCalculator route where group controls are unavailable.
+      logEvent('WARN', 'EVT-GRP-02', { name, error: 'Create group button not found, attempting recovery' });
+      
+      // Navigate back to estimate page
+      await page.goto('https://calculator.aws/#/estimate', { waitUntil: 'domcontentloaded' });
+      await page.waitForTimeout(500);
+      
+      // Re-select root estimate
+      await selectRootEstimate(page);
+      
+      // Check if group exists now (might have been created by previous attempt)
+      if (await groupExists(page, name)) {
+        await selectGroup(page, name);
+        logEvent('INFO', 'EVT-GRP-01', { name, status: 'selected_after_recovery' });
+        return;
+      }
+      
+      // Try to find create button again
+      createGroupButton = await findCreateGroupButton(page);
     }
+
+    // Click create group button
+    await createGroupButton.click();
+    await page.waitForTimeout(250);
+
+    // Enter group name
+    const nameInput = await findGroupNameInput(page);
+    await nameInput.fill(name);
+    await page.waitForTimeout(300);
+
+    // Find and click confirm button
+    // Prefer modal/dialog action button; fallback to last visible match
+    let submitButton = null;
+    try {
+      const dialog = page.getByRole('dialog').first();
+      await dialog.waitFor({ state: 'visible', timeout: 1000 });
+      submitButton = dialog.getByRole('button', { name: /Create group/i }).first();
+      await submitButton.waitFor({ state: 'visible', timeout: 1000 });
+    } catch {
+      // Fallback to last visible match
+      submitButton = page.getByRole('button', { name: /Create group/i }).last();
+      await submitButton.waitFor({ state: 'visible', timeout: 1000 });
+    }
+
+    await submitButton.click();
+    await page.waitForTimeout(600);
+  } catch (error) {
+    logEvent('ERROR', 'EVT-GRP-02', { name, error: error.message });
+    throw new Error(`Could not create group '${name}': ${error.message}`);
   }
 
-  if (!confirmed) {
-    throw new Error('Could not find create group confirm button');
+  // Verify and focus the created group
+  if (!await groupExists(page, name)) {
+    throw new Error(`Group '${name}' not visible after creation`);
   }
 
-  await page.waitForTimeout(500);
-
-  // Verify group was created
-  const exists = await groupExists(page, groupName);
-  if (!exists) {
-    throw new Error(`Group '${groupName}' was not created successfully`);
-  }
-
-  logEvent('INFO', 'EVT-GRP-01', { name: groupName, status: 'created' });
+  await selectGroup(page, name);
+  logEvent('INFO', 'EVT-GRP-01', { name, status: 'created' });
 }
 
 /**

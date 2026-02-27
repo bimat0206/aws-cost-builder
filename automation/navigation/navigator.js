@@ -1,9 +1,10 @@
 /**
  * Group/service/region navigation orchestrator.
  *
- * Orchestrates navigation to a service within a group and region in the AWS Calculator.
- * Emits events: EVT-NAV-01/02 (navigation), EVT-SVC-01/02/03 (service), EVT-REG-01/02 (region).
- * Wraps steps in retry_wrapper for resilience.
+ * Matches Python's automation/navigator.py logic:
+ * - Uses text-based locators (getByRole, getByText, getByLabel)
+ * - Implements recovery paths for SPA navigation issues
+ * - Proper retry logic with screenshots on failure
  *
  * @module automation/navigation/navigator
  */
@@ -40,25 +41,25 @@ function logEvent(level, eventType, fields = {}) {
  */
 export function buildServiceSearchTerms(catalogEntry) {
   const terms = new Set();
-  
+
   // Add explicit search terms from catalog
-  if (catalogEntry.search_term) {
+  if (catalogEntry?.search_term) {
     terms.add(catalogEntry.search_term);
   }
-  if (catalogEntry.service_name) {
+  if (catalogEntry?.service_name) {
     terms.add(catalogEntry.service_name);
   }
-  if (catalogEntry.calculator_page_title) {
+  if (catalogEntry?.calculator_page_title) {
     terms.add(catalogEntry.calculator_page_title);
   }
-  
+
   // Add search keywords
-  if (Array.isArray(catalogEntry.search_keywords)) {
+  if (Array.isArray(catalogEntry?.search_keywords)) {
     for (const keyword of catalogEntry.search_keywords) {
       terms.add(keyword);
     }
   }
-  
+
   // Add database-related fallbacks if service looks like a database
   const allText = Array.from(terms).join(' ').toLowerCase();
   const dbKeywords = ['rds', 'aurora', 'database', 'mysql', 'postgresql', 'oracle', 'dynamodb'];
@@ -66,187 +67,161 @@ export function buildServiceSearchTerms(catalogEntry) {
     terms.add('RDS');
     terms.add('Database');
   }
-  
+
   return Array.from(terms);
 }
 
 /**
- * Open the "Add service" panel.
+ * Click the "Add service" button to open the search panel.
+ * Matches Python's click_add_service().
  * @param {import('playwright').Page} page
  * @returns {Promise<void>}
  */
-async function openAddServicePanel(page) {
-  logEvent('INFO', 'EVT-SVC-01', { step: 'opening_panel' });
+async function clickAddService(page) {
+  logEvent('INFO', 'EVT-SVC-01', { step: 'clicking_add_service' });
 
-  // Try multiple selectors for "Add service" button
-  const selectors = [
-    '[data-testid="add-service-button"]',
-    'button:has-text("Add service")',
-    'button:has-text("Add a service")',
-    '[role="button"]:has-text("Add service")',
+  try {
+    // Use text-based search like Python's find_button()
+    const button = page.getByRole('button', { name: /Add service/i }).first();
+    await button.waitFor({ state: 'visible', timeout: 5000 });
+    await button.click();
+    await page.waitForLoadState('domcontentloaded', { timeout: 10000 });
+    logEvent('INFO', 'EVT-SVC-01', { step: 'panel_opened' });
+  } catch (error) {
+    logEvent('ERROR', 'EVT-SVC-01', { error: error.message });
+    throw new Error(`Could not click 'Add service' button: ${error.message}`);
+  }
+}
+
+/**
+ * Find the service search input.
+ * Matches Python's _find_search_input().
+ * @param {import('playwright').Page} page
+ * @param {string[]} [placeholders]
+ * @param {string[]} [searchboxNames]
+ * @returns {Promise<import('playwright').Locator>}
+ */
+async function findSearchInput(page, placeholders = [], searchboxNames = []) {
+  const defaultPlaceholders = [
+    'Search for a service',
+    'Search services',
+    'Find resources',
+    'Search',
   ];
 
-  for (const selector of selectors) {
+  const defaultSearchboxNames = [
+    'Find Service',
+    'Find resources',
+  ];
+
+  const allPlaceholders = [...placeholders, ...defaultPlaceholders];
+  const allSearchboxNames = [...searchboxNames, ...defaultSearchboxNames];
+
+  // Try placeholder-based search
+  for (const placeholder of allPlaceholders) {
     try {
-      const addServiceButton = await page.$(selector);
-      if (addServiceButton) {
-        await addServiceButton.click();
-        await page.waitForTimeout(500);
-        logEvent('INFO', 'EVT-SVC-01', { step: 'panel_opened', selector });
-        return;
-      }
+      const input = page.getByPlaceholder(placeholder).first();
+      await input.waitFor({ state: 'visible', timeout: 1000 });
+      return input;
     } catch {
       continue;
     }
   }
 
-  throw new Error('Could not find "Add service" button');
-}
-
-/**
- * Search for a service by search term with retry.
- * @param {import('playwright').Page} page
- * @param {string} searchTerm
- * @returns {Promise<void>}
- */
-async function searchService(page, searchTerm) {
-  logEvent('INFO', 'EVT-SVC-02', { term: searchTerm, step: 'searching' });
-
-  // Find search input with multiple fallback selectors
-  const selectors = [
-    '[data-testid="service-search-input"]',
-    'input[placeholder*="search services" i]',
-    'input[placeholder*="search for a service" i]',
-    'input[type="search"]',
-    'input[aria-label*="search" i]',
-  ];
-
-  let searchInput = null;
-  for (const selector of selectors) {
+  // Try searchbox role-based search
+  for (const name of allSearchboxNames) {
     try {
-      searchInput = await page.$(selector);
-      if (searchInput) {
-        await searchInput.waitForElementState('visible', { timeout: 2000 });
-        break;
-      }
+      const input = page.getByRole('searchbox', { name }).first();
+      await input.waitFor({ state: 'visible', timeout: 1000 });
+      return input;
     } catch {
       continue;
     }
   }
 
-  if (!searchInput) {
-    throw new Error('Could not find service search input');
-  }
-
-  // Clear and type search term
-  await searchInput.click();
-  await searchInput.fill('');
-  await searchInput.fill(searchTerm);
-  await page.waitForTimeout(800);
-
-  logEvent('INFO', 'EVT-SVC-02', { term: searchTerm, step: 'completed' });
+  throw new Error('Service search input not found on Add service panel');
 }
 
 /**
- * Select a service from search results with priority matching.
+ * Click the best matching service result.
+ * Matches Python's _click_best_matching_result().
  * @param {import('playwright').Page} page
- * @param {string} serviceName
  * @param {string[]} expectedTitles
- * @returns {Promise<void>}
+ * @param {string} activeTerm
+ * @returns {Promise<boolean>}
  */
-async function selectService(page, serviceName, expectedTitles = []) {
-  logEvent('INFO', 'EVT-SVC-03', { service: serviceName, step: 'selecting' });
+async function clickBestMatchingResult(page, expectedTitles, activeTerm) {
+  // Try to find service cards using text search
+  const cards = page.getByRole('listitem').filter({ hasText: /Configure/i });
 
-  // Service card selectors
-  const cardSelectors = [
-    '[data-testid="service-card"]',
-    '[data-testid="service-result"]',
-    '.service-card',
-    'li[class*="awsui_card"]',
-  ];
+  try {
+    const count = await cards.count();
+    if (count === 0) return false;
+  } catch {
+    return false;
+  }
 
   // Priority 1: Match expected titles
   for (const title of expectedTitles) {
-    for (const selector of cardSelectors) {
-      try {
-        const cards = await page.$$(selector);
-        for (const card of cards) {
-          const text = await card.evaluate((el) => (el.textContent || '').toLowerCase());
-          if (text.includes(title.toLowerCase())) {
-            await card.click();
-            await page.waitForTimeout(1000);
-            logEvent('INFO', 'EVT-SVC-03', { service: serviceName, step: 'selected_by_title', title });
-            return;
-          }
-        }
-      } catch {
-        continue;
-      }
-    }
-  }
-
-  // Priority 2: Match search term
-  for (const selector of cardSelectors) {
     try {
-      const cards = await page.$$(selector);
-      for (const card of cards) {
-        const text = await card.evaluate((el) => (el.textContent || '').toLowerCase());
-        if (text.includes(serviceName.toLowerCase())) {
-          await card.click();
-          await page.waitForTimeout(1000);
-          logEvent('INFO', 'EVT-SVC-03', { service: serviceName, step: 'selected_by_term' });
-          return;
-        }
-      }
+      const card = cards.filter({ hasText: title }).first();
+      await card.waitFor({ state: 'visible', timeout: 1500 });
+      await card.click();
+      logEvent('INFO', 'EVT-SVC-03', { service: title, step: 'selected_by_title' });
+      return true;
     } catch {
       continue;
     }
+  }
+
+  // Priority 2: Match active search term
+  try {
+    const card = cards.filter({ hasText: activeTerm }).first();
+    await card.waitFor({ state: 'visible', timeout: 1500 });
+    await card.click();
+    logEvent('INFO', 'EVT-SVC-03', { service: activeTerm, step: 'selected_by_term' });
+    return true;
+  } catch {
+    // Continue to fallback
   }
 
   // Priority 3: First result fallback
   try {
-    const firstCard = await page.$(cardSelectors[0]);
-    if (firstCard) {
-      await firstCard.click();
-      await page.waitForTimeout(1000);
-      logEvent('INFO', 'EVT-SVC-03', { service: serviceName, step: 'selected_first_fallback' });
-      return;
-    }
+    const firstCard = cards.first();
+    await firstCard.waitFor({ state: 'visible', timeout: 1500 });
+    await firstCard.click();
+    logEvent('INFO', 'EVT-SVC-03', { step: 'selected_first_fallback' });
+    return true;
   } catch {
-    // Ignore
+    return false;
   }
-
-  throw new Error(`Service not found in search results: ${serviceName}`);
 }
 
 /**
- * Search and select service with multiple search terms.
- * Matches Python's search_and_select_service.
+ * Search for a service and select the best match.
+ * Matches Python's search_and_select_service().
  * @param {import('playwright').Page} page
  * @param {string[]} searchTerms
  * @param {string[]} expectedTitles
  * @returns {Promise<void>}
  */
-export async function searchAndSelectService(page, searchTerms, expectedTitles) {
+async function searchAndSelectService(page, searchTerms, expectedTitles) {
   const terms = searchTerms.filter(t => t && t.trim());
-  
+
   if (terms.length === 0) {
     throw new Error('No search terms available for service lookup');
   }
 
-  // Open panel
-  await openAddServicePanel(page);
+  // Find search input
+  const searchInput = await findSearchInput(page);
 
   // Try each search term
   for (const term of terms) {
-    try {
-      await searchService(page, term);
-      await selectService(page, term, expectedTitles);
-      logEvent('INFO', 'EVT-SVC-03', { service: term, step: 'success' });
+    searchInput.fill(term);
+    await page.waitForTimeout(900); // Allow filtered results to render
+
+    if (await clickBestMatchingResult(page, expectedTitles, term)) {
       return;
-    } catch (error) {
-      logEvent('WARN', 'EVT-SVC-02', { term, error: error.message });
-      // Continue to next term
     }
   }
 
@@ -256,115 +231,50 @@ export async function searchAndSelectService(page, searchTerms, expectedTitles) 
 // ─── Region selection ─────────────────────────────────────────────────────────
 
 /**
- * Select a region for the service.
- * Matches Python's select_region logic - matches by region code not display name.
+ * Select calculator region before searching for services.
+ * Matches Python's select_region().
  * @param {import('playwright').Page} page
- * @param {string} region - Region code (e.g., "us-east-1")
+ * @param {string} regionCode
  * @returns {Promise<void>}
  */
-async function selectRegion(page, region) {
-  // Skip if global (no region selection needed)
-  if (!region || region === 'global' || region.toLowerCase() === 'global') {
+async function selectRegion(page, regionCode) {
+  // Skip if global
+  if (!regionCode || regionCode.toLowerCase() === 'global') {
     logEvent('INFO', 'EVT-REG-01', { region: 'global', status: 'skipping' });
     return;
   }
 
-  logEvent('INFO', 'EVT-REG-01', { region, status: 'selecting' });
+  logEvent('INFO', 'EVT-REG-01', { region: regionCode, status: 'selecting' });
 
   try {
     // Step 1: Ensure location type is set to "Region"
-    const locationTypeSelector = '[data-testid="location-type-selector"], [aria-label*="location type" i], [aria-label*="Choose a location type" i]';
-    const locationType = await page.$(locationTypeSelector);
-    
-    if (locationType) {
-      const locationTypeText = await locationType.evaluate((el) => (el.textContent || '').trim().toLowerCase());
-      if (!locationTypeText.includes('region')) {
-        logEvent('INFO', 'EVT-REG-01', { step: 'setting_location_type_to_region' });
-        await locationType.click();
-        await page.waitForTimeout(300);
-        
-        // Select "Region" option
-        const regionOption = await page.$('[role="option"]:has-text("Region"), [data-testid="region-option"]');
-        if (regionOption) {
-          await regionOption.click();
-          await page.waitForTimeout(300);
-        }
-      }
+    const locationType = page.getByLabel(/Choose a location type/i).first();
+    await locationType.waitFor({ state: 'visible', timeout: 8000 });
+
+    const locationTypeText = await locationType.textContent();
+    if (!locationTypeText?.toLowerCase().includes('region')) {
+      await locationType.click();
+      const regionOption = page.getByRole('option', { name: /Region/i }).first();
+      await regionOption.waitFor({ state: 'visible', timeout: 5000 });
+      await regionOption.click();
     }
 
     // Step 2: Select region by code (not display name)
-    // AWS displays regions as "us-east-1 (US East (N. Virginia))"
-    // We match by the region code pattern
-    const regionSelector = '[data-testid="region-selector"], [aria-label*="region" i], [aria-label*="Choose a Region" i]';
-    const regionControl = await page.$(regionSelector);
-    
-    if (!regionControl) {
-      throw new Error('Could not find region selector');
-    }
+    const regionPicker = page.getByLabel(/Choose a Region/i).first();
+    await regionPicker.waitFor({ state: 'visible', timeout: 8000 });
+    await regionPicker.click();
 
-    const tagName = await regionControl.evaluate((el) => el.tagName.toLowerCase());
-    
-    if (tagName === 'select') {
-      // Native select - match by value or text containing region code
-      await regionControl.selectOption(region);
-    } else {
-      // Custom dropdown - click to open
-      await regionControl.click();
-      await page.waitForTimeout(400);
-
-      // Find region option by code pattern (e.g., "us-east-1")
-      // AWS format: "us-east-1 (US East (N. Virginia))" or just "US East (N. Virginia)"
-      const regionCodePattern = region.toLowerCase();
-      const options = await page.$$('[role="option"]');
-      
-      let selected = false;
-      for (const option of options) {
-        const text = await option.evaluate((el) => (el.textContent || '').toLowerCase());
-        const value = await option.evaluate((el) => el.getAttribute('data-value') || '').toLowerCase();
-        
-        // Match by region code in text or value
-        if (text.includes(regionCodePattern) || value === regionCodePattern) {
-          await option.click();
-          selected = true;
-          break;
-        }
-      }
-      
-      if (!selected) {
-        // Fallback: try exact text match
-        const fallbackOption = await page.$(`[role="option"]:has-text("${region}")`);
-        if (fallbackOption) {
-          await fallbackOption.click();
-          selected = true;
-        }
-      }
-      
-      if (!selected) {
-        throw new Error(`Region option not found: ${region}`);
-      }
-    }
+    // Find region option by code pattern (e.g., "us-east-1")
+    const regionCodePattern = new RegExp(`\\b${regionCode}\\b`, 'i');
+    const regionOption = page.getByRole('option', { name: regionCodePattern }).first();
+    await regionOption.waitFor({ state: 'visible', timeout: 5000 });
+    await regionOption.click();
 
     await page.waitForTimeout(300);
-    logEvent('INFO', 'EVT-REG-01', { region, status: 'selected' });
+    logEvent('INFO', 'EVT-REG-01', { region: regionCode, status: 'selected' });
   } catch (error) {
-    logEvent('ERROR', 'EVT-REG-02', { region, error: error.message });
-    throw error;
-  }
-}
-
-/**
- * Check if region selection is required (i.e., not a global service).
- * @param {import('playwright').Page} page
- * @returns {Promise<boolean>}
- */
-async function isRegionSelectionRequired(page) {
-  try {
-    const regionSelector = await page.$(
-      '[data-testid="region-selector"], [data-testid="region-dropdown"], select[name="region"]'
-    );
-    return regionSelector !== null;
-  } catch {
-    return false;
+    logEvent('ERROR', 'EVT-REG-02', { region: regionCode, error: error.message });
+    throw new Error(`Could not select region '${regionCode}': ${error.message}`);
   }
 }
 
@@ -375,18 +285,19 @@ async function isRegionSelectionRequired(page) {
  *
  * Orchestrates:
  * 1. Group creation/selection (via ensureGroup)
- * 2. Open Add Service panel
- * 3. Search for service by search term
- * 4. Select service from results
- * 5. Select region (skip if "global")
+ * 2. Click "Add service" button
+ * 3. Select region (skip if "global") - BEFORE search
+ * 4. Search for service by search terms
+ * 5. Select service from results
  *
  * All steps are wrapped in retry logic for resilience.
+ * Matches Python's navigate_to_service().
  *
  * @param {import('playwright').Page} page
  * @param {object} opts
  * @param {string} opts.groupName - Name of the group
  * @param {string} opts.serviceName - Display name of the service
- * @param {string} opts.searchTerm - Search term to find the service
+ * @param {string[]} opts.searchTerms - Search terms to find the service
  * @param {string} opts.region - Region code or "global"
  * @param {object} [opts.context] - Run context for artifact paths
  * @param {string} [opts.context.runId]
@@ -395,18 +306,18 @@ async function isRegionSelectionRequired(page) {
  * @throws {Error} If navigation fails after retries
  */
 export async function navigateToService(page, opts) {
-  const { groupName, serviceName, searchTerm, region, context = {} } = opts;
+  const { groupName, serviceName, searchTerms, region, context = {} } = opts;
 
-  logEvent('INFO', 'EVT-NAV-01', { 
-    service: serviceName, 
-    group: groupName, 
-    region, 
-    status: 'starting' 
+  logEvent('INFO', 'EVT-NAV-01', {
+    service: serviceName,
+    group: groupName,
+    region,
+    status: 'starting'
   });
 
   // Helper for capturing screenshots on failure
   const captureFail = async (step) => {
-    if (context.runId && context.screenshotsDir) {
+    if (context.runId && context.screenshotsDir && context.groupName && context.serviceName) {
       const screenshotPath = buildScreenshotPath(
         context.screenshotsDir,
         context.runId,
@@ -436,11 +347,11 @@ export async function navigateToService(page, opts) {
       }
     );
 
-    // Step 2: Open Add Service panel
+    // Step 2: Click "Add service" button
     await withRetry(
       async () => {
         try {
-          await openAddServicePanel(page);
+          await clickAddService(page);
         } catch (err) {
           await captureFail('open-service-panel');
           throw err;
@@ -472,11 +383,11 @@ export async function navigateToService(page, opts) {
       );
     }
 
-    // Step 4: Search for service
+    // Step 4: Search for service and select best match
     await withRetry(
       async () => {
         try {
-          await searchService(page, searchTerm);
+          await searchAndSelectService(page, searchTerms, [serviceName]);
         } catch (err) {
           await captureFail('service-search');
           throw err;
@@ -484,23 +395,6 @@ export async function navigateToService(page, opts) {
       },
       {
         stepName: 'service-search',
-        maxRetries: 2,
-        delayMs: 1500,
-      }
-    );
-
-    // Step 5: Select service from results
-    await withRetry(
-      async () => {
-        try {
-          await selectService(page, serviceName);
-        } catch (err) {
-          await captureFail('service-selection');
-          throw err;
-        }
-      },
-      {
-        stepName: 'service-selection',
         maxRetries: 2,
         delayMs: 1500,
       }
@@ -520,15 +414,28 @@ export async function navigateToService(page, opts) {
  */
 export async function getCurrentService(page) {
   try {
-    const serviceElement = await page.$(
-      '[data-testid="current-service-name"], .service-header h1, [data-testid="service-title"]'
-    );
-    if (serviceElement) {
-      return await serviceElement.textContent();
+    // Try to find service title using text search
+    const selectors = [
+      page.getByRole('heading', { level: 1 }).first(),
+      page.getByRole('heading', { level: 2 }).first(),
+      page.getByText(/Amazon|CloudFront|Lambda|S3|EC2|RDS/i).first(),
+    ];
+
+    for (const selector of selectors) {
+      try {
+        await selector.waitFor({ state: 'visible', timeout: 2000 });
+        const text = await selector.textContent();
+        if (text && text.trim()) {
+          return text.trim();
+        }
+      } catch {
+        continue;
+      }
     }
+
     return null;
   } catch (error) {
-    logEvent('ERROR', 'EVT-SVC-04', { error: error.message });
+    logEvent('ERROR', 'EVT-NAV-03', { error: error.message });
     return null;
   }
 }
