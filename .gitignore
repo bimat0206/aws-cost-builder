@@ -1,0 +1,58 @@
+# ─── Dependencies ────────────────────────────────────────────────────────────
+node_modules/
+.npm/
+.pnp
+.pnp.js
+
+# ─── Build output ────────────────────────────────────────────────────────────
+dist/
+build/
+.next/
+out/
+
+# ─── Runtime / generated output ───────────────────────────────────────────────
+outputs/
+tmp/
+*.tmp
+*.log
+logs/
+
+# ─── User profiles (contain personal AWS config — keep local) ────────────────
+profiles/*.json
+# Unignore example / template profiles if added later:
+!profiles/example_*.json
+!profiles/.gitkeep
+
+# ─── Explorer artifacts (large binary screenshots + reports) ─────────────────
+artifacts/*/screenshots/
+artifacts/*/exploration_report.json
+
+# ─── Test output / coverage ────────────────────────────────────────────────────
+test_output.txt
+coverage/
+.vitest-cache/
+*.snap
+
+# ─── Node compile cache ────────────────────────────────────────────────────────
+tmp/node-compile-cache/
+
+# ─── OS / editor rubbish ──────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+.idea/
+.vscode/settings.json
+.vscode/*.code-workspace
+
+# ─── Secrets / environment ────────────────────────────────────────────────────
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# ─── Playwright / browser automation ─────────────────────────────────────────
+playwright-report/
+test-results/

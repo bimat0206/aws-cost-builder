@@ -1,0 +1,103 @@
+{
+    "service_name": "Amazon S3",
+    "search_term": "Amazon Simple Storage Service (S3)",
+    "calculator_page_title": "Amazon S3",
+    "supported_regions": [
+        "us-east-1",
+        "us-east-2",
+        "us-west-1",
+        "us-west-2",
+        "eu-west-1",
+        "eu-west-2",
+        "eu-central-1",
+        "ap-northeast-1",
+        "ap-southeast-1",
+        "ap-southeast-2",
+        "ap-south-1",
+        "sa-east-1",
+        "ca-central-1"
+    ],
+    "dimensions": [
+        {
+            "key": "S3 Standard storage",
+            "field_type": "NUMBER",
+            "default_value": 0,
+            "required": true,
+            "options": null,
+            "unit": null,
+            "unit_sibling": "S3 Standard storage Unit"
+        },
+        {
+            "key": "S3 Standard storage Unit",
+            "field_type": "SELECT",
+            "default_value": "GB",
+            "required": true,
+            "options": [
+                "GB",
+                "TB"
+            ],
+            "unit": null,
+            "unit_sibling": "S3 Standard storage"
+        },
+        {
+            "key": "PUT, COPY, POST, LIST requests",
+            "field_type": "NUMBER",
+            "default_value": 0,
+            "required": false,
+            "options": null,
+            "unit": "requests",
+            "unit_sibling": null
+        },
+        {
+            "key": "GET, SELECT, and all other requests",
+            "field_type": "NUMBER",
+            "default_value": 0,
+            "required": false,
+            "options": null,
+            "unit": "requests",
+            "unit_sibling": null
+        },
+        {
+            "key": "Data returned by S3 Select",
+            "field_type": "NUMBER",
+            "default_value": 0,
+            "required": false,
+            "options": null,
+            "unit": null,
+            "unit_sibling": "Data returned by S3 Select Unit"
+        },
+        {
+            "key": "Data returned by S3 Select Unit",
+            "field_type": "SELECT",
+            "default_value": "GB",
+            "required": false,
+            "options": [
+                "GB",
+                "TB"
+            ],
+            "unit": null,
+            "unit_sibling": "Data returned by S3 Select"
+        },
+        {
+            "key": "Data transfer out",
+            "field_type": "NUMBER",
+            "default_value": 0,
+            "required": false,
+            "options": null,
+            "unit": null,
+            "unit_sibling": "Data transfer out Unit"
+        },
+        {
+            "key": "Data transfer out Unit",
+            "field_type": "SELECT",
+            "default_value": "GB",
+            "required": false,
+            "options": [
+                "GB",
+                "TB"
+            ],
+            "unit": null,
+            "unit_sibling": "Data transfer out"
+        }
+    ]
+}

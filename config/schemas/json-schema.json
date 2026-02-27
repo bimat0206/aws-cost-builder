@@ -1,0 +1,162 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "aws-cost-builder/profile-v2",
+    "title": "ProfileDocument",
+    "description": "AWS Cost Profile Builder profile schema v2.0",
+    "type": "object",
+    "required": [
+        "schema_version",
+        "project_name",
+        "groups"
+    ],
+    "additionalProperties": false,
+    "properties": {
+        "schema_version": {
+            "type": "string",
+            "const": "2.0"
+        },
+        "project_name": {
+            "type": "string",
+            "minLength": 1
+        },
+        "description": {
+            "type": [
+                "string",
+                "null"
+            ]
+        },
+        "groups": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+                "$ref": "#/definitions/Group"
+            }
+        }
+    },
+    "definitions": {
+        "Group": {
+            "type": "object",
+            "required": [
+                "group_name",
+                "services"
+            ],
+            "additionalProperties": false,
+            "properties": {
+                "group_name": {
+                    "type": "string",
+                    "minLength": 1
+                },
+                "services": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                        "$ref": "#/definitions/Service"
+                    }
+                }
+            }
+        },
+        "Service": {
+            "type": "object",
+            "required": [
+                "service_name",
+                "human_label",
+                "region",
+                "dimensions"
+            ],
+            "additionalProperties": false,
+            "properties": {
+                "service_name": {
+                    "type": "string",
+                    "minLength": 1
+                },
+                "human_label": {
+                    "type": "string",
+                    "minLength": 1
+                },
+                "region": {
+                    "type": "string",
+                    "minLength": 1
+                },
+                "dimensions": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "$ref": "#/definitions/Dimension"
+                    }
+                }
+            }
+        },
+        "Dimension": {
+            "type": "object",
+            "required": [
+                "user_value",
+                "default_value"
+            ],
+            "additionalProperties": false,
+            "properties": {
+                "user_value": {
+                    "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null"
+                    ]
+                },
+                "default_value": {
+                    "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null"
+                    ]
+                },
+                "unit": {
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "prompt_message": {
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "required": {
+                    "type": "boolean",
+                    "default": true
+                },
+                "resolved_value": {
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "resolution_source": {
+                    "type": [
+                        "string",
+                        "null"
+                    ],
+                    "enum": [
+                        "user_value",
+                        "default_value",
+                        "prompt",
+                        "skipped",
+                        null
+                    ]
+                },
+                "resolution_status": {
+                    "type": [
+                        "string",
+                        "null"
+                    ],
+                    "enum": [
+                        "resolved",
+                        "skipped",
+                        "unresolved",
+                        null
+                    ]
+                }
+            }
+        }
+    }
+}

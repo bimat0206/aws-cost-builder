@@ -1,0 +1,24 @@
+{
+    "name": "aws-cost-builder",
+    "version": "1.0.0",
+    "type": "module",
+    "description": "AWS Cost Profile Builder — interactive TUI wizard and browser automation runner",
+    "main": "main.js",
+    "scripts": {
+        "test": "./node_modules/.bin/vitest run",
+        "start": "node main.js"
+    },
+    "dependencies": {
+        "ajv": "^8.17.1",
+        "js-yaml": "^4.1.0",
+        "playwright": "^1.49.0",
+        "yargs": "^17.7.2"
+    },
+    "devDependencies": {
+        "fast-check": "^3.23.2",
+        "vitest": "^2.1.8"
+    },
+    "engines": {
+        "node": ">=18.0.0"
+    }
+}

@@ -1,0 +1,2759 @@
+{
+  "service_id": "s3",
+  "service_name": "s3",
+  "search_term": "s3",
+  "calculator_page_title": "s3",
+  "supported_regions": [],
+  "schema_version": "2.0",
+  "generated_at": "2026-02-27T14:18:44Z",
+  "source": "explorer_hybrid_v1",
+  "region_used": "UNKNOWN",
+  "status": "draft",
+  "ui_mapping": {
+    "search_keywords": [
+      "s3",
+      "amazon simple storage service (s3)amazon simple storage service (amazon s3)",
+      "create estimate: configure amazon simple storage service (s3)"
+    ],
+    "card_title": "amazon simple storage service (s3)amazon simple storage service (amazon s3)",
+    "configure_button": "configure"
+  },
+  "section_expansion_triggers": [],
+  "gate_controls": [
+    {
+      "key": "allow performance category allowed",
+      "aws_aria_label": "allow performance category allowed",
+      "gate_type": "TOGGLE",
+      "default_state": true,
+      "availability": "visible",
+      "sections_gated": []
+    },
+    {
+      "key": "allow functional category allowed",
+      "aws_aria_label": "allow functional category allowed",
+      "gate_type": "TOGGLE",
+      "default_state": true,
+      "availability": "visible",
+      "sections_gated": []
+    },
+    {
+      "key": "allow advertising category allowed",
+      "aws_aria_label": "allow advertising category allowed",
+      "gate_type": "TOGGLE",
+      "default_state": true,
+      "availability": "visible",
+      "sections_gated": []
+    },
+    {
+      "key": "s3 standard",
+      "aws_aria_label": "s3 standard",
+      "gate_type": "TOGGLE",
+      "default_state": true,
+      "availability": "visible",
+      "sections_gated": []
+    },
+    {
+      "key": "s3 intelligent - tiering",
+      "aws_aria_label": "s3 intelligent - tiering",
+      "gate_type": "TOGGLE",
+      "default_state": false,
+      "availability": "visible",
+      "sections_gated": []
+    },
+    {
+      "key": "s3 standard - infrequent access",
+      "aws_aria_label": "s3 standard - infrequent access",
+      "gate_type": "TOGGLE",
+      "default_state": false,
+      "availability": "visible",
+      "sections_gated": []
+    },
+    {
+      "key": "s3 one zone - infrequent access",
+      "aws_aria_label": "s3 one zone - infrequent access",
+      "gate_type": "TOGGLE",
+      "default_state": false,
+      "availability": "visible",
+      "sections_gated": []
+    },
+    {
+      "key": "s3 glacier flexible retrieval",
+      "aws_aria_label": "s3 glacier flexible retrieval",
+      "gate_type": "TOGGLE",
+      "default_state": false,
+      "availability": "visible",
+      "sections_gated": []
+    },
+    {
+      "key": "s3 glacier deep archive",
+      "aws_aria_label": "s3 glacier deep archive",
+      "gate_type": "TOGGLE",
+      "default_state": false,
+      "availability": "visible",
+      "sections_gated": []
+    },
+    {
+      "key": "s3 management and insights",
+      "aws_aria_label": "s3 management and insights",
+      "gate_type": "TOGGLE",
+      "default_state": false,
+      "availability": "visible",
+      "sections_gated": []
+    },
+    {
+      "key": "s3 vectors",
+      "aws_aria_label": "s3 vectors",
+      "gate_type": "TOGGLE",
+      "default_state": false,
+      "availability": "visible",
+      "sections_gated": []
+    },
+    {
+      "key": "s3 object lambda",
+      "aws_aria_label": "s3 object lambda",
+      "gate_type": "TOGGLE",
+      "default_state": false,
+      "availability": "visible",
+      "sections_gated": []
+    },
+    {
+      "key": "s3 glacier instant retrieval",
+      "aws_aria_label": "s3 glacier instant retrieval",
+      "gate_type": "TOGGLE",
+      "default_state": false,
+      "availability": "visible",
+      "sections_gated": []
+    },
+    {
+      "key": "data transfer",
+      "aws_aria_label": "data transfer",
+      "gate_type": "TOGGLE",
+      "default_state": true,
+      "availability": "visible",
+      "sections_gated": []
+    },
+    {
+      "key": "s3 express one zone",
+      "aws_aria_label": "s3 express one zone",
+      "gate_type": "TOGGLE",
+      "default_state": false,
+      "availability": "visible",
+      "sections_gated": []
+    },
+    {
+      "key": "s3 access grants",
+      "aws_aria_label": "s3 access grants",
+      "gate_type": "TOGGLE",
+      "default_state": false,
+      "availability": "visible",
+      "sections_gated": []
+    },
+    {
+      "key": "UNKNOWN",
+      "aws_aria_label": "UNKNOWN",
+      "gate_type": "COMBOBOX",
+      "default_state": null,
+      "availability": "visible",
+      "sections_gated": []
+    }
+  ],
+  "sections": [
+    {
+      "key": "s3_standard_info",
+      "label": "s3 standard info:",
+      "state_id": "S0",
+      "entered_via": {
+        "gate_control": null,
+        "action": null,
+        "from_state": null
+      },
+      "dimensions": [
+        {
+          "key": "description - optional",
+          "label_visible": "Description - optional",
+          "aws_aria_label": "Description - optional",
+          "field_type": "TEXT",
+          "default_value": null,
+          "unit_sibling": null,
+          "options": [],
+          "required": true,
+          "confidence": {
+            "label": 1,
+            "section": 0.8,
+            "overall": 0.68
+          },
+          "status": "REVIEW_REQUIRED",
+          "pattern_type": "UNKNOWN_PATTERN",
+          "review_note": "Low confidence score."
+        },
+        {
+          "key": "put, copy, post, list requests to s3 standard enter amount of requests",
+          "label_visible": "PUT, COPY, POST, LIST requests to S3 Standard Enter amount of requests",
+          "aws_aria_label": "PUT, COPY, POST, LIST requests to S3 Standard Enter amount of requests",
+          "field_type": "TEXT",
+          "default_value": null,
+          "unit_sibling": null,
+          "options": [],
+          "required": true,
+          "confidence": {
+            "label": 1,
+            "section": 0.8,
+            "overall": 0.68
+          },
+          "status": "REVIEW_REQUIRED",
+          "pattern_type": "UNKNOWN_PATTERN",
+          "review_note": "Low confidence score."
+        },
+        {
+          "key": "get, select, and all other requests from s3 standard enter amount of requests",
+          "label_visible": "GET, SELECT, and all other requests from S3 Standard Enter amount of requests",
+          "aws_aria_label": "GET, SELECT, and all other requests from S3 Standard Enter amount of requests",
+          "field_type": "TEXT",
+          "default_value": null,
+          "unit_sibling": null,
+          "options": [],
+          "required": true,
+          "confidence": {
+            "label": 1,
+            "section": 0.8,
+            "overall": 0.68
+          },
+          "status": "REVIEW_REQUIRED",
+          "pattern_type": "UNKNOWN_PATTERN",
+          "review_note": "Low confidence score."
+        }
+      ]
+    },
+    {
+      "key": "gb_per_month",
+      "label": "gb per month",
+      "state_id": "S0",
+      "entered_via": {
+        "gate_control": null,
+        "action": null,
+        "from_state": null
+      },
+      "dimensions": [
+        {
+          "key": "s3 standard storage value",
+          "label_visible": "S3 Standard storage Value",
+          "aws_aria_label": "S3 Standard storage Value",
+          "field_type": "NUMBER",
+          "default_value": null,
+          "unit_sibling": null,
+          "options": [],
+          "required": true,
+          "confidence": {
+            "label": 1,
+            "section": 0.8,
+            "overall": 0.88
+          },
+          "status": "OK",
+          "pattern_type": "P1_NUMBER"
+        },
+        {
+          "key": "unknown",
+          "label_visible": "UNKNOWN",
+          "aws_aria_label": "Data returned by S3 Select Value",
+          "field_type": "NUMBER",
+          "default_value": null,
+          "unit_sibling": null,
+          "options": [],
+          "required": true,
+          "confidence": {
+            "label": 0,
+            "section": 0.8,
+            "overall": 0.4
+          },
+          "status": "CONFLICT",
+          "pattern_type": "P1_NUMBER",
+          "review_note": "Very low confidence score."
+        },
+        {
+          "key": "unknown",
+          "label_visible": "UNKNOWN",
+          "aws_aria_label": "Data scanned by S3 Select Value",
+          "field_type": "NUMBER",
+          "default_value": null,
+          "unit_sibling": null,
+          "options": [],
+          "required": true,
+          "confidence": {
+            "label": 0,
+            "section": 0.8,
+            "overall": 0.4
+          },
+          "status": "CONFLICT",
+          "pattern_type": "P1_NUMBER",
+          "review_note": "Very low confidence score."
+        },
+        {
+          "key": "s3 int storage value",
+          "label_visible": "S3 INT storage Value",
+          "aws_aria_label": "S3 INT storage Value",
+          "field_type": "NUMBER",
+          "default_value": null,
+          "unit_sibling": null,
+          "options": [],
+          "required": true,
+          "confidence": {
+            "label": 1,
+            "section": 0.8,
+            "overall": 0.88
+          },
+          "status": "OK",
+          "pattern_type": "P1_NUMBER"
+        },
+        {
+          "key": "s3 int average object size value",
+          "label_visible": "S3 INT Average Object Size Value",
+          "aws_aria_label": "S3 INT Average Object Size Value",
+          "field_type": "NUMBER",
+          "default_value": null,
+          "unit_sibling": null,
+          "options": [],
+          "required": true,
+          "confidence": {
+            "label": 1,
+            "section": 0.8,
+            "overall": 0.88
+          },
+          "status": "OK",
+          "pattern_type": "P1_NUMBER"
+        },
+        {
+          "key": "s3 standard-ia storage value",
+          "label_visible": "S3 Standard-IA storage Value",
+          "aws_aria_label": "S3 Standard-IA storage Value",
+          "field_type": "NUMBER",
+          "default_value": null,
+          "unit_sibling": null,
+          "options": [],
+          "required": true,
+          "confidence": {
+            "label": 1,
+            "section": 0.8,
+            "overall": 0.88
+          },
+          "status": "OK",
+          "pattern_type": "P1_NUMBER"
+        },
+        {
+          "key": "data retrievals value",
+          "label_visible": "Data retrievals Value",
+          "aws_aria_label": "Data retrievals Value",
+          "field_type": "NUMBER",
+          "default_value": null,
+          "unit_sibling": null,
+          "options": [],
+          "required": true,
+          "confidence": {
+            "label": 1,
+            "section": 0.8,
+            "overall": 0.88
+          },
+          "status": "OK",
+          "pattern_type": "P1_NUMBER"
+        },
+        {
+          "key": "s3 one zone-ia storage value",
+          "label_visible": "S3 One Zone-IA storage Value",
+          "aws_aria_label": "S3 One Zone-IA storage Value",
+          "field_type": "NUMBER",
+          "default_value": null,
+          "unit_sibling": null,
+          "options": [],
+          "required": true,
+          "confidence": {
+            "label": 1,
+            "section": 0.8,
+            "overall": 0.88
+          },
+          "status": "OK",
+          "pattern_type": "P1_NUMBER"
+        },
+        {
+          "key": "s3 glacier flexible retrieval storage value",
+          "label_visible": "S3 Glacier Flexible Retrieval storage Value",
+          "aws_aria_label": "S3 Glacier Flexible Retrieval storage Value",
+          "field_type": "NUMBER",
+          "default_value": null,
+          "unit_sibling": null,
+          "options": [],
+          "required": true,
+          "confidence": {
+            "label": 1,
+            "section": 0.8,
+            "overall": 0.88
+          },
+          "status": "OK",
+          "pattern_type": "P1_NUMBER"
+        },
+        {
+          "key": "s3 glacier flexible retrieval average object size value",
+          "label_visible": "S3 Glacier Flexible Retrieval Average Object Size Value",
+          "aws_aria_label": "S3 Glacier Flexible Retrieval Average Object Size Value",
+          "field_type": "NUMBER",
+          "default_value": null,
+          "unit_sibling": null,
+          "options": [],
+          "required": true,
+          "confidence": {
+            "label": 1,
+            "section": 0.8,
+            "overall": 0.88
+          },
+          "status": "OK",
+          "pattern_type": "P1_NUMBER"
+        },
+        {
+          "key": "data retrievals (standard) value",
+          "label_visible": "Data retrievals (Standard) Value",
+          "aws_aria_label": "Data retrievals (Standard) Value",
+          "field_type": "NUMBER",
+          "default_value": null,
+          "unit_sibling": null,
+          "options": [],
+          "required": true,
+          "confidence": {
+            "label": 1,
+            "section": 0.8,
+            "overall": 0.88
+          },
+          "status": "OK",
+          "pattern_type": "P1_NUMBER"
+        },
+        {
+          "key": "data retrievals (expedited) value",
+          "label_visible": "Data retrievals (Expedited) Value",
+          "aws_aria_label": "Data retrievals (Expedited) Value",
+          "field_type": "NUMBER",
+          "default_value": null,
+          "unit_sibling": null,
+          "options": [],
+          "required": true,
+          "confidence": {
+            "label": 1,
+            "section": 0.8,
+            "overall": 0.88
+          },
+          "status": "OK",
+          "pattern_type": "P1_NUMBER"
+        },
+        {
+          "key": "data retrievals (bulk) value",
+          "label_visible": "Data retrievals (Bulk) Value",
+          "aws_aria_label": "Data retrievals (Bulk) Value",
+          "field_type": "NUMBER",
+          "default_value": null,
+          "unit_sibling": null,
+          "options": [],
+          "required": true,
+          "confidence": {
+            "label": 1,
+            "section": 0.8,
+            "overall": 0.88
+          },
+          "status": "OK",
+          "pattern_type": "P1_NUMBER"
+        },
+        {
+          "key": "s3 glacier deep archive storage value",
+          "label_visible": "S3 Glacier Deep Archive storage Value",
+          "aws_aria_label": "S3 Glacier Deep Archive storage Value",
+          "field_type": "NUMBER",
+          "default_value": null,
+          "unit_sibling": null,
+          "options": [],
+          "required": true,
+          "confidence": {
+            "label": 1,
+            "section": 0.8,
+            "overall": 0.88
+          },
+          "status": "OK",
+          "pattern_type": "P1_NUMBER"
+        },
+        {
+          "key": "s3 glacier deep archive average object size value",
+          "label_visible": "S3 Glacier Deep Archive Average Object Size Value",
+          "aws_aria_label": "S3 Glacier Deep Archive Average Object Size Value",
+          "field_type": "NUMBER",
+          "default_value": null,
+          "unit_sibling": null,
+          "options": [],
+          "required": true,
+          "confidence": {
+            "label": 1,
+            "section": 0.8,
+            "overall": 0.88
+          },
+          "status": "OK",
+          "pattern_type": "P1_NUMBER"
+        },
+        {
+          "key": "s3 glacier instant retrieval storage value",
+          "label_visible": "S3 Glacier Instant Retrieval storage Value",
+          "aws_aria_label": "S3 Glacier Instant Retrieval storage Value",
+          "field_type": "NUMBER",
+          "default_value": null,
+          "unit_sibling": null,
+          "options": [],
+          "required": true,
+          "confidence": {
+            "label": 1,
+            "section": 0.8,
+            "overall": 0.88
+          },
+          "status": "OK",
+          "pattern_type": "P1_NUMBER"
+        },
+        {
+          "key": "s3 express one zone storage value",
+          "label_visible": "S3 Express One Zone storage Value",
+          "aws_aria_label": "S3 Express One Zone storage Value",
+          "field_type": "NUMBER",
+          "default_value": null,
+          "unit_sibling": null,
+          "options": [],
+          "required": true,
+          "confidence": {
+            "label": 1,
+            "section": 0.8,
+            "overall": 0.88
+          },
+          "status": "OK",
+          "pattern_type": "P1_NUMBER"
+        },
+        {
+          "key": "put, copy, post, list, rename requests to s3 express one zone enter amount of requests",
+          "label_visible": "PUT, COPY, POST, LIST, RENAME requests to S3 Express One Zone Enter amount of requests",
+          "aws_aria_label": "PUT, COPY, POST, LIST, RENAME requests to S3 Express One Zone Enter amount of requests",
+          "field_type": "TEXT",
+          "default_value": null,
+          "unit_sibling": null,
+          "options": [],
+          "required": true,
+          "confidence": {
+            "label": 1,
+            "section": 0.8,
+            "overall": 0.68
+          },
+          "status": "REVIEW_REQUIRED",
+          "pattern_type": "UNKNOWN_PATTERN",
+          "review_note": "Low confidence score."
+        },
+        {
+          "key": "get and all other requests from s3 express one zone enter amount of requests",
+          "label_visible": "GET and all other requests from S3 Express One Zone Enter amount of requests",
+          "aws_aria_label": "GET and all other requests from S3 Express One Zone Enter amount of requests",
+          "field_type": "TEXT",
+          "default_value": null,
+          "unit_sibling": null,
+          "options": [],
+          "required": true,
+          "confidence": {
+            "label": 1,
+            "section": 0.8,
+            "overall": 0.68
+          },
+          "status": "REVIEW_REQUIRED",
+          "pattern_type": "UNKNOWN_PATTERN",
+          "review_note": "Low confidence score."
+        },
+        {
+          "key": "put/ copy request size value",
+          "label_visible": "PUT/ COPY request size Value",
+          "aws_aria_label": "PUT/ COPY request size Value",
+          "field_type": "NUMBER",
+          "default_value": null,
+          "unit_sibling": null,
+          "options": [],
+          "required": true,
+          "confidence": {
+            "label": 1,
+            "section": 0.8,
+            "overall": 0.88
+          },
+          "status": "OK",
+          "pattern_type": "P1_NUMBER"
+        },
+        {
+          "key": "get request size value",
+          "label_visible": "GET request size Value",
+          "aws_aria_label": "GET request size Value",
+          "field_type": "NUMBER",
+          "default_value": null,
+          "unit_sibling": null,
+          "options": [],
+          "required": true,
+          "confidence": {
+            "label": 1,
+            "section": 0.8,
+            "overall": 0.88
+          },
+          "status": "OK",
+          "pattern_type": "P1_NUMBER"
+        }
+      ]
+    },
+    {
+      "key": "the_specified_amount_of_data_is_already_stored_in_s3_standar",
+      "label": "the specified amount of data is already stored in s3 standard",
+      "state_id": "S10",
+      "entered_via": {
+        "gate_control": "s3 intelligent - tiering",
+        "action": "click",
+        "from_state": "S1"
+      },
+      "dimensions": [
+        {
+          "key": "percentage of storage in int-frequent access tier",
+          "label_visible": "Percentage of Storage in INT-Frequent Access Tier",
+          "aws_aria_label": "Percentage of Storage in INT-Frequent Access Tier",
+          "field_type": "NUMBER",
+          "default_value": null,
+          "unit_sibling": null,
+          "options": [],
+          "required": true,
+          "confidence": {
+            "label": 1,
+            "section": 0.8,
+            "overall": 0.88
+          },
+          "status": "OK",
+          "pattern_type": "P1_NUMBER"
+        },
+        {
+          "key": "percentage of storage in int-infrequent access tier (% of storage that hasn't been accessed in the last 30 days)",
+          "label_visible": "Percentage of Storage in INT-Infrequent Access Tier (% of storage that hasn't been accessed in the last 30 days)",
+          "aws_aria_label": "Percentage of Storage in INT-Infrequent Access Tier (% of storage that hasn't been accessed in the last 30 days)",
+          "field_type": "NUMBER",
+          "default_value": null,
+          "unit_sibling": null,
+          "options": [],
+          "required": true,
+          "confidence": {
+            "label": 1,
+            "section": 0.8,
+            "overall": 0.88
+          },
+          "status": "OK",
+          "pattern_type": "P1_NUMBER"
+        },
+        {
+          "key": "percentage of storage in int-archive instant access tier (% of storage that hasn't been accessed in the last 90 days)",
+          "label_visible": "Percentage of Storage in INT-Archive Instant Access Tier (% of storage that hasn't been accessed in the last 90 days)",
+          "aws_aria_label": "Percentage of Storage in INT-Archive Instant Access Tier (% of storage that hasn't been accessed in the last 90 days)",
+          "field_type": "NUMBER",
+          "default_value": null,
+          "unit_sibling": null,
+          "options": [],
+          "required": true,
+          "confidence": {
+            "label": 1,
+            "section": 0.8,
+            "overall": 0.88
+          },
+          "status": "OK",
+          "pattern_type": "P1_NUMBER"
+        },
+        {
+          "key": "percentage of storage in int-archive access tier (% of storage that hasn't been accessed for a minimum of 90 days)",
+          "label_visible": "Percentage of Storage in INT-Archive Access Tier (% of storage that hasn't been accessed for a minimum of 90 days)",
+          "aws_aria_label": "Percentage of Storage in INT-Archive Access Tier (% of storage that hasn't been accessed for a minimum of 90 days)",
+          "field_type": "NUMBER",
+          "default_value": null,
+          "unit_sibling": null,
+          "options": [],
+          "required": true,
+          "confidence": {
+            "label": 1,
+            "section": 0.8,
+            "overall": 0.88
+          },
+          "status": "OK",
+          "pattern_type": "P1_NUMBER"
+        },
+        {
+          "key": "percentage of storage in int-deep archive access tier (% of storage that hasn't been accessed for a minimum of 180 days)",
+          "label_visible": "Percentage of Storage in INT-Deep Archive Access Tier (% of storage that hasn't been accessed for a minimum of 180 days)",
+          "aws_aria_label": "Percentage of Storage in INT-Deep Archive Access Tier (% of storage that hasn't been accessed for a minimum of 180 days)",
+          "field_type": "NUMBER",
+          "default_value": null,
+          "unit_sibling": null,
+          "options": [],
+          "required": true,
+          "confidence": {
+            "label": 1,
+            "section": 0.8,
+            "overall": 0.88
+          },
+          "status": "OK",
+          "pattern_type": "P1_NUMBER"
+        },
+        {
+          "key": "put, copy, post, list requests to s3 int enter amount of requests",
+          "label_visible": "PUT, COPY, POST, LIST requests to S3 INT Enter amount of requests",
+          "aws_aria_label": "PUT, COPY, POST, LIST requests to S3 INT Enter amount of requests",
+          "field_type": "TEXT",
+          "default_value": null,
+          "unit_sibling": null,
+          "options": [],
+          "required": true,
+          "confidence": {
+            "label": 1,
+            "section": 0.8,
+            "overall": 0.68
+          },
+          "status": "REVIEW_REQUIRED",
+          "pattern_type": "UNKNOWN_PATTERN",
+          "review_note": "Low confidence score."
+        },
+        {
+          "key": "get, select, and all other requests from s3 int enter amount of requests",
+          "label_visible": "GET, SELECT, and all other requests from S3 INT Enter amount of requests",
+          "aws_aria_label": "GET, SELECT, and all other requests from S3 INT Enter amount of requests",
+          "field_type": "TEXT",
+          "default_value": null,
+          "unit_sibling": null,
+          "options": [],
+          "required": true,
+          "confidence": {
+            "label": 1,
+            "section": 0.8,
+            "overall": 0.68
+          },
+          "status": "REVIEW_REQUIRED",
+          "pattern_type": "UNKNOWN_PATTERN",
+          "review_note": "Low confidence score."
+        },
+        {
+          "key": "lifecycle transition requests enter amount of requests",
+          "label_visible": "Lifecycle Transition requests Enter amount of requests",
+          "aws_aria_label": "Lifecycle Transition requests Enter amount of requests",
+          "field_type": "TEXT",
+          "default_value": null,
+          "unit_sibling": null,
+          "options": [],
+          "required": true,
+          "confidence": {
+            "label": 1,
+            "section": 0.8,
+            "overall": 0.68
+          },
+          "status": "REVIEW_REQUIRED",
+          "pattern_type": "UNKNOWN_PATTERN",
+          "review_note": "Low confidence score."
+        },
+        {
+          "key": "unknown",
+          "label_visible": "UNKNOWN",
+          "aws_aria_label": "PUT, COPY, POST, LIST requests to S3 One Zone-IA Enter amount of requests",
+          "field_type": "TEXT",
+          "default_value": null,
+          "unit_sibling": null,
+          "options": [],
+          "required": true,
+          "confidence": {
+            "label": 0,
+            "section": 0.8,
+            "overall": 0.2
+          },
+          "status": "CONFLICT",
+          "pattern_type": "UNKNOWN_PATTERN",
+          "review_note": "Very low confidence score."
+        },
+        {
+          "key": "get, select, and all other requests from s3 one zone-ia enter amount of requests",
+          "label_visible": "GET, SELECT, and all other requests from S3 One Zone-IA Enter amount of requests",
+          "aws_aria_label": "GET, SELECT, and all other requests from S3 One Zone-IA Enter amount of requests",
+          "field_type": "TEXT",
+          "default_value": null,
+          "unit_sibling": null,
+          "options": [],
+          "required": true,
+          "confidence": {
+            "label": 1,
+            "section": 0.8,
+            "overall": 0.68
+          },
+          "status": "REVIEW_REQUIRED",
+          "pattern_type": "UNKNOWN_PATTERN",
+          "review_note": "Low confidence score."
+        },
+        {
+          "key": "put, copy, post, list requests to s3 glacier deep archive enter amount of requests",
+          "label_visible": "PUT, COPY, POST, LIST requests to S3 Glacier Deep Archive Enter amount of requests",
+          "aws_aria_label": "PUT, COPY, POST, LIST requests to S3 Glacier Deep Archive Enter amount of requests",
+          "field_type": "TEXT",
+          "default_value": null,
+          "unit_sibling": null,
+          "options": [],
+          "required": true,
+          "confidence": {
+            "label": 1,
+            "section": 0.8,
+            "overall": 0.68
+          },
+          "status": "REVIEW_REQUIRED",
+          "pattern_type": "UNKNOWN_PATTERN",
+          "review_note": "Low confidence score."
+        },
+        {
+          "key": "lifecycle transitions into s3 glacier deep archive enter amount of requests",
+          "label_visible": "Lifecycle Transitions into S3 Glacier Deep Archive Enter amount of requests",
+          "aws_aria_label": "Lifecycle Transitions into S3 Glacier Deep Archive Enter amount of requests",
+          "field_type": "TEXT",
+          "default_value": null,
+          "unit_sibling": null,
+          "options": [],
+          "required": true,
+          "confidence": {
+            "label": 1,
+            "section": 0.8,
+            "overall": 0.68
+          },
+          "status": "REVIEW_REQUIRED",
+          "pattern_type": "UNKNOWN_PATTERN",
+          "review_note": "Low confidence score."
+        },
+        {
+          "key": "restore requests (standard) enter amount of requests",
+          "label_visible": "Restore requests (Standard) Enter amount of requests",
+          "aws_aria_label": "Restore requests (Standard) Enter amount of requests",
+          "field_type": "TEXT",
+          "default_value": null,
+          "unit_sibling": null,
+          "options": [],
+          "required": true,
+          "confidence": {
+            "label": 1,
+            "section": 0.8,
+            "overall": 0.68
+          },
+          "status": "REVIEW_REQUIRED",
+          "pattern_type": "UNKNOWN_PATTERN",
+          "review_note": "Low confidence score."
+        },
+        {
+          "key": "restore requests (bulk) enter amount of requests",
+          "label_visible": "Restore requests (Bulk) Enter amount of requests",
+          "aws_aria_label": "Restore requests (Bulk) Enter amount of requests",
+          "field_type": "TEXT",
+          "default_value": null,
+          "unit_sibling": null,
+          "options": [],
+          "required": true,
+          "confidence": {
+            "label": 1,
+            "section": 0.8,
+            "overall": 0.68
+          },
+          "status": "REVIEW_REQUIRED",
+          "pattern_type": "UNKNOWN_PATTERN",
+          "review_note": "Low confidence score."
+        },
+        {
+          "key": "unknown",
+          "label_visible": "UNKNOWN",
+          "aws_aria_label": "PUT, COPY, POST, LIST requests to S3 Glacier Instant Retrieval Enter amount of requests",
+          "field_type": "TEXT",
+          "default_value": null,
+          "unit_sibling": null,
+          "options": [],
+          "required": true,
+          "confidence": {
+            "label": 0,
+            "section": 0.8,
+            "overall": 0.2
+          },
+          "status": "CONFLICT",
+          "pattern_type": "UNKNOWN_PATTERN",
+          "review_note": "Very low confidence score."
+        },
+        {
+          "key": "get, select, and all other requests from s3 glacier instant retrieval enter amount of requests",
+          "label_visible": "GET, SELECT, and all other requests from S3 Glacier Instant Retrieval Enter amount of requests",
+          "aws_aria_label": "GET, SELECT, and all other requests from S3 Glacier Instant Retrieval Enter amount of requests",
+          "field_type": "TEXT",
+          "default_value": null,
+          "unit_sibling": null,
+          "options": [],
+          "required": true,
+          "confidence": {
+            "label": 1,
+            "section": 0.8,
+            "overall": 0.68
+          },
+          "status": "REVIEW_REQUIRED",
+          "pattern_type": "UNKNOWN_PATTERN",
+          "review_note": "Low confidence score."
+        }
+      ]
+    }
+  ],
+  "dimensions": [
+    {
+      "key": "description - optional",
+      "label_visible": "Description - optional",
+      "aws_aria_label": "Description - optional",
+      "field_type": "TEXT",
+      "default_value": null,
+      "unit_sibling": null,
+      "options": [],
+      "required": true,
+      "confidence": {
+        "label": 1,
+        "section": 0.8,
+        "overall": 0.68
+      },
+      "status": "REVIEW_REQUIRED",
+      "pattern_type": "UNKNOWN_PATTERN",
+      "review_note": "Low confidence score.",
+      "section": "s3 standard info:",
+      "discovered_in_state": "S0"
+    },
+    {
+      "key": "put, copy, post, list requests to s3 standard enter amount of requests",
+      "label_visible": "PUT, COPY, POST, LIST requests to S3 Standard Enter amount of requests",
+      "aws_aria_label": "PUT, COPY, POST, LIST requests to S3 Standard Enter amount of requests",
+      "field_type": "TEXT",
+      "default_value": null,
+      "unit_sibling": null,
+      "options": [],
+      "required": true,
+      "confidence": {
+        "label": 1,
+        "section": 0.8,
+        "overall": 0.68
+      },
+      "status": "REVIEW_REQUIRED",
+      "pattern_type": "UNKNOWN_PATTERN",
+      "review_note": "Low confidence score.",
+      "section": "s3 standard info:",
+      "discovered_in_state": "S0"
+    },
+    {
+      "key": "get, select, and all other requests from s3 standard enter amount of requests",
+      "label_visible": "GET, SELECT, and all other requests from S3 Standard Enter amount of requests",
+      "aws_aria_label": "GET, SELECT, and all other requests from S3 Standard Enter amount of requests",
+      "field_type": "TEXT",
+      "default_value": null,
+      "unit_sibling": null,
+      "options": [],
+      "required": true,
+      "confidence": {
+        "label": 1,
+        "section": 0.8,
+        "overall": 0.68
+      },
+      "status": "REVIEW_REQUIRED",
+      "pattern_type": "UNKNOWN_PATTERN",
+      "review_note": "Low confidence score.",
+      "section": "s3 standard info:",
+      "discovered_in_state": "S0"
+    },
+    {
+      "key": "s3 standard storage value",
+      "label_visible": "S3 Standard storage Value",
+      "aws_aria_label": "S3 Standard storage Value",
+      "field_type": "NUMBER",
+      "default_value": null,
+      "unit_sibling": null,
+      "options": [],
+      "required": true,
+      "confidence": {
+        "label": 1,
+        "section": 0.8,
+        "overall": 0.88
+      },
+      "status": "OK",
+      "pattern_type": "P1_NUMBER",
+      "section": "gb per month",
+      "discovered_in_state": "S0"
+    },
+    {
+      "key": "unknown",
+      "label_visible": "UNKNOWN",
+      "aws_aria_label": "Data returned by S3 Select Value",
+      "field_type": "NUMBER",
+      "default_value": null,
+      "unit_sibling": null,
+      "options": [],
+      "required": true,
+      "confidence": {
+        "label": 0,
+        "section": 0.8,
+        "overall": 0.4
+      },
+      "status": "CONFLICT",
+      "pattern_type": "P1_NUMBER",
+      "review_note": "Very low confidence score.",
+      "section": "gb per month",
+      "discovered_in_state": "S0"
+    },
+    {
+      "key": "unknown",
+      "label_visible": "UNKNOWN",
+      "aws_aria_label": "Data scanned by S3 Select Value",
+      "field_type": "NUMBER",
+      "default_value": null,
+      "unit_sibling": null,
+      "options": [],
+      "required": true,
+      "confidence": {
+        "label": 0,
+        "section": 0.8,
+        "overall": 0.4
+      },
+      "status": "CONFLICT",
+      "pattern_type": "P1_NUMBER",
+      "review_note": "Very low confidence score.",
+      "section": "gb per month",
+      "discovered_in_state": "S0"
+    },
+    {
+      "key": "s3 int storage value",
+      "label_visible": "S3 INT storage Value",
+      "aws_aria_label": "S3 INT storage Value",
+      "field_type": "NUMBER",
+      "default_value": null,
+      "unit_sibling": null,
+      "options": [],
+      "required": true,
+      "confidence": {
+        "label": 1,
+        "section": 0.8,
+        "overall": 0.88
+      },
+      "status": "OK",
+      "pattern_type": "P1_NUMBER",
+      "section": "gb per month",
+      "discovered_in_state": "S0"
+    },
+    {
+      "key": "s3 int average object size value",
+      "label_visible": "S3 INT Average Object Size Value",
+      "aws_aria_label": "S3 INT Average Object Size Value",
+      "field_type": "NUMBER",
+      "default_value": null,
+      "unit_sibling": null,
+      "options": [],
+      "required": true,
+      "confidence": {
+        "label": 1,
+        "section": 0.8,
+        "overall": 0.88
+      },
+      "status": "OK",
+      "pattern_type": "P1_NUMBER",
+      "section": "gb per month",
+      "discovered_in_state": "S0"
+    },
+    {
+      "key": "s3 standard-ia storage value",
+      "label_visible": "S3 Standard-IA storage Value",
+      "aws_aria_label": "S3 Standard-IA storage Value",
+      "field_type": "NUMBER",
+      "default_value": null,
+      "unit_sibling": null,
+      "options": [],
+      "required": true,
+      "confidence": {
+        "label": 1,
+        "section": 0.8,
+        "overall": 0.88
+      },
+      "status": "OK",
+      "pattern_type": "P1_NUMBER",
+      "section": "gb per month",
+      "discovered_in_state": "S0"
+    },
+    {
+      "key": "data retrievals value",
+      "label_visible": "Data retrievals Value",
+      "aws_aria_label": "Data retrievals Value",
+      "field_type": "NUMBER",
+      "default_value": null,
+      "unit_sibling": null,
+      "options": [],
+      "required": true,
+      "confidence": {
+        "label": 1,
+        "section": 0.8,
+        "overall": 0.88
+      },
+      "status": "OK",
+      "pattern_type": "P1_NUMBER",
+      "section": "gb per month",
+      "discovered_in_state": "S0"
+    },
+    {
+      "key": "s3 one zone-ia storage value",
+      "label_visible": "S3 One Zone-IA storage Value",
+      "aws_aria_label": "S3 One Zone-IA storage Value",
+      "field_type": "NUMBER",
+      "default_value": null,
+      "unit_sibling": null,
+      "options": [],
+      "required": true,
+      "confidence": {
+        "label": 1,
+        "section": 0.8,
+        "overall": 0.88
+      },
+      "status": "OK",
+      "pattern_type": "P1_NUMBER",
+      "section": "gb per month",
+      "discovered_in_state": "S0"
+    },
+    {
+      "key": "s3 glacier flexible retrieval storage value",
+      "label_visible": "S3 Glacier Flexible Retrieval storage Value",
+      "aws_aria_label": "S3 Glacier Flexible Retrieval storage Value",
+      "field_type": "NUMBER",
+      "default_value": null,
+      "unit_sibling": null,
+      "options": [],
+      "required": true,
+      "confidence": {
+        "label": 1,
+        "section": 0.8,
+        "overall": 0.88
+      },
+      "status": "OK",
+      "pattern_type": "P1_NUMBER",
+      "section": "gb per month",
+      "discovered_in_state": "S0"
+    },
+    {
+      "key": "s3 glacier flexible retrieval average object size value",
+      "label_visible": "S3 Glacier Flexible Retrieval Average Object Size Value",
+      "aws_aria_label": "S3 Glacier Flexible Retrieval Average Object Size Value",
+      "field_type": "NUMBER",
+      "default_value": null,
+      "unit_sibling": null,
+      "options": [],
+      "required": true,
+      "confidence": {
+        "label": 1,
+        "section": 0.8,
+        "overall": 0.88
+      },
+      "status": "OK",
+      "pattern_type": "P1_NUMBER",
+      "section": "gb per month",
+      "discovered_in_state": "S0"
+    },
+    {
+      "key": "data retrievals (standard) value",
+      "label_visible": "Data retrievals (Standard) Value",
+      "aws_aria_label": "Data retrievals (Standard) Value",
+      "field_type": "NUMBER",
+      "default_value": null,
+      "unit_sibling": null,
+      "options": [],
+      "required": true,
+      "confidence": {
+        "label": 1,
+        "section": 0.8,
+        "overall": 0.88
+      },
+      "status": "OK",
+      "pattern_type": "P1_NUMBER",
+      "section": "gb per month",
+      "discovered_in_state": "S0"
+    },
+    {
+      "key": "data retrievals (expedited) value",
+      "label_visible": "Data retrievals (Expedited) Value",
+      "aws_aria_label": "Data retrievals (Expedited) Value",
+      "field_type": "NUMBER",
+      "default_value": null,
+      "unit_sibling": null,
+      "options": [],
+      "required": true,
+      "confidence": {
+        "label": 1,
+        "section": 0.8,
+        "overall": 0.88
+      },
+      "status": "OK",
+      "pattern_type": "P1_NUMBER",
+      "section": "gb per month",
+      "discovered_in_state": "S0"
+    },
+    {
+      "key": "data retrievals (bulk) value",
+      "label_visible": "Data retrievals (Bulk) Value",
+      "aws_aria_label": "Data retrievals (Bulk) Value",
+      "field_type": "NUMBER",
+      "default_value": null,
+      "unit_sibling": null,
+      "options": [],
+      "required": true,
+      "confidence": {
+        "label": 1,
+        "section": 0.8,
+        "overall": 0.88
+      },
+      "status": "OK",
+      "pattern_type": "P1_NUMBER",
+      "section": "gb per month",
+      "discovered_in_state": "S0"
+    },
+    {
+      "key": "s3 glacier deep archive storage value",
+      "label_visible": "S3 Glacier Deep Archive storage Value",
+      "aws_aria_label": "S3 Glacier Deep Archive storage Value",
+      "field_type": "NUMBER",
+      "default_value": null,
+      "unit_sibling": null,
+      "options": [],
+      "required": true,
+      "confidence": {
+        "label": 1,
+        "section": 0.8,
+        "overall": 0.88
+      },
+      "status": "OK",
+      "pattern_type": "P1_NUMBER",
+      "section": "gb per month",
+      "discovered_in_state": "S0"
+    },
+    {
+      "key": "s3 glacier deep archive average object size value",
+      "label_visible": "S3 Glacier Deep Archive Average Object Size Value",
+      "aws_aria_label": "S3 Glacier Deep Archive Average Object Size Value",
+      "field_type": "NUMBER",
+      "default_value": null,
+      "unit_sibling": null,
+      "options": [],
+      "required": true,
+      "confidence": {
+        "label": 1,
+        "section": 0.8,
+        "overall": 0.88
+      },
+      "status": "OK",
+      "pattern_type": "P1_NUMBER",
+      "section": "gb per month",
+      "discovered_in_state": "S0"
+    },
+    {
+      "key": "s3 glacier instant retrieval storage value",
+      "label_visible": "S3 Glacier Instant Retrieval storage Value",
+      "aws_aria_label": "S3 Glacier Instant Retrieval storage Value",
+      "field_type": "NUMBER",
+      "default_value": null,
+      "unit_sibling": null,
+      "options": [],
+      "required": true,
+      "confidence": {
+        "label": 1,
+        "section": 0.8,
+        "overall": 0.88
+      },
+      "status": "OK",
+      "pattern_type": "P1_NUMBER",
+      "section": "gb per month",
+      "discovered_in_state": "S0"
+    },
+    {
+      "key": "s3 express one zone storage value",
+      "label_visible": "S3 Express One Zone storage Value",
+      "aws_aria_label": "S3 Express One Zone storage Value",
+      "field_type": "NUMBER",
+      "default_value": null,
+      "unit_sibling": null,
+      "options": [],
+      "required": true,
+      "confidence": {
+        "label": 1,
+        "section": 0.8,
+        "overall": 0.88
+      },
+      "status": "OK",
+      "pattern_type": "P1_NUMBER",
+      "section": "gb per month",
+      "discovered_in_state": "S0"
+    },
+    {
+      "key": "put, copy, post, list, rename requests to s3 express one zone enter amount of requests",
+      "label_visible": "PUT, COPY, POST, LIST, RENAME requests to S3 Express One Zone Enter amount of requests",
+      "aws_aria_label": "PUT, COPY, POST, LIST, RENAME requests to S3 Express One Zone Enter amount of requests",
+      "field_type": "TEXT",
+      "default_value": null,
+      "unit_sibling": null,
+      "options": [],
+      "required": true,
+      "confidence": {
+        "label": 1,
+        "section": 0.8,
+        "overall": 0.68
+      },
+      "status": "REVIEW_REQUIRED",
+      "pattern_type": "UNKNOWN_PATTERN",
+      "review_note": "Low confidence score.",
+      "section": "gb per month",
+      "discovered_in_state": "S0"
+    },
+    {
+      "key": "get and all other requests from s3 express one zone enter amount of requests",
+      "label_visible": "GET and all other requests from S3 Express One Zone Enter amount of requests",
+      "aws_aria_label": "GET and all other requests from S3 Express One Zone Enter amount of requests",
+      "field_type": "TEXT",
+      "default_value": null,
+      "unit_sibling": null,
+      "options": [],
+      "required": true,
+      "confidence": {
+        "label": 1,
+        "section": 0.8,
+        "overall": 0.68
+      },
+      "status": "REVIEW_REQUIRED",
+      "pattern_type": "UNKNOWN_PATTERN",
+      "review_note": "Low confidence score.",
+      "section": "gb per month",
+      "discovered_in_state": "S0"
+    },
+    {
+      "key": "put/ copy request size value",
+      "label_visible": "PUT/ COPY request size Value",
+      "aws_aria_label": "PUT/ COPY request size Value",
+      "field_type": "NUMBER",
+      "default_value": null,
+      "unit_sibling": null,
+      "options": [],
+      "required": true,
+      "confidence": {
+        "label": 1,
+        "section": 0.8,
+        "overall": 0.88
+      },
+      "status": "OK",
+      "pattern_type": "P1_NUMBER",
+      "section": "gb per month",
+      "discovered_in_state": "S0"
+    },
+    {
+      "key": "get request size value",
+      "label_visible": "GET request size Value",
+      "aws_aria_label": "GET request size Value",
+      "field_type": "NUMBER",
+      "default_value": null,
+      "unit_sibling": null,
+      "options": [],
+      "required": true,
+      "confidence": {
+        "label": 1,
+        "section": 0.8,
+        "overall": 0.88
+      },
+      "status": "OK",
+      "pattern_type": "P1_NUMBER",
+      "section": "gb per month",
+      "discovered_in_state": "S0"
+    },
+    {
+      "key": "percentage of storage in int-frequent access tier",
+      "label_visible": "Percentage of Storage in INT-Frequent Access Tier",
+      "aws_aria_label": "Percentage of Storage in INT-Frequent Access Tier",
+      "field_type": "NUMBER",
+      "default_value": null,
+      "unit_sibling": null,
+      "options": [],
+      "required": true,
+      "confidence": {
+        "label": 1,
+        "section": 0.8,
+        "overall": 0.88
+      },
+      "status": "OK",
+      "pattern_type": "P1_NUMBER",
+      "section": "the specified amount of data is already stored in s3 standard",
+      "discovered_in_state": "S10"
+    },
+    {
+      "key": "percentage of storage in int-infrequent access tier (% of storage that hasn't been accessed in the last 30 days)",
+      "label_visible": "Percentage of Storage in INT-Infrequent Access Tier (% of storage that hasn't been accessed in the last 30 days)",
+      "aws_aria_label": "Percentage of Storage in INT-Infrequent Access Tier (% of storage that hasn't been accessed in the last 30 days)",
+      "field_type": "NUMBER",
+      "default_value": null,
+      "unit_sibling": null,
+      "options": [],
+      "required": true,
+      "confidence": {
+        "label": 1,
+        "section": 0.8,
+        "overall": 0.88
+      },
+      "status": "OK",
+      "pattern_type": "P1_NUMBER",
+      "section": "the specified amount of data is already stored in s3 standard",
+      "discovered_in_state": "S10"
+    },
+    {
+      "key": "percentage of storage in int-archive instant access tier (% of storage that hasn't been accessed in the last 90 days)",
+      "label_visible": "Percentage of Storage in INT-Archive Instant Access Tier (% of storage that hasn't been accessed in the last 90 days)",
+      "aws_aria_label": "Percentage of Storage in INT-Archive Instant Access Tier (% of storage that hasn't been accessed in the last 90 days)",
+      "field_type": "NUMBER",
+      "default_value": null,
+      "unit_sibling": null,
+      "options": [],
+      "required": true,
+      "confidence": {
+        "label": 1,
+        "section": 0.8,
+        "overall": 0.88
+      },
+      "status": "OK",
+      "pattern_type": "P1_NUMBER",
+      "section": "the specified amount of data is already stored in s3 standard",
+      "discovered_in_state": "S10"
+    },
+    {
+      "key": "percentage of storage in int-archive access tier (% of storage that hasn't been accessed for a minimum of 90 days)",
+      "label_visible": "Percentage of Storage in INT-Archive Access Tier (% of storage that hasn't been accessed for a minimum of 90 days)",
+      "aws_aria_label": "Percentage of Storage in INT-Archive Access Tier (% of storage that hasn't been accessed for a minimum of 90 days)",
+      "field_type": "NUMBER",
+      "default_value": null,
+      "unit_sibling": null,
+      "options": [],
+      "required": true,
+      "confidence": {
+        "label": 1,
+        "section": 0.8,
+        "overall": 0.88
+      },
+      "status": "OK",
+      "pattern_type": "P1_NUMBER",
+      "section": "the specified amount of data is already stored in s3 standard",
+      "discovered_in_state": "S10"
+    },
+    {
+      "key": "percentage of storage in int-deep archive access tier (% of storage that hasn't been accessed for a minimum of 180 days)",
+      "label_visible": "Percentage of Storage in INT-Deep Archive Access Tier (% of storage that hasn't been accessed for a minimum of 180 days)",
+      "aws_aria_label": "Percentage of Storage in INT-Deep Archive Access Tier (% of storage that hasn't been accessed for a minimum of 180 days)",
+      "field_type": "NUMBER",
+      "default_value": null,
+      "unit_sibling": null,
+      "options": [],
+      "required": true,
+      "confidence": {
+        "label": 1,
+        "section": 0.8,
+        "overall": 0.88
+      },
+      "status": "OK",
+      "pattern_type": "P1_NUMBER",
+      "section": "the specified amount of data is already stored in s3 standard",
+      "discovered_in_state": "S10"
+    },
+    {
+      "key": "put, copy, post, list requests to s3 int enter amount of requests",
+      "label_visible": "PUT, COPY, POST, LIST requests to S3 INT Enter amount of requests",
+      "aws_aria_label": "PUT, COPY, POST, LIST requests to S3 INT Enter amount of requests",
+      "field_type": "TEXT",
+      "default_value": null,
+      "unit_sibling": null,
+      "options": [],
+      "required": true,
+      "confidence": {
+        "label": 1,
+        "section": 0.8,
+        "overall": 0.68
+      },
+      "status": "REVIEW_REQUIRED",
+      "pattern_type": "UNKNOWN_PATTERN",
+      "review_note": "Low confidence score.",
+      "section": "the specified amount of data is already stored in s3 standard",
+      "discovered_in_state": "S10"
+    },
+    {
+      "key": "get, select, and all other requests from s3 int enter amount of requests",
+      "label_visible": "GET, SELECT, and all other requests from S3 INT Enter amount of requests",
+      "aws_aria_label": "GET, SELECT, and all other requests from S3 INT Enter amount of requests",
+      "field_type": "TEXT",
+      "default_value": null,
+      "unit_sibling": null,
+      "options": [],
+      "required": true,
+      "confidence": {
+        "label": 1,
+        "section": 0.8,
+        "overall": 0.68
+      },
+      "status": "REVIEW_REQUIRED",
+      "pattern_type": "UNKNOWN_PATTERN",
+      "review_note": "Low confidence score.",
+      "section": "the specified amount of data is already stored in s3 standard",
+      "discovered_in_state": "S10"
+    },
+    {
+      "key": "lifecycle transition requests enter amount of requests",
+      "label_visible": "Lifecycle Transition requests Enter amount of requests",
+      "aws_aria_label": "Lifecycle Transition requests Enter amount of requests",
+      "field_type": "TEXT",
+      "default_value": null,
+      "unit_sibling": null,
+      "options": [],
+      "required": true,
+      "confidence": {
+        "label": 1,
+        "section": 0.8,
+        "overall": 0.68
+      },
+      "status": "REVIEW_REQUIRED",
+      "pattern_type": "UNKNOWN_PATTERN",
+      "review_note": "Low confidence score.",
+      "section": "the specified amount of data is already stored in s3 standard",
+      "discovered_in_state": "S10"
+    },
+    {
+      "key": "unknown",
+      "label_visible": "UNKNOWN",
+      "aws_aria_label": "PUT, COPY, POST, LIST requests to S3 One Zone-IA Enter amount of requests",
+      "field_type": "TEXT",
+      "default_value": null,
+      "unit_sibling": null,
+      "options": [],
+      "required": true,
+      "confidence": {
+        "label": 0,
+        "section": 0.8,
+        "overall": 0.2
+      },
+      "status": "CONFLICT",
+      "pattern_type": "UNKNOWN_PATTERN",
+      "review_note": "Very low confidence score.",
+      "section": "the specified amount of data is already stored in s3 standard",
+      "discovered_in_state": "S10"
+    },
+    {
+      "key": "get, select, and all other requests from s3 one zone-ia enter amount of requests",
+      "label_visible": "GET, SELECT, and all other requests from S3 One Zone-IA Enter amount of requests",
+      "aws_aria_label": "GET, SELECT, and all other requests from S3 One Zone-IA Enter amount of requests",
+      "field_type": "TEXT",
+      "default_value": null,
+      "unit_sibling": null,
+      "options": [],
+      "required": true,
+      "confidence": {
+        "label": 1,
+        "section": 0.8,
+        "overall": 0.68
+      },
+      "status": "REVIEW_REQUIRED",
+      "pattern_type": "UNKNOWN_PATTERN",
+      "review_note": "Low confidence score.",
+      "section": "the specified amount of data is already stored in s3 standard",
+      "discovered_in_state": "S10"
+    },
+    {
+      "key": "put, copy, post, list requests to s3 glacier deep archive enter amount of requests",
+      "label_visible": "PUT, COPY, POST, LIST requests to S3 Glacier Deep Archive Enter amount of requests",
+      "aws_aria_label": "PUT, COPY, POST, LIST requests to S3 Glacier Deep Archive Enter amount of requests",
+      "field_type": "TEXT",
+      "default_value": null,
+      "unit_sibling": null,
+      "options": [],
+      "required": true,
+      "confidence": {
+        "label": 1,
+        "section": 0.8,
+        "overall": 0.68
+      },
+      "status": "REVIEW_REQUIRED",
+      "pattern_type": "UNKNOWN_PATTERN",
+      "review_note": "Low confidence score.",
+      "section": "the specified amount of data is already stored in s3 standard",
+      "discovered_in_state": "S10"
+    },
+    {
+      "key": "lifecycle transitions into s3 glacier deep archive enter amount of requests",
+      "label_visible": "Lifecycle Transitions into S3 Glacier Deep Archive Enter amount of requests",
+      "aws_aria_label": "Lifecycle Transitions into S3 Glacier Deep Archive Enter amount of requests",
+      "field_type": "TEXT",
+      "default_value": null,
+      "unit_sibling": null,
+      "options": [],
+      "required": true,
+      "confidence": {
+        "label": 1,
+        "section": 0.8,
+        "overall": 0.68
+      },
+      "status": "REVIEW_REQUIRED",
+      "pattern_type": "UNKNOWN_PATTERN",
+      "review_note": "Low confidence score.",
+      "section": "the specified amount of data is already stored in s3 standard",
+      "discovered_in_state": "S10"
+    },
+    {
+      "key": "restore requests (standard) enter amount of requests",
+      "label_visible": "Restore requests (Standard) Enter amount of requests",
+      "aws_aria_label": "Restore requests (Standard) Enter amount of requests",
+      "field_type": "TEXT",
+      "default_value": null,
+      "unit_sibling": null,
+      "options": [],
+      "required": true,
+      "confidence": {
+        "label": 1,
+        "section": 0.8,
+        "overall": 0.68
+      },
+      "status": "REVIEW_REQUIRED",
+      "pattern_type": "UNKNOWN_PATTERN",
+      "review_note": "Low confidence score.",
+      "section": "the specified amount of data is already stored in s3 standard",
+      "discovered_in_state": "S10"
+    },
+    {
+      "key": "restore requests (bulk) enter amount of requests",
+      "label_visible": "Restore requests (Bulk) Enter amount of requests",
+      "aws_aria_label": "Restore requests (Bulk) Enter amount of requests",
+      "field_type": "TEXT",
+      "default_value": null,
+      "unit_sibling": null,
+      "options": [],
+      "required": true,
+      "confidence": {
+        "label": 1,
+        "section": 0.8,
+        "overall": 0.68
+      },
+      "status": "REVIEW_REQUIRED",
+      "pattern_type": "UNKNOWN_PATTERN",
+      "review_note": "Low confidence score.",
+      "section": "the specified amount of data is already stored in s3 standard",
+      "discovered_in_state": "S10"
+    },
+    {
+      "key": "unknown",
+      "label_visible": "UNKNOWN",
+      "aws_aria_label": "PUT, COPY, POST, LIST requests to S3 Glacier Instant Retrieval Enter amount of requests",
+      "field_type": "TEXT",
+      "default_value": null,
+      "unit_sibling": null,
+      "options": [],
+      "required": true,
+      "confidence": {
+        "label": 0,
+        "section": 0.8,
+        "overall": 0.2
+      },
+      "status": "CONFLICT",
+      "pattern_type": "UNKNOWN_PATTERN",
+      "review_note": "Very low confidence score.",
+      "section": "the specified amount of data is already stored in s3 standard",
+      "discovered_in_state": "S10"
+    },
+    {
+      "key": "get, select, and all other requests from s3 glacier instant retrieval enter amount of requests",
+      "label_visible": "GET, SELECT, and all other requests from S3 Glacier Instant Retrieval Enter amount of requests",
+      "aws_aria_label": "GET, SELECT, and all other requests from S3 Glacier Instant Retrieval Enter amount of requests",
+      "field_type": "TEXT",
+      "default_value": null,
+      "unit_sibling": null,
+      "options": [],
+      "required": true,
+      "confidence": {
+        "label": 1,
+        "section": 0.8,
+        "overall": 0.68
+      },
+      "status": "REVIEW_REQUIRED",
+      "pattern_type": "UNKNOWN_PATTERN",
+      "review_note": "Low confidence score.",
+      "section": "the specified amount of data is already stored in s3 standard",
+      "discovered_in_state": "S10"
+    }
+  ],
+  "exploration_meta": {
+    "activated_toggles": [
+      "s3 standard",
+      "s3 intelligent - tiering",
+      "s3 standard - infrequent access",
+      "s3 one zone - infrequent access",
+      "s3 glacier flexible retrieval",
+      "s3 glacier deep archive",
+      "s3 management and insights",
+      "s3 glacier instant retrieval",
+      "s3 express one zone",
+      "s3 intelligent - tiering",
+      "s3 one zone - infrequent access",
+      "s3 glacier deep archive",
+      "s3 glacier instant retrieval",
+      "s3 express one zone",
+      "s3 one zone - infrequent access",
+      "s3 glacier deep archive",
+      "s3 glacier instant retrieval",
+      "s3 express one zone",
+      "s3 intelligent - tiering",
+      "s3 one zone - infrequent access",
+      "s3 glacier deep archive",
+      "s3 glacier instant retrieval",
+      "s3 express one zone",
+      "s3 glacier deep archive",
+      "s3 glacier instant retrieval",
+      "s3 express one zone",
+      "s3 intelligent - tiering",
+      "s3 one zone - infrequent access",
+      "s3 glacier deep archive"
+    ],
+    "exploration_states": [
+      {
+        "state_id": "S0",
+        "entered_via": {
+          "gate_control": null,
+          "action": null,
+          "from_state": null
+        },
+        "fingerprint": "gb per month|s3 standard storage value|NUMBER|input[aria-label='S3 Standard storage Value']||gb per month|unknown|NUMBER|input[aria-label='Data returned by S3 Select Value']||gb per month|unknown|NUMBER|input[aria-label='Data scanned by S3 Select Value']||s3 standard info:|description - optional|TEXT|input[aria-label='Description - optional']",
+        "sequence": []
+      },
+      {
+        "state_id": "S1",
+        "entered_via": {
+          "gate_control": "s3 standard",
+          "action": "click",
+          "from_state": "S0"
+        },
+        "fingerprint": "s3 standard info:|unknown|TEXT|input[aria-label='Description - optional']",
+        "sequence": [
+          {
+            "control": {
+              "key": "s3 standard",
+              "aws_aria_label": "s3 standard",
+              "gate_type": "TOGGLE",
+              "default_state": true,
+              "availability": "visible",
+              "sections_gated": [],
+              "css_selector": "input[id='1317-1772201776281-977']",
+              "options": []
+            },
+            "action": "click",
+            "value": null
+          }
+        ]
+      },
+      {
+        "state_id": "S2",
+        "entered_via": {
+          "gate_control": "s3 intelligent - tiering",
+          "action": "click",
+          "from_state": "S0"
+        },
+        "fingerprint": "gb per month|data returned by s3 select value|NUMBER|input[aria-label='Data returned by S3 Select Value']||gb per month|data scanned by s3 select value|NUMBER|input[aria-label='Data scanned by S3 Select Value']||gb per month|s3 int average object size value|NUMBER|input[aria-label='S3 INT Average Object Size Value']||gb per month|s3 int storage value|NUMBER|input[aria-label='S3 INT storage Value']||gb per month|unknown|NUMBER|input[aria-label='S3 Standard storage Value']||s3 standard info:|get, select, and all other requests from s3 standard enter amount of requests|TEXT|input[aria-label='GET, SELECT, and all other requests from S3 Standard Enter amount of requests']||s3 standard info:|put, copy, post, list requests to s3 standard enter amount of requests|TEXT|input[aria-label='PUT, COPY, POST, LIST requests to S3 Standard Enter amount of requests']",
+        "sequence": [
+          {
+            "control": {
+              "key": "s3 intelligent - tiering",
+              "aws_aria_label": "s3 intelligent - tiering",
+              "gate_type": "TOGGLE",
+              "default_state": false,
+              "availability": "visible",
+              "sections_gated": [],
+              "css_selector": "input[id='1318-1772201776281-7941']",
+              "options": []
+            },
+            "action": "click",
+            "value": null
+          }
+        ]
+      },
+      {
+        "state_id": "S3",
+        "entered_via": {
+          "gate_control": "s3 standard - infrequent access",
+          "action": "click",
+          "from_state": "S0"
+        },
+        "fingerprint": "gb per month|data retrievals value|NUMBER|input[aria-label='Data retrievals Value']||gb per month|data returned by s3 select value|NUMBER|input[aria-label='Data returned by S3 Select Value']||gb per month|data scanned by s3 select value|NUMBER|input[aria-label='Data scanned by S3 Select Value']||gb per month|s3 standard-ia storage value|NUMBER|input[aria-label='S3 Standard-IA storage Value']||gb per month|unknown|NUMBER|input[aria-label='S3 Standard storage Value']||s3 standard info:|get, select, and all other requests from s3 standard enter amount of requests|TEXT|input[aria-label='GET, SELECT, and all other requests from S3 Standard Enter amount of requests']||s3 standard info:|put, copy, post, list requests to s3 standard enter amount of requests|TEXT|input[aria-label='PUT, COPY, POST, LIST requests to S3 Standard Enter amount of requests']",
+        "sequence": [
+          {
+            "control": {
+              "key": "s3 standard - infrequent access",
+              "aws_aria_label": "s3 standard - infrequent access",
+              "gate_type": "TOGGLE",
+              "default_state": false,
+              "availability": "visible",
+              "sections_gated": [],
+              "css_selector": "input[id='1319-1772201776281-4582']",
+              "options": []
+            },
+            "action": "click",
+            "value": null
+          }
+        ]
+      },
+      {
+        "state_id": "S4",
+        "entered_via": {
+          "gate_control": "s3 one zone - infrequent access",
+          "action": "click",
+          "from_state": "S0"
+        },
+        "fingerprint": "gb per month|data retrievals value|NUMBER|input[aria-label='Data Retrievals Value']||gb per month|data returned by s3 select value|NUMBER|input[aria-label='Data returned by S3 Select Value']||gb per month|data scanned by s3 select value|NUMBER|input[aria-label='Data scanned by S3 Select Value']||gb per month|s3 one zone-ia storage value|NUMBER|input[aria-label='S3 One Zone-IA storage Value']||gb per month|unknown|NUMBER|input[aria-label='S3 Standard storage Value']||s3 standard info:|get, select, and all other requests from s3 standard enter amount of requests|TEXT|input[aria-label='GET, SELECT, and all other requests from S3 Standard Enter amount of requests']||s3 standard info:|put, copy, post, list requests to s3 standard enter amount of requests|TEXT|input[aria-label='PUT, COPY, POST, LIST requests to S3 Standard Enter amount of requests']",
+        "sequence": [
+          {
+            "control": {
+              "key": "s3 one zone - infrequent access",
+              "aws_aria_label": "s3 one zone - infrequent access",
+              "gate_type": "TOGGLE",
+              "default_state": false,
+              "availability": "visible",
+              "sections_gated": [],
+              "css_selector": "input[id='1320-1772201776281-7097']",
+              "options": []
+            },
+            "action": "click",
+            "value": null
+          }
+        ]
+      },
+      {
+        "state_id": "S5",
+        "entered_via": {
+          "gate_control": "s3 glacier flexible retrieval",
+          "action": "click",
+          "from_state": "S0"
+        },
+        "fingerprint": "gb per month|data retrievals (bulk) value|NUMBER|input[aria-label='Data retrievals (Bulk) Value']||gb per month|data retrievals (expedited) value|NUMBER|input[aria-label='Data retrievals (Expedited) Value']||gb per month|data retrievals (standard) value|NUMBER|input[aria-label='Data retrievals (Standard) Value']||gb per month|data returned by s3 select value|NUMBER|input[aria-label='Data returned by S3 Select Value']||gb per month|data scanned by s3 select value|NUMBER|input[aria-label='Data scanned by S3 Select Value']||gb per month|s3 glacier flexible retrieval average object size value|NUMBER|input[aria-label='S3 Glacier Flexible Retrieval Average Object Size Value']||gb per month|s3 glacier flexible retrieval storage value|NUMBER|input[aria-label='S3 Glacier Flexible Retrieval storage Value']||gb per month|unknown|NUMBER|input[aria-label='S3 Standard storage Value']||s3 standard info:|get, select, and all other requests from s3 standard enter amount of requests|TEXT|input[aria-label='GET, SELECT, and all other requests from S3 Standard Enter amount of requests']||s3 standard info:|put, copy, post, list requests to s3 standard enter amount of requests|TEXT|input[aria-label='PUT, COPY, POST, LIST requests to S3 Standard Enter amount of requests']",
+        "sequence": [
+          {
+            "control": {
+              "key": "s3 glacier flexible retrieval",
+              "aws_aria_label": "s3 glacier flexible retrieval",
+              "gate_type": "TOGGLE",
+              "default_state": false,
+              "availability": "visible",
+              "sections_gated": [],
+              "css_selector": "input[id='1321-1772201776281-1705']",
+              "options": []
+            },
+            "action": "click",
+            "value": null
+          }
+        ]
+      },
+      {
+        "state_id": "S6",
+        "entered_via": {
+          "gate_control": "s3 glacier deep archive",
+          "action": "click",
+          "from_state": "S0"
+        },
+        "fingerprint": "gb per month|data retrievals (bulk) value|NUMBER|input[aria-label='Data retrievals (Bulk) Value']||gb per month|data retrievals (standard) value|NUMBER|input[aria-label='Data retrievals (Standard) Value']||gb per month|data returned by s3 select value|NUMBER|input[aria-label='Data returned by S3 Select Value']||gb per month|data scanned by s3 select value|NUMBER|input[aria-label='Data scanned by S3 Select Value']||gb per month|s3 glacier deep archive average object size value|NUMBER|input[aria-label='S3 Glacier Deep Archive Average Object Size Value']||gb per month|s3 glacier deep archive storage value|NUMBER|input[aria-label='S3 Glacier Deep Archive storage Value']||gb per month|unknown|NUMBER|input[aria-label='S3 Standard storage Value']||s3 standard info:|get, select, and all other requests from s3 standard enter amount of requests|TEXT|input[aria-label='GET, SELECT, and all other requests from S3 Standard Enter amount of requests']||s3 standard info:|put, copy, post, list requests to s3 standard enter amount of requests|TEXT|input[aria-label='PUT, COPY, POST, LIST requests to S3 Standard Enter amount of requests']",
+        "sequence": [
+          {
+            "control": {
+              "key": "s3 glacier deep archive",
+              "aws_aria_label": "s3 glacier deep archive",
+              "gate_type": "TOGGLE",
+              "default_state": false,
+              "availability": "visible",
+              "sections_gated": [],
+              "css_selector": "input[id='1322-1772201776281-7180']",
+              "options": []
+            },
+            "action": "click",
+            "value": null
+          }
+        ]
+      },
+      {
+        "state_id": "S7",
+        "entered_via": {
+          "gate_control": "s3 management and insights",
+          "action": "click",
+          "from_state": "S0"
+        },
+        "fingerprint": "gb per month|data returned by s3 select value|NUMBER|input[aria-label='Data returned by S3 Select Value']||gb per month|data scanned by s3 select value|NUMBER|input[aria-label='Data scanned by S3 Select Value']||gb per month|unknown|NUMBER|input[aria-label='S3 Standard storage Value']||s3 standard info:|get, select, and all other requests from s3 standard enter amount of requests|TEXT|input[aria-label='GET, SELECT, and all other requests from S3 Standard Enter amount of requests']||s3 standard info:|put, copy, post, list requests to s3 standard enter amount of requests|TEXT|input[aria-label='PUT, COPY, POST, LIST requests to S3 Standard Enter amount of requests']",
+        "sequence": [
+          {
+            "control": {
+              "key": "s3 management and insights",
+              "aws_aria_label": "s3 management and insights",
+              "gate_type": "TOGGLE",
+              "default_state": false,
+              "availability": "visible",
+              "sections_gated": [],
+              "css_selector": "input[id='1323-1772201776281-5994']",
+              "options": []
+            },
+            "action": "click",
+            "value": null
+          }
+        ]
+      },
+      {
+        "state_id": "S8",
+        "entered_via": {
+          "gate_control": "s3 glacier instant retrieval",
+          "action": "click",
+          "from_state": "S0"
+        },
+        "fingerprint": "gb per month|data retrievals value|NUMBER|input[aria-label='Data Retrievals Value']||gb per month|data returned by s3 select value|NUMBER|input[aria-label='Data returned by S3 Select Value']||gb per month|data scanned by s3 select value|NUMBER|input[aria-label='Data scanned by S3 Select Value']||gb per month|s3 glacier instant retrieval storage value|NUMBER|input[aria-label='S3 Glacier Instant Retrieval storage Value']||gb per month|unknown|NUMBER|input[aria-label='S3 Standard storage Value']||s3 standard info:|get, select, and all other requests from s3 standard enter amount of requests|TEXT|input[aria-label='GET, SELECT, and all other requests from S3 Standard Enter amount of requests']||s3 standard info:|put, copy, post, list requests to s3 standard enter amount of requests|TEXT|input[aria-label='PUT, COPY, POST, LIST requests to S3 Standard Enter amount of requests']",
+        "sequence": [
+          {
+            "control": {
+              "key": "s3 glacier instant retrieval",
+              "aws_aria_label": "s3 glacier instant retrieval",
+              "gate_type": "TOGGLE",
+              "default_state": false,
+              "availability": "visible",
+              "sections_gated": [],
+              "css_selector": "input[id='1326-1772201776281-1280']",
+              "options": []
+            },
+            "action": "click",
+            "value": null
+          }
+        ]
+      },
+      {
+        "state_id": "S9",
+        "entered_via": {
+          "gate_control": "s3 express one zone",
+          "action": "click",
+          "from_state": "S0"
+        },
+        "fingerprint": "gb per month|data returned by s3 select value|NUMBER|input[aria-label='Data returned by S3 Select Value']||gb per month|data scanned by s3 select value|NUMBER|input[aria-label='Data scanned by S3 Select Value']||gb per month|get and all other requests from s3 express one zone enter amount of requests|TEXT|input[aria-label='GET and all other requests from S3 Express One Zone Enter amount of requests']||gb per month|get request size value|NUMBER|input[aria-label='GET request size Value']||gb per month|put, copy, post, list, rename requests to s3 express one zone enter amount of requests|TEXT|input[aria-label='PUT, COPY, POST, LIST, RENAME requests to S3 Express One Zone Enter amount of requests']||gb per month|put/ copy request size value|NUMBER|input[aria-label='PUT/ COPY request size Value']||gb per month|s3 express one zone storage value|NUMBER|input[aria-label='S3 Express One Zone storage Value']||gb per month|unknown|NUMBER|input[aria-label='S3 Standard storage Value']||s3 standard info:|get, select, and all other requests from s3 standard enter amount of requests|TEXT|input[aria-label='GET, SELECT, and all other requests from S3 Standard Enter amount of requests']||s3 standard info:|put, copy, post, list requests to s3 standard enter amount of requests|TEXT|input[aria-label='PUT, COPY, POST, LIST requests to S3 Standard Enter amount of requests']",
+        "sequence": [
+          {
+            "control": {
+              "key": "s3 express one zone",
+              "aws_aria_label": "s3 express one zone",
+              "gate_type": "TOGGLE",
+              "default_state": false,
+              "availability": "visible",
+              "sections_gated": [],
+              "css_selector": "input[id='1328-1772201776281-738']",
+              "options": []
+            },
+            "action": "click",
+            "value": null
+          }
+        ]
+      },
+      {
+        "state_id": "S10",
+        "entered_via": {
+          "gate_control": "s3 intelligent - tiering",
+          "action": "click",
+          "from_state": "S1"
+        },
+        "fingerprint": "gb per month|data returned by s3 select value|NUMBER|input[aria-label='Data returned by S3 Select Value']||gb per month|data scanned by s3 select value|NUMBER|input[aria-label='Data scanned by S3 Select Value']||gb per month|s3 int average object size value|NUMBER|input[aria-label='S3 INT Average Object Size Value']||gb per month|unknown|NUMBER|input[aria-label='S3 INT storage Value']||s3 standard info:|unknown|TEXT|input[aria-label='Description - optional']||the specified amount of data is already stored in s3 standard|get, select, and all other requests from s3 int enter amount of requests|TEXT|input[aria-label='GET, SELECT, and all other requests from S3 INT Enter amount of requests']||the specified amount of data is already stored in s3 standard|lifecycle transition requests enter amount of requests|TEXT|input[aria-label='Lifecycle Transition requests Enter amount of requests']||the specified amount of data is already stored in s3 standard|percentage of storage in int-archive access tier (% of storage that hasn't been accessed for a minimum of 90 days)|NUMBER|input[aria-label='Percentage of Storage in INT-Archive Access Tier (% of storage that hasn\\'t been accessed for a minimum of 90 days)']||the specified amount of data is already stored in s3 standard|percentage of storage in int-archive instant access tier (% of storage that hasn't been accessed in the last 90 days)|NUMBER|input[aria-label='Percentage of Storage in INT-Archive Instant Access Tier (% of storage that hasn\\'t been accessed in the last 90 days)']||the specified amount of data is already stored in s3 standard|percentage of storage in int-deep archive access tier (% of storage that hasn't been accessed for a minimum of 180 days)|NUMBER|input[aria-label='Percentage of Storage in INT-Deep Archive Access Tier (% of storage that hasn\\'t been accessed for a minimum of 180 days)']||the specified amount of data is already stored in s3 standard|percentage of storage in int-frequent access tier|NUMBER|input[aria-label='Percentage of Storage in INT-Frequent Access Tier']||the specified amount of data is already stored in s3 standard|percentage of storage in int-infrequent access tier (% of storage that hasn't been accessed in the last 30 days)|NUMBER|input[aria-label='Percentage of Storage in INT-Infrequent Access Tier (% of storage that hasn\\'t been accessed in the last 30 days)']||the specified amount of data is already stored in s3 standard|put, copy, post, list requests to s3 int enter amount of requests|TEXT|input[aria-label='PUT, COPY, POST, LIST requests to S3 INT Enter amount of requests']",
+        "sequence": [
+          {
+            "control": {
+              "key": "s3 standard",
+              "aws_aria_label": "s3 standard",
+              "gate_type": "TOGGLE",
+              "default_state": true,
+              "availability": "visible",
+              "sections_gated": [],
+              "css_selector": "input[id='1317-1772201776281-977']",
+              "options": []
+            },
+            "action": "click",
+            "value": null
+          },
+          {
+            "control": {
+              "key": "s3 intelligent - tiering",
+              "aws_aria_label": "s3 intelligent - tiering",
+              "gate_type": "TOGGLE",
+              "default_state": false,
+              "availability": "visible",
+              "sections_gated": [],
+              "css_selector": "input[id='1318-1772201776281-7941']",
+              "options": []
+            },
+            "action": "click",
+            "value": null
+          }
+        ]
+      },
+      {
+        "state_id": "S11",
+        "entered_via": {
+          "gate_control": "s3 one zone - infrequent access",
+          "action": "click",
+          "from_state": "S1"
+        },
+        "fingerprint": "gb per month|data retrievals value|NUMBER|input[aria-label='Data Retrievals Value']||gb per month|data returned by s3 select value|NUMBER|input[aria-label='Data returned by S3 Select Value']||gb per month|data scanned by s3 select value|NUMBER|input[aria-label='Data scanned by S3 Select Value']||gb per month|unknown|NUMBER|input[aria-label='S3 One Zone-IA storage Value']||s3 standard info:|unknown|TEXT|input[aria-label='Description - optional']||the specified amount of data is already stored in s3 standard|get, select, and all other requests from s3 one zone-ia enter amount of requests|TEXT|input[aria-label='GET, SELECT, and all other requests from S3 One Zone-IA Enter amount of requests']||the specified amount of data is already stored in s3 standard|lifecycle transition requests enter amount of requests|TEXT|input[aria-label='Lifecycle Transition requests Enter amount of requests']||the specified amount of data is already stored in s3 standard|unknown|TEXT|input[aria-label='PUT, COPY, POST, LIST requests to S3 One Zone-IA Enter amount of requests']",
+        "sequence": [
+          {
+            "control": {
+              "key": "s3 standard",
+              "aws_aria_label": "s3 standard",
+              "gate_type": "TOGGLE",
+              "default_state": true,
+              "availability": "visible",
+              "sections_gated": [],
+              "css_selector": "input[id='1317-1772201776281-977']",
+              "options": []
+            },
+            "action": "click",
+            "value": null
+          },
+          {
+            "control": {
+              "key": "s3 one zone - infrequent access",
+              "aws_aria_label": "s3 one zone - infrequent access",
+              "gate_type": "TOGGLE",
+              "default_state": false,
+              "availability": "visible",
+              "sections_gated": [],
+              "css_selector": "input[id='1320-1772201776281-7097']",
+              "options": []
+            },
+            "action": "click",
+            "value": null
+          }
+        ]
+      },
+      {
+        "state_id": "S12",
+        "entered_via": {
+          "gate_control": "s3 glacier deep archive",
+          "action": "click",
+          "from_state": "S1"
+        },
+        "fingerprint": "gb per month|data retrievals (bulk) value|NUMBER|input[aria-label='Data retrievals (Bulk) Value']||gb per month|data retrievals (standard) value|NUMBER|input[aria-label='Data retrievals (Standard) Value']||gb per month|unknown|NUMBER|input[aria-label='S3 Glacier Deep Archive Average Object Size Value']||gb per month|unknown|NUMBER|input[aria-label='S3 Glacier Deep Archive storage Value']||s3 standard info:|unknown|TEXT|input[aria-label='Description - optional']||the specified amount of data is already stored in s3 standard|lifecycle transitions into s3 glacier deep archive enter amount of requests|TEXT|input[aria-label='Lifecycle Transitions into S3 Glacier Deep Archive Enter amount of requests']||the specified amount of data is already stored in s3 standard|put, copy, post, list requests to s3 glacier deep archive enter amount of requests|TEXT|input[aria-label='PUT, COPY, POST, LIST requests to S3 Glacier Deep Archive Enter amount of requests']||the specified amount of data is already stored in s3 standard|restore requests (bulk) enter amount of requests|TEXT|input[aria-label='Restore requests (Bulk) Enter amount of requests']||the specified amount of data is already stored in s3 standard|restore requests (standard) enter amount of requests|TEXT|input[aria-label='Restore requests (Standard) Enter amount of requests']",
+        "sequence": [
+          {
+            "control": {
+              "key": "s3 standard",
+              "aws_aria_label": "s3 standard",
+              "gate_type": "TOGGLE",
+              "default_state": true,
+              "availability": "visible",
+              "sections_gated": [],
+              "css_selector": "input[id='1317-1772201776281-977']",
+              "options": []
+            },
+            "action": "click",
+            "value": null
+          },
+          {
+            "control": {
+              "key": "s3 glacier deep archive",
+              "aws_aria_label": "s3 glacier deep archive",
+              "gate_type": "TOGGLE",
+              "default_state": false,
+              "availability": "visible",
+              "sections_gated": [],
+              "css_selector": "input[id='1322-1772201776281-7180']",
+              "options": []
+            },
+            "action": "click",
+            "value": null
+          }
+        ]
+      },
+      {
+        "state_id": "S13",
+        "entered_via": {
+          "gate_control": "s3 glacier instant retrieval",
+          "action": "click",
+          "from_state": "S1"
+        },
+        "fingerprint": "gb per month|data retrievals value|NUMBER|input[aria-label='Data Retrievals Value']||gb per month|data returned by s3 select value|NUMBER|input[aria-label='Data returned by S3 Select Value']||gb per month|data scanned by s3 select value|NUMBER|input[aria-label='Data scanned by S3 Select Value']||gb per month|unknown|NUMBER|input[aria-label='S3 Glacier Instant Retrieval storage Value']||s3 standard info:|unknown|TEXT|input[aria-label='Description - optional']||the specified amount of data is already stored in s3 standard|get, select, and all other requests from s3 glacier instant retrieval enter amount of requests|TEXT|input[aria-label='GET, SELECT, and all other requests from S3 Glacier Instant Retrieval Enter amount of requests']||the specified amount of data is already stored in s3 standard|lifecycle transition requests enter amount of requests|TEXT|input[aria-label='Lifecycle Transition requests Enter amount of requests']||the specified amount of data is already stored in s3 standard|unknown|TEXT|input[aria-label='PUT, COPY, POST, LIST requests to S3 Glacier Instant Retrieval Enter amount of requests']",
+        "sequence": [
+          {
+            "control": {
+              "key": "s3 standard",
+              "aws_aria_label": "s3 standard",
+              "gate_type": "TOGGLE",
+              "default_state": true,
+              "availability": "visible",
+              "sections_gated": [],
+              "css_selector": "input[id='1317-1772201776281-977']",
+              "options": []
+            },
+            "action": "click",
+            "value": null
+          },
+          {
+            "control": {
+              "key": "s3 glacier instant retrieval",
+              "aws_aria_label": "s3 glacier instant retrieval",
+              "gate_type": "TOGGLE",
+              "default_state": false,
+              "availability": "visible",
+              "sections_gated": [],
+              "css_selector": "input[id='1326-1772201776281-1280']",
+              "options": []
+            },
+            "action": "click",
+            "value": null
+          }
+        ]
+      },
+      {
+        "state_id": "S14",
+        "entered_via": {
+          "gate_control": "s3 express one zone",
+          "action": "click",
+          "from_state": "S1"
+        },
+        "fingerprint": "gb per month|get and all other requests from s3 express one zone enter amount of requests|TEXT|input[aria-label='GET and all other requests from S3 Express One Zone Enter amount of requests']||gb per month|get request size value|NUMBER|input[aria-label='GET request size Value']||gb per month|put, copy, post, list, rename requests to s3 express one zone enter amount of requests|TEXT|input[aria-label='PUT, COPY, POST, LIST, RENAME requests to S3 Express One Zone Enter amount of requests']||gb per month|put/ copy request size value|NUMBER|input[aria-label='PUT/ COPY request size Value']||gb per month|s3 express one zone storage value|NUMBER|input[aria-label='S3 Express One Zone storage Value']||s3 standard info:|unknown|TEXT|input[aria-label='Description - optional']",
+        "sequence": [
+          {
+            "control": {
+              "key": "s3 standard",
+              "aws_aria_label": "s3 standard",
+              "gate_type": "TOGGLE",
+              "default_state": true,
+              "availability": "visible",
+              "sections_gated": [],
+              "css_selector": "input[id='1317-1772201776281-977']",
+              "options": []
+            },
+            "action": "click",
+            "value": null
+          },
+          {
+            "control": {
+              "key": "s3 express one zone",
+              "aws_aria_label": "s3 express one zone",
+              "gate_type": "TOGGLE",
+              "default_state": false,
+              "availability": "visible",
+              "sections_gated": [],
+              "css_selector": "input[id='1328-1772201776281-738']",
+              "options": []
+            },
+            "action": "click",
+            "value": null
+          }
+        ]
+      },
+      {
+        "state_id": "S15",
+        "entered_via": {
+          "gate_control": "s3 one zone - infrequent access",
+          "action": "click",
+          "from_state": "S2"
+        },
+        "fingerprint": "gb per month|data retrievals value|NUMBER|input[aria-label='Data Retrievals Value']||gb per month|data returned by s3 select value|NUMBER|input[aria-label='Data returned by S3 Select Value']||gb per month|data scanned by s3 select value|NUMBER|input[aria-label='Data scanned by S3 Select Value']||gb per month|s3 int average object size value|NUMBER|input[aria-label='S3 INT Average Object Size Value']||gb per month|s3 int storage value|NUMBER|input[aria-label='S3 INT storage Value']||gb per month|s3 one zone-ia storage value|NUMBER|input[aria-label='S3 One Zone-IA storage Value']||gb per month|unknown|NUMBER|input[aria-label='S3 Standard storage Value']||s3 standard info:|get, select, and all other requests from s3 standard enter amount of requests|TEXT|input[aria-label='GET, SELECT, and all other requests from S3 Standard Enter amount of requests']||s3 standard info:|put, copy, post, list requests to s3 standard enter amount of requests|TEXT|input[aria-label='PUT, COPY, POST, LIST requests to S3 Standard Enter amount of requests']",
+        "sequence": [
+          {
+            "control": {
+              "key": "s3 intelligent - tiering",
+              "aws_aria_label": "s3 intelligent - tiering",
+              "gate_type": "TOGGLE",
+              "default_state": false,
+              "availability": "visible",
+              "sections_gated": [],
+              "css_selector": "input[id='1318-1772201776281-7941']",
+              "options": []
+            },
+            "action": "click",
+            "value": null
+          },
+          {
+            "control": {
+              "key": "s3 one zone - infrequent access",
+              "aws_aria_label": "s3 one zone - infrequent access",
+              "gate_type": "TOGGLE",
+              "default_state": false,
+              "availability": "visible",
+              "sections_gated": [],
+              "css_selector": "input[id='1320-1772201776281-7097']",
+              "options": []
+            },
+            "action": "click",
+            "value": null
+          }
+        ]
+      },
+      {
+        "state_id": "S16",
+        "entered_via": {
+          "gate_control": "s3 glacier deep archive",
+          "action": "click",
+          "from_state": "S2"
+        },
+        "fingerprint": "gb per month|data retrievals (bulk) value|NUMBER|input[aria-label='Data retrievals (Bulk) Value']||gb per month|data retrievals (standard) value|NUMBER|input[aria-label='Data retrievals (Standard) Value']||gb per month|data returned by s3 select value|NUMBER|input[aria-label='Data returned by S3 Select Value']||gb per month|data scanned by s3 select value|NUMBER|input[aria-label='Data scanned by S3 Select Value']||gb per month|s3 glacier deep archive average object size value|NUMBER|input[aria-label='S3 Glacier Deep Archive Average Object Size Value']||gb per month|s3 glacier deep archive storage value|NUMBER|input[aria-label='S3 Glacier Deep Archive storage Value']||gb per month|s3 int average object size value|NUMBER|input[aria-label='S3 INT Average Object Size Value']||gb per month|s3 int storage value|NUMBER|input[aria-label='S3 INT storage Value']||gb per month|unknown|NUMBER|input[aria-label='S3 Standard storage Value']||s3 standard info:|get, select, and all other requests from s3 standard enter amount of requests|TEXT|input[aria-label='GET, SELECT, and all other requests from S3 Standard Enter amount of requests']||s3 standard info:|put, copy, post, list requests to s3 standard enter amount of requests|TEXT|input[aria-label='PUT, COPY, POST, LIST requests to S3 Standard Enter amount of requests']",
+        "sequence": [
+          {
+            "control": {
+              "key": "s3 intelligent - tiering",
+              "aws_aria_label": "s3 intelligent - tiering",
+              "gate_type": "TOGGLE",
+              "default_state": false,
+              "availability": "visible",
+              "sections_gated": [],
+              "css_selector": "input[id='1318-1772201776281-7941']",
+              "options": []
+            },
+            "action": "click",
+            "value": null
+          },
+          {
+            "control": {
+              "key": "s3 glacier deep archive",
+              "aws_aria_label": "s3 glacier deep archive",
+              "gate_type": "TOGGLE",
+              "default_state": false,
+              "availability": "visible",
+              "sections_gated": [],
+              "css_selector": "input[id='1322-1772201776281-7180']",
+              "options": []
+            },
+            "action": "click",
+            "value": null
+          }
+        ]
+      },
+      {
+        "state_id": "S17",
+        "entered_via": {
+          "gate_control": "s3 glacier instant retrieval",
+          "action": "click",
+          "from_state": "S2"
+        },
+        "fingerprint": "gb per month|data retrievals value|NUMBER|input[aria-label='Data Retrievals Value']||gb per month|data returned by s3 select value|NUMBER|input[aria-label='Data returned by S3 Select Value']||gb per month|data scanned by s3 select value|NUMBER|input[aria-label='Data scanned by S3 Select Value']||gb per month|s3 glacier instant retrieval storage value|NUMBER|input[aria-label='S3 Glacier Instant Retrieval storage Value']||gb per month|s3 int average object size value|NUMBER|input[aria-label='S3 INT Average Object Size Value']||gb per month|s3 int storage value|NUMBER|input[aria-label='S3 INT storage Value']||gb per month|unknown|NUMBER|input[aria-label='S3 Standard storage Value']||s3 standard info:|get, select, and all other requests from s3 standard enter amount of requests|TEXT|input[aria-label='GET, SELECT, and all other requests from S3 Standard Enter amount of requests']||s3 standard info:|put, copy, post, list requests to s3 standard enter amount of requests|TEXT|input[aria-label='PUT, COPY, POST, LIST requests to S3 Standard Enter amount of requests']",
+        "sequence": [
+          {
+            "control": {
+              "key": "s3 intelligent - tiering",
+              "aws_aria_label": "s3 intelligent - tiering",
+              "gate_type": "TOGGLE",
+              "default_state": false,
+              "availability": "visible",
+              "sections_gated": [],
+              "css_selector": "input[id='1318-1772201776281-7941']",
+              "options": []
+            },
+            "action": "click",
+            "value": null
+          },
+          {
+            "control": {
+              "key": "s3 glacier instant retrieval",
+              "aws_aria_label": "s3 glacier instant retrieval",
+              "gate_type": "TOGGLE",
+              "default_state": false,
+              "availability": "visible",
+              "sections_gated": [],
+              "css_selector": "input[id='1326-1772201776281-1280']",
+              "options": []
+            },
+            "action": "click",
+            "value": null
+          }
+        ]
+      },
+      {
+        "state_id": "S18",
+        "entered_via": {
+          "gate_control": "s3 express one zone",
+          "action": "click",
+          "from_state": "S2"
+        },
+        "fingerprint": "gb per month|data returned by s3 select value|NUMBER|input[aria-label='Data returned by S3 Select Value']||gb per month|data scanned by s3 select value|NUMBER|input[aria-label='Data scanned by S3 Select Value']||gb per month|get and all other requests from s3 express one zone enter amount of requests|TEXT|input[aria-label='GET and all other requests from S3 Express One Zone Enter amount of requests']||gb per month|get request size value|NUMBER|input[aria-label='GET request size Value']||gb per month|put, copy, post, list, rename requests to s3 express one zone enter amount of requests|TEXT|input[aria-label='PUT, COPY, POST, LIST, RENAME requests to S3 Express One Zone Enter amount of requests']||gb per month|put/ copy request size value|NUMBER|input[aria-label='PUT/ COPY request size Value']||gb per month|s3 express one zone storage value|NUMBER|input[aria-label='S3 Express One Zone storage Value']||gb per month|s3 int average object size value|NUMBER|input[aria-label='S3 INT Average Object Size Value']||gb per month|s3 int storage value|NUMBER|input[aria-label='S3 INT storage Value']||gb per month|unknown|NUMBER|input[aria-label='S3 Standard storage Value']||s3 standard info:|get, select, and all other requests from s3 standard enter amount of requests|TEXT|input[aria-label='GET, SELECT, and all other requests from S3 Standard Enter amount of requests']||s3 standard info:|put, copy, post, list requests to s3 standard enter amount of requests|TEXT|input[aria-label='PUT, COPY, POST, LIST requests to S3 Standard Enter amount of requests']",
+        "sequence": [
+          {
+            "control": {
+              "key": "s3 intelligent - tiering",
+              "aws_aria_label": "s3 intelligent - tiering",
+              "gate_type": "TOGGLE",
+              "default_state": false,
+              "availability": "visible",
+              "sections_gated": [],
+              "css_selector": "input[id='1318-1772201776281-7941']",
+              "options": []
+            },
+            "action": "click",
+            "value": null
+          },
+          {
+            "control": {
+              "key": "s3 express one zone",
+              "aws_aria_label": "s3 express one zone",
+              "gate_type": "TOGGLE",
+              "default_state": false,
+              "availability": "visible",
+              "sections_gated": [],
+              "css_selector": "input[id='1328-1772201776281-738']",
+              "options": []
+            },
+            "action": "click",
+            "value": null
+          }
+        ]
+      },
+      {
+        "state_id": "S19",
+        "entered_via": {
+          "gate_control": "s3 intelligent - tiering",
+          "action": "click",
+          "from_state": "S3"
+        },
+        "fingerprint": "gb per month|data retrievals value|NUMBER|input[aria-label='Data retrievals Value']||gb per month|data returned by s3 select value|NUMBER|input[aria-label='Data returned by S3 Select Value']||gb per month|data scanned by s3 select value|NUMBER|input[aria-label='Data scanned by S3 Select Value']||gb per month|s3 int average object size value|NUMBER|input[aria-label='S3 INT Average Object Size Value']||gb per month|s3 int storage value|NUMBER|input[aria-label='S3 INT storage Value']||gb per month|s3 standard-ia storage value|NUMBER|input[aria-label='S3 Standard-IA storage Value']||gb per month|unknown|NUMBER|input[aria-label='S3 Standard storage Value']||s3 standard info:|get, select, and all other requests from s3 standard enter amount of requests|TEXT|input[aria-label='GET, SELECT, and all other requests from S3 Standard Enter amount of requests']||s3 standard info:|put, copy, post, list requests to s3 standard enter amount of requests|TEXT|input[aria-label='PUT, COPY, POST, LIST requests to S3 Standard Enter amount of requests']",
+        "sequence": [
+          {
+            "control": {
+              "key": "s3 standard - infrequent access",
+              "aws_aria_label": "s3 standard - infrequent access",
+              "gate_type": "TOGGLE",
+              "default_state": false,
+              "availability": "visible",
+              "sections_gated": [],
+              "css_selector": "input[id='1319-1772201776281-4582']",
+              "options": []
+            },
+            "action": "click",
+            "value": null
+          },
+          {
+            "control": {
+              "key": "s3 intelligent - tiering",
+              "aws_aria_label": "s3 intelligent - tiering",
+              "gate_type": "TOGGLE",
+              "default_state": false,
+              "availability": "visible",
+              "sections_gated": [],
+              "css_selector": "input[id='1318-1772201776281-7941']",
+              "options": []
+            },
+            "action": "click",
+            "value": null
+          }
+        ]
+      },
+      {
+        "state_id": "S20",
+        "entered_via": {
+          "gate_control": "s3 one zone - infrequent access",
+          "action": "click",
+          "from_state": "S3"
+        },
+        "fingerprint": "gb per month|data retrievals value|NUMBER|input[aria-label='Data retrievals Value']||gb per month|data returned by s3 select value|NUMBER|input[aria-label='Data returned by S3 Select Value']||gb per month|data scanned by s3 select value|NUMBER|input[aria-label='Data scanned by S3 Select Value']||gb per month|s3 one zone-ia storage value|NUMBER|input[aria-label='S3 One Zone-IA storage Value']||gb per month|s3 standard-ia storage value|NUMBER|input[aria-label='S3 Standard-IA storage Value']||gb per month|unknown|NUMBER|input[aria-label='S3 Standard storage Value']||s3 standard info:|get, select, and all other requests from s3 standard enter amount of requests|TEXT|input[aria-label='GET, SELECT, and all other requests from S3 Standard Enter amount of requests']||s3 standard info:|put, copy, post, list requests to s3 standard enter amount of requests|TEXT|input[aria-label='PUT, COPY, POST, LIST requests to S3 Standard Enter amount of requests']",
+        "sequence": [
+          {
+            "control": {
+              "key": "s3 standard - infrequent access",
+              "aws_aria_label": "s3 standard - infrequent access",
+              "gate_type": "TOGGLE",
+              "default_state": false,
+              "availability": "visible",
+              "sections_gated": [],
+              "css_selector": "input[id='1319-1772201776281-4582']",
+              "options": []
+            },
+            "action": "click",
+            "value": null
+          },
+          {
+            "control": {
+              "key": "s3 one zone - infrequent access",
+              "aws_aria_label": "s3 one zone - infrequent access",
+              "gate_type": "TOGGLE",
+              "default_state": false,
+              "availability": "visible",
+              "sections_gated": [],
+              "css_selector": "input[id='1320-1772201776281-7097']",
+              "options": []
+            },
+            "action": "click",
+            "value": null
+          }
+        ]
+      },
+      {
+        "state_id": "S21",
+        "entered_via": {
+          "gate_control": "s3 glacier deep archive",
+          "action": "click",
+          "from_state": "S3"
+        },
+        "fingerprint": "gb per month|data retrievals (bulk) value|NUMBER|input[aria-label='Data retrievals (Bulk) Value']||gb per month|data retrievals (standard) value|NUMBER|input[aria-label='Data retrievals (Standard) Value']||gb per month|data retrievals value|NUMBER|input[aria-label='Data retrievals Value']||gb per month|data returned by s3 select value|NUMBER|input[aria-label='Data returned by S3 Select Value']||gb per month|data scanned by s3 select value|NUMBER|input[aria-label='Data scanned by S3 Select Value']||gb per month|s3 glacier deep archive average object size value|NUMBER|input[aria-label='S3 Glacier Deep Archive Average Object Size Value']||gb per month|s3 glacier deep archive storage value|NUMBER|input[aria-label='S3 Glacier Deep Archive storage Value']||gb per month|s3 standard-ia storage value|NUMBER|input[aria-label='S3 Standard-IA storage Value']||gb per month|unknown|NUMBER|input[aria-label='S3 Standard storage Value']||s3 standard info:|get, select, and all other requests from s3 standard enter amount of requests|TEXT|input[aria-label='GET, SELECT, and all other requests from S3 Standard Enter amount of requests']||s3 standard info:|put, copy, post, list requests to s3 standard enter amount of requests|TEXT|input[aria-label='PUT, COPY, POST, LIST requests to S3 Standard Enter amount of requests']",
+        "sequence": [
+          {
+            "control": {
+              "key": "s3 standard - infrequent access",
+              "aws_aria_label": "s3 standard - infrequent access",
+              "gate_type": "TOGGLE",
+              "default_state": false,
+              "availability": "visible",
+              "sections_gated": [],
+              "css_selector": "input[id='1319-1772201776281-4582']",
+              "options": []
+            },
+            "action": "click",
+            "value": null
+          },
+          {
+            "control": {
+              "key": "s3 glacier deep archive",
+              "aws_aria_label": "s3 glacier deep archive",
+              "gate_type": "TOGGLE",
+              "default_state": false,
+              "availability": "visible",
+              "sections_gated": [],
+              "css_selector": "input[id='1322-1772201776281-7180']",
+              "options": []
+            },
+            "action": "click",
+            "value": null
+          }
+        ]
+      },
+      {
+        "state_id": "S22",
+        "entered_via": {
+          "gate_control": "s3 glacier instant retrieval",
+          "action": "click",
+          "from_state": "S3"
+        },
+        "fingerprint": "gb per month|data retrievals value|NUMBER|input[aria-label='Data retrievals Value']||gb per month|data returned by s3 select value|NUMBER|input[aria-label='Data returned by S3 Select Value']||gb per month|data scanned by s3 select value|NUMBER|input[aria-label='Data scanned by S3 Select Value']||gb per month|s3 glacier instant retrieval storage value|NUMBER|input[aria-label='S3 Glacier Instant Retrieval storage Value']||gb per month|s3 standard-ia storage value|NUMBER|input[aria-label='S3 Standard-IA storage Value']||gb per month|unknown|NUMBER|input[aria-label='S3 Standard storage Value']||s3 standard info:|get, select, and all other requests from s3 standard enter amount of requests|TEXT|input[aria-label='GET, SELECT, and all other requests from S3 Standard Enter amount of requests']||s3 standard info:|put, copy, post, list requests to s3 standard enter amount of requests|TEXT|input[aria-label='PUT, COPY, POST, LIST requests to S3 Standard Enter amount of requests']",
+        "sequence": [
+          {
+            "control": {
+              "key": "s3 standard - infrequent access",
+              "aws_aria_label": "s3 standard - infrequent access",
+              "gate_type": "TOGGLE",
+              "default_state": false,
+              "availability": "visible",
+              "sections_gated": [],
+              "css_selector": "input[id='1319-1772201776281-4582']",
+              "options": []
+            },
+            "action": "click",
+            "value": null
+          },
+          {
+            "control": {
+              "key": "s3 glacier instant retrieval",
+              "aws_aria_label": "s3 glacier instant retrieval",
+              "gate_type": "TOGGLE",
+              "default_state": false,
+              "availability": "visible",
+              "sections_gated": [],
+              "css_selector": "input[id='1326-1772201776281-1280']",
+              "options": []
+            },
+            "action": "click",
+            "value": null
+          }
+        ]
+      },
+      {
+        "state_id": "S23",
+        "entered_via": {
+          "gate_control": "s3 express one zone",
+          "action": "click",
+          "from_state": "S3"
+        },
+        "fingerprint": "gb per month|data retrievals value|NUMBER|input[aria-label='Data retrievals Value']||gb per month|data returned by s3 select value|NUMBER|input[aria-label='Data returned by S3 Select Value']||gb per month|data scanned by s3 select value|NUMBER|input[aria-label='Data scanned by S3 Select Value']||gb per month|get and all other requests from s3 express one zone enter amount of requests|TEXT|input[aria-label='GET and all other requests from S3 Express One Zone Enter amount of requests']||gb per month|get request size value|NUMBER|input[aria-label='GET request size Value']||gb per month|put, copy, post, list, rename requests to s3 express one zone enter amount of requests|TEXT|input[aria-label='PUT, COPY, POST, LIST, RENAME requests to S3 Express One Zone Enter amount of requests']||gb per month|put/ copy request size value|NUMBER|input[aria-label='PUT/ COPY request size Value']||gb per month|s3 express one zone storage value|NUMBER|input[aria-label='S3 Express One Zone storage Value']||gb per month|s3 standard-ia storage value|NUMBER|input[aria-label='S3 Standard-IA storage Value']||gb per month|unknown|NUMBER|input[aria-label='S3 Standard storage Value']||s3 standard info:|get, select, and all other requests from s3 standard enter amount of requests|TEXT|input[aria-label='GET, SELECT, and all other requests from S3 Standard Enter amount of requests']||s3 standard info:|put, copy, post, list requests to s3 standard enter amount of requests|TEXT|input[aria-label='PUT, COPY, POST, LIST requests to S3 Standard Enter amount of requests']",
+        "sequence": [
+          {
+            "control": {
+              "key": "s3 standard - infrequent access",
+              "aws_aria_label": "s3 standard - infrequent access",
+              "gate_type": "TOGGLE",
+              "default_state": false,
+              "availability": "visible",
+              "sections_gated": [],
+              "css_selector": "input[id='1319-1772201776281-4582']",
+              "options": []
+            },
+            "action": "click",
+            "value": null
+          },
+          {
+            "control": {
+              "key": "s3 express one zone",
+              "aws_aria_label": "s3 express one zone",
+              "gate_type": "TOGGLE",
+              "default_state": false,
+              "availability": "visible",
+              "sections_gated": [],
+              "css_selector": "input[id='1328-1772201776281-738']",
+              "options": []
+            },
+            "action": "click",
+            "value": null
+          }
+        ]
+      },
+      {
+        "state_id": "S24",
+        "entered_via": {
+          "gate_control": "s3 glacier deep archive",
+          "action": "click",
+          "from_state": "S4"
+        },
+        "fingerprint": "gb per month|data retrievals (bulk) value|NUMBER|input[aria-label='Data retrievals (Bulk) Value']||gb per month|data retrievals (standard) value|NUMBER|input[aria-label='Data retrievals (Standard) Value']||gb per month|data retrievals value|NUMBER|input[aria-label='Data Retrievals Value']||gb per month|data returned by s3 select value|NUMBER|input[aria-label='Data returned by S3 Select Value']||gb per month|data scanned by s3 select value|NUMBER|input[aria-label='Data scanned by S3 Select Value']||gb per month|s3 glacier deep archive average object size value|NUMBER|input[aria-label='S3 Glacier Deep Archive Average Object Size Value']||gb per month|s3 glacier deep archive storage value|NUMBER|input[aria-label='S3 Glacier Deep Archive storage Value']||gb per month|s3 one zone-ia storage value|NUMBER|input[aria-label='S3 One Zone-IA storage Value']||gb per month|unknown|NUMBER|input[aria-label='S3 Standard storage Value']||s3 standard info:|get, select, and all other requests from s3 standard enter amount of requests|TEXT|input[aria-label='GET, SELECT, and all other requests from S3 Standard Enter amount of requests']||s3 standard info:|put, copy, post, list requests to s3 standard enter amount of requests|TEXT|input[aria-label='PUT, COPY, POST, LIST requests to S3 Standard Enter amount of requests']",
+        "sequence": [
+          {
+            "control": {
+              "key": "s3 one zone - infrequent access",
+              "aws_aria_label": "s3 one zone - infrequent access",
+              "gate_type": "TOGGLE",
+              "default_state": false,
+              "availability": "visible",
+              "sections_gated": [],
+              "css_selector": "input[id='1320-1772201776281-7097']",
+              "options": []
+            },
+            "action": "click",
+            "value": null
+          },
+          {
+            "control": {
+              "key": "s3 glacier deep archive",
+              "aws_aria_label": "s3 glacier deep archive",
+              "gate_type": "TOGGLE",
+              "default_state": false,
+              "availability": "visible",
+              "sections_gated": [],
+              "css_selector": "input[id='1322-1772201776281-7180']",
+              "options": []
+            },
+            "action": "click",
+            "value": null
+          }
+        ]
+      },
+      {
+        "state_id": "S25",
+        "entered_via": {
+          "gate_control": "s3 glacier instant retrieval",
+          "action": "click",
+          "from_state": "S4"
+        },
+        "fingerprint": "gb per month|data retrievals value|NUMBER|input[aria-label='Data Retrievals Value']||gb per month|data returned by s3 select value|NUMBER|input[aria-label='Data returned by S3 Select Value']||gb per month|data scanned by s3 select value|NUMBER|input[aria-label='Data scanned by S3 Select Value']||gb per month|s3 glacier instant retrieval storage value|NUMBER|input[aria-label='S3 Glacier Instant Retrieval storage Value']||gb per month|s3 one zone-ia storage value|NUMBER|input[aria-label='S3 One Zone-IA storage Value']||gb per month|unknown|NUMBER|input[aria-label='S3 Standard storage Value']||s3 standard info:|get, select, and all other requests from s3 standard enter amount of requests|TEXT|input[aria-label='GET, SELECT, and all other requests from S3 Standard Enter amount of requests']||s3 standard info:|put, copy, post, list requests to s3 standard enter amount of requests|TEXT|input[aria-label='PUT, COPY, POST, LIST requests to S3 Standard Enter amount of requests']",
+        "sequence": [
+          {
+            "control": {
+              "key": "s3 one zone - infrequent access",
+              "aws_aria_label": "s3 one zone - infrequent access",
+              "gate_type": "TOGGLE",
+              "default_state": false,
+              "availability": "visible",
+              "sections_gated": [],
+              "css_selector": "input[id='1320-1772201776281-7097']",
+              "options": []
+            },
+            "action": "click",
+            "value": null
+          },
+          {
+            "control": {
+              "key": "s3 glacier instant retrieval",
+              "aws_aria_label": "s3 glacier instant retrieval",
+              "gate_type": "TOGGLE",
+              "default_state": false,
+              "availability": "visible",
+              "sections_gated": [],
+              "css_selector": "input[id='1326-1772201776281-1280']",
+              "options": []
+            },
+            "action": "click",
+            "value": null
+          }
+        ]
+      },
+      {
+        "state_id": "S26",
+        "entered_via": {
+          "gate_control": "s3 express one zone",
+          "action": "click",
+          "from_state": "S4"
+        },
+        "fingerprint": "gb per month|data retrievals value|NUMBER|input[aria-label='Data Retrievals Value']||gb per month|data returned by s3 select value|NUMBER|input[aria-label='Data returned by S3 Select Value']||gb per month|data scanned by s3 select value|NUMBER|input[aria-label='Data scanned by S3 Select Value']||gb per month|get and all other requests from s3 express one zone enter amount of requests|TEXT|input[aria-label='GET and all other requests from S3 Express One Zone Enter amount of requests']||gb per month|get request size value|NUMBER|input[aria-label='GET request size Value']||gb per month|put, copy, post, list, rename requests to s3 express one zone enter amount of requests|TEXT|input[aria-label='PUT, COPY, POST, LIST, RENAME requests to S3 Express One Zone Enter amount of requests']||gb per month|put/ copy request size value|NUMBER|input[aria-label='PUT/ COPY request size Value']||gb per month|s3 express one zone storage value|NUMBER|input[aria-label='S3 Express One Zone storage Value']||gb per month|s3 one zone-ia storage value|NUMBER|input[aria-label='S3 One Zone-IA storage Value']||gb per month|unknown|NUMBER|input[aria-label='S3 Standard storage Value']||s3 standard info:|get, select, and all other requests from s3 standard enter amount of requests|TEXT|input[aria-label='GET, SELECT, and all other requests from S3 Standard Enter amount of requests']||s3 standard info:|put, copy, post, list requests to s3 standard enter amount of requests|TEXT|input[aria-label='PUT, COPY, POST, LIST requests to S3 Standard Enter amount of requests']",
+        "sequence": [
+          {
+            "control": {
+              "key": "s3 one zone - infrequent access",
+              "aws_aria_label": "s3 one zone - infrequent access",
+              "gate_type": "TOGGLE",
+              "default_state": false,
+              "availability": "visible",
+              "sections_gated": [],
+              "css_selector": "input[id='1320-1772201776281-7097']",
+              "options": []
+            },
+            "action": "click",
+            "value": null
+          },
+          {
+            "control": {
+              "key": "s3 express one zone",
+              "aws_aria_label": "s3 express one zone",
+              "gate_type": "TOGGLE",
+              "default_state": false,
+              "availability": "visible",
+              "sections_gated": [],
+              "css_selector": "input[id='1328-1772201776281-738']",
+              "options": []
+            },
+            "action": "click",
+            "value": null
+          }
+        ]
+      },
+      {
+        "state_id": "S27",
+        "entered_via": {
+          "gate_control": "s3 intelligent - tiering",
+          "action": "click",
+          "from_state": "S5"
+        },
+        "fingerprint": "gb per month|data retrievals (bulk) value|NUMBER|input[aria-label='Data retrievals (Bulk) Value']||gb per month|data retrievals (expedited) value|NUMBER|input[aria-label='Data retrievals (Expedited) Value']||gb per month|data retrievals (standard) value|NUMBER|input[aria-label='Data retrievals (Standard) Value']||gb per month|data returned by s3 select value|NUMBER|input[aria-label='Data returned by S3 Select Value']||gb per month|data scanned by s3 select value|NUMBER|input[aria-label='Data scanned by S3 Select Value']||gb per month|s3 glacier flexible retrieval average object size value|NUMBER|input[aria-label='S3 Glacier Flexible Retrieval Average Object Size Value']||gb per month|s3 glacier flexible retrieval storage value|NUMBER|input[aria-label='S3 Glacier Flexible Retrieval storage Value']||gb per month|s3 int average object size value|NUMBER|input[aria-label='S3 INT Average Object Size Value']||gb per month|s3 int storage value|NUMBER|input[aria-label='S3 INT storage Value']||gb per month|unknown|NUMBER|input[aria-label='S3 Standard storage Value']||s3 standard info:|get, select, and all other requests from s3 standard enter amount of requests|TEXT|input[aria-label='GET, SELECT, and all other requests from S3 Standard Enter amount of requests']||s3 standard info:|put, copy, post, list requests to s3 standard enter amount of requests|TEXT|input[aria-label='PUT, COPY, POST, LIST requests to S3 Standard Enter amount of requests']",
+        "sequence": [
+          {
+            "control": {
+              "key": "s3 glacier flexible retrieval",
+              "aws_aria_label": "s3 glacier flexible retrieval",
+              "gate_type": "TOGGLE",
+              "default_state": false,
+              "availability": "visible",
+              "sections_gated": [],
+              "css_selector": "input[id='1321-1772201776281-1705']",
+              "options": []
+            },
+            "action": "click",
+            "value": null
+          },
+          {
+            "control": {
+              "key": "s3 intelligent - tiering",
+              "aws_aria_label": "s3 intelligent - tiering",
+              "gate_type": "TOGGLE",
+              "default_state": false,
+              "availability": "visible",
+              "sections_gated": [],
+              "css_selector": "input[id='1318-1772201776281-7941']",
+              "options": []
+            },
+            "action": "click",
+            "value": null
+          }
+        ]
+      },
+      {
+        "state_id": "S28",
+        "entered_via": {
+          "gate_control": "s3 one zone - infrequent access",
+          "action": "click",
+          "from_state": "S5"
+        },
+        "fingerprint": "gb per month|data retrievals (bulk) value|NUMBER|input[aria-label='Data retrievals (Bulk) Value']||gb per month|data retrievals (expedited) value|NUMBER|input[aria-label='Data retrievals (Expedited) Value']||gb per month|data retrievals (standard) value|NUMBER|input[aria-label='Data retrievals (Standard) Value']||gb per month|data retrievals value|NUMBER|input[aria-label='Data Retrievals Value']||gb per month|data returned by s3 select value|NUMBER|input[aria-label='Data returned by S3 Select Value']||gb per month|data scanned by s3 select value|NUMBER|input[aria-label='Data scanned by S3 Select Value']||gb per month|s3 glacier flexible retrieval average object size value|NUMBER|input[aria-label='S3 Glacier Flexible Retrieval Average Object Size Value']||gb per month|s3 glacier flexible retrieval storage value|NUMBER|input[aria-label='S3 Glacier Flexible Retrieval storage Value']||gb per month|s3 one zone-ia storage value|NUMBER|input[aria-label='S3 One Zone-IA storage Value']||gb per month|unknown|NUMBER|input[aria-label='S3 Standard storage Value']||s3 standard info:|get, select, and all other requests from s3 standard enter amount of requests|TEXT|input[aria-label='GET, SELECT, and all other requests from S3 Standard Enter amount of requests']||s3 standard info:|put, copy, post, list requests to s3 standard enter amount of requests|TEXT|input[aria-label='PUT, COPY, POST, LIST requests to S3 Standard Enter amount of requests']",
+        "sequence": [
+          {
+            "control": {
+              "key": "s3 glacier flexible retrieval",
+              "aws_aria_label": "s3 glacier flexible retrieval",
+              "gate_type": "TOGGLE",
+              "default_state": false,
+              "availability": "visible",
+              "sections_gated": [],
+              "css_selector": "input[id='1321-1772201776281-1705']",
+              "options": []
+            },
+            "action": "click",
+            "value": null
+          },
+          {
+            "control": {
+              "key": "s3 one zone - infrequent access",
+              "aws_aria_label": "s3 one zone - infrequent access",
+              "gate_type": "TOGGLE",
+              "default_state": false,
+              "availability": "visible",
+              "sections_gated": [],
+              "css_selector": "input[id='1320-1772201776281-7097']",
+              "options": []
+            },
+            "action": "click",
+            "value": null
+          }
+        ]
+      },
+      {
+        "state_id": "S29",
+        "entered_via": {
+          "gate_control": "s3 glacier deep archive",
+          "action": "click",
+          "from_state": "S5"
+        },
+        "fingerprint": "gb per month|data retrievals (bulk) value|NUMBER|input[aria-label='Data retrievals (Bulk) Value']||gb per month|data retrievals (expedited) value|NUMBER|input[aria-label='Data retrievals (Expedited) Value']||gb per month|data retrievals (standard) value|NUMBER|input[aria-label='Data retrievals (Standard) Value']||gb per month|data returned by s3 select value|NUMBER|input[aria-label='Data returned by S3 Select Value']||gb per month|data scanned by s3 select value|NUMBER|input[aria-label='Data scanned by S3 Select Value']||gb per month|s3 glacier deep archive average object size value|NUMBER|input[aria-label='S3 Glacier Deep Archive Average Object Size Value']||gb per month|s3 glacier deep archive storage value|NUMBER|input[aria-label='S3 Glacier Deep Archive storage Value']||gb per month|s3 glacier flexible retrieval average object size value|NUMBER|input[aria-label='S3 Glacier Flexible Retrieval Average Object Size Value']||gb per month|s3 glacier flexible retrieval storage value|NUMBER|input[aria-label='S3 Glacier Flexible Retrieval storage Value']||gb per month|unknown|NUMBER|input[aria-label='S3 Standard storage Value']||s3 standard info:|get, select, and all other requests from s3 standard enter amount of requests|TEXT|input[aria-label='GET, SELECT, and all other requests from S3 Standard Enter amount of requests']||s3 standard info:|put, copy, post, list requests to s3 standard enter amount of requests|TEXT|input[aria-label='PUT, COPY, POST, LIST requests to S3 Standard Enter amount of requests']",
+        "sequence": [
+          {
+            "control": {
+              "key": "s3 glacier flexible retrieval",
+              "aws_aria_label": "s3 glacier flexible retrieval",
+              "gate_type": "TOGGLE",
+              "default_state": false,
+              "availability": "visible",
+              "sections_gated": [],
+              "css_selector": "input[id='1321-1772201776281-1705']",
+              "options": []
+            },
+            "action": "click",
+            "value": null
+          },
+          {
+            "control": {
+              "key": "s3 glacier deep archive",
+              "aws_aria_label": "s3 glacier deep archive",
+              "gate_type": "TOGGLE",
+              "default_state": false,
+              "availability": "visible",
+              "sections_gated": [],
+              "css_selector": "input[id='1322-1772201776281-7180']",
+              "options": []
+            },
+            "action": "click",
+            "value": null
+          }
+        ]
+      }
+    ],
+    "exploration_budget_hit": true,
+    "screenshots": {
+      "S0": "artifacts/s3/state_S0.png",
+      "S1": "artifacts/s3/state_S1.png",
+      "S2": "artifacts/s3/state_S2.png",
+      "S3": "artifacts/s3/state_S3.png",
+      "S4": "artifacts/s3/state_S4.png",
+      "S5": "artifacts/s3/state_S5.png",
+      "S6": "artifacts/s3/state_S6.png",
+      "S7": "artifacts/s3/state_S7.png",
+      "S8": "artifacts/s3/state_S8.png",
+      "S9": "artifacts/s3/state_S9.png",
+      "S10": "artifacts/s3/state_S10.png",
+      "S11": "artifacts/s3/state_S11.png",
+      "S12": "artifacts/s3/state_S12.png",
+      "S13": "artifacts/s3/state_S13.png",
+      "S14": "artifacts/s3/state_S14.png",
+      "S15": "artifacts/s3/state_S15.png",
+      "S16": "artifacts/s3/state_S16.png",
+      "S17": "artifacts/s3/state_S17.png",
+      "S18": "artifacts/s3/state_S18.png",
+      "S19": "artifacts/s3/state_S19.png",
+      "S20": "artifacts/s3/state_S20.png",
+      "S21": "artifacts/s3/state_S21.png",
+      "S22": "artifacts/s3/state_S22.png",
+      "S23": "artifacts/s3/state_S23.png",
+      "S24": "artifacts/s3/state_S24.png",
+      "S25": "artifacts/s3/state_S25.png",
+      "S26": "artifacts/s3/state_S26.png",
+      "S27": "artifacts/s3/state_S27.png",
+      "S28": "artifacts/s3/state_S28.png",
+      "S29": "artifacts/s3/state_S29.png"
+    }
+  }
+}

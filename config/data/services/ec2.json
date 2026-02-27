@@ -1,0 +1,121 @@
+{
+    "service_name": "Amazon EC2",
+    "search_term": "Amazon EC2",
+    "calculator_page_title": "Amazon EC2",
+    "supported_regions": [
+        "us-east-1",
+        "us-east-2",
+        "us-west-1",
+        "us-west-2",
+        "eu-west-1",
+        "eu-west-2",
+        "eu-central-1",
+        "ap-northeast-1",
+        "ap-southeast-1",
+        "ap-southeast-2",
+        "ap-south-1",
+        "sa-east-1",
+        "ca-central-1"
+    ],
+    "dimensions": [
+        {
+            "key": "Operating System",
+            "field_type": "SELECT",
+            "default_value": "Linux",
+            "required": true,
+            "options": [
+                "Linux",
+                "Windows",
+                "RHEL",
+                "SUSE"
+            ],
+            "unit": null,
+            "unit_sibling": null
+        },
+        {
+            "key": "Number of instances",
+            "field_type": "NUMBER",
+            "default_value": 1,
+            "required": true,
+            "options": null,
+            "unit": null,
+            "unit_sibling": null
+        },
+        {
+            "key": "Instance type",
+            "field_type": "COMBOBOX",
+            "default_value": "t3.micro",
+            "required": true,
+            "options": null,
+            "unit": null,
+            "unit_sibling": null
+        },
+        {
+            "key": "Utilization (On-Demand only)",
+            "field_type": "NUMBER",
+            "default_value": 100,
+            "required": true,
+            "options": null,
+            "unit": "%",
+            "unit_sibling": null
+        },
+        {
+            "key": "EBS Storage",
+            "field_type": "NUMBER",
+            "default_value": 30,
+            "required": false,
+            "options": null,
+            "unit": null,
+            "unit_sibling": "EBS Storage Unit"
+        },
+        {
+            "key": "EBS Storage Unit",
+            "field_type": "SELECT",
+            "default_value": "GB",
+            "required": false,
+            "options": [
+                "GB",
+                "TB"
+            ],
+            "unit": null,
+            "unit_sibling": "EBS Storage"
+        },
+        {
+            "key": "EBS Volume Type",
+            "field_type": "SELECT",
+            "default_value": "General Purpose SSD (gp3)",
+            "required": false,
+            "options": [
+                "General Purpose SSD (gp3)",
+                "General Purpose SSD (gp2)",
+                "Provisioned IOPS SSD (io1)",
+                "Cold HDD (sc1)",
+                "Throughput Optimized HDD (st1)",
+                "Magnetic"
+            ],
+            "unit": null,
+            "unit_sibling": null
+        },
+        {
+            "key": "Data transfer out",
+            "field_type": "NUMBER",
+            "default_value": 0,
+            "required": false,
+            "options": null,
+            "unit": null,
+            "unit_sibling": "Data transfer out Unit"
+        },
+        {
+            "key": "Data transfer out Unit",
+            "field_type": "SELECT",
+            "default_value": "GB",
+            "required": false,
+            "options": [
+                "GB",
+                "TB"
+            ],
+            "unit": null,
+            "unit_sibling": "Data transfer out"
+        }
+    ]
+}

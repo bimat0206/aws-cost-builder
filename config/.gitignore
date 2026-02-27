@@ -1,0 +1,8 @@
+# Config module
+*.log
+*.tmp
+.DS_Store
+
+# Ignore local/override config files
+local_*.json
+*.local.json

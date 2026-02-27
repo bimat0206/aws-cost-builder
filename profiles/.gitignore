@@ -1,0 +1,6 @@
+# Ignore user-created profiles (contain personal AWS config)
+*.json
+
+# Keep example/template profiles and directory marker
+!example_*.json
+!.gitkeep

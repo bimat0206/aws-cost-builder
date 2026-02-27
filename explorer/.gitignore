@@ -1,0 +1,4 @@
+# Explorer module
+*.log
+*.tmp
+.DS_Store

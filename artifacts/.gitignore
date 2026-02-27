@@ -1,0 +1,7 @@
+# Ignore generated exploration screenshots and reports
+*.png
+exploration_report.json
+
+# Keep directory structure
+!.gitkeep
+!*/REVIEW_NOTES.md

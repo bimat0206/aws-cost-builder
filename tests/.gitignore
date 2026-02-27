@@ -1,0 +1,7 @@
+# Test artifacts
+*.log
+*.tmp
+coverage/
+.vitest-cache/
+__snapshots__/
+.DS_Store

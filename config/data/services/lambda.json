@@ -1,0 +1,83 @@
+{
+    "service_name": "AWS Lambda",
+    "search_term": "AWS Lambda",
+    "calculator_page_title": "AWS Lambda",
+    "supported_regions": [
+        "us-east-1",
+        "us-east-2",
+        "us-west-1",
+        "us-west-2",
+        "eu-west-1",
+        "eu-west-2",
+        "eu-central-1",
+        "ap-northeast-1",
+        "ap-southeast-1",
+        "ap-southeast-2",
+        "ap-south-1",
+        "sa-east-1",
+        "ca-central-1"
+    ],
+    "dimensions": [
+        {
+            "key": "Architecture",
+            "field_type": "RADIO",
+            "default_value": "x86",
+            "required": true,
+            "options": [
+                "x86",
+                "ARM"
+            ],
+            "unit": null,
+            "unit_sibling": null
+        },
+        {
+            "key": "Number of requests",
+            "field_type": "NUMBER",
+            "default_value": 0,
+            "required": true,
+            "options": null,
+            "unit": "requests",
+            "unit_sibling": null
+        },
+        {
+            "key": "Duration of each request",
+            "field_type": "NUMBER",
+            "default_value": 100,
+            "required": true,
+            "options": null,
+            "unit": null,
+            "unit_sibling": "Duration of each request Unit"
+        },
+        {
+            "key": "Duration of each request Unit",
+            "field_type": "SELECT",
+            "default_value": "ms",
+            "required": true,
+            "options": [
+                "ms",
+                "seconds",
+                "minutes"
+            ],
+            "unit": null,
+            "unit_sibling": "Duration of each request"
+        },
+        {
+            "key": "Amount of memory allocated",
+            "field_type": "NUMBER",
+            "default_value": 128,
+            "required": true,
+            "options": null,
+            "unit": "MB",
+            "unit_sibling": null
+        },
+        {
+            "key": "Enable free tier",
+            "field_type": "TOGGLE",
+            "default_value": true,
+            "required": false,
+            "options": null,
+            "unit": null,
+            "unit_sibling": null
+        }
+    ]
+}

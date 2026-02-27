@@ -1,0 +1,93 @@
+{
+  "service_id": "api_gateway",
+  "service_name": "amazon api gateway amazon api gateway is a fully managed service that makes it easy for developers to create, publish, maintain, monitor, and secure apis at any scale. apis act as the front door for applications to access data, business logic, or functionality from your backend services. product page configure",
+  "search_term": "api gateway",
+  "calculator_page_title": "Create estimate: Configure Amazon API Gateway",
+  "supported_regions": [],
+  "schema_version": "2.0",
+  "generated_at": "2026-02-27T10:17:26.776Z",
+  "source": "explorer_dom_v2",
+  "region_used": "UNKNOWN",
+  "status": "draft",
+  "ui_mapping": {
+    "search_keywords": [
+      "api gateway",
+      "amazon api gateway amazon api gateway is a fully managed service that makes it easy for developers to create, publish, maintain, monitor, and secure apis at any scale. apis act as the front door for applications to access data, business logic, or functionality from your backend services. product page configure",
+      "create estimate: configure amazon api gateway"
+    ],
+    "card_title": "amazon api gateway amazon api gateway is a fully managed service that makes it easy for developers to create, publish, maintain, monitor, and secure apis at any scale. apis act as the front door for applications to access data, business logic, or functionality from your backend services. product page configure",
+    "configure_button": "Configure"
+  },
+  "section_expansion_triggers": [
+    {
+      "label": "http apis",
+      "trigger": "panel_header"
+    },
+    {
+      "label": "rest apis",
+      "trigger": "panel_header"
+    },
+    {
+      "label": "websocket apis",
+      "trigger": "panel_header"
+    }
+  ],
+  "gate_controls": [
+    {
+      "key": "allow performance category allowed",
+      "aws_aria_label": "allow performance category allowed",
+      "gate_type": "TOGGLE",
+      "default_state": true,
+      "availability": "visible",
+      "sections_gated": [],
+      "options": [],
+      "css_selector": "input[id='awsccc-u-cb-performance']"
+    },
+    {
+      "key": "allow functional category allowed",
+      "aws_aria_label": "allow functional category allowed",
+      "gate_type": "TOGGLE",
+      "default_state": true,
+      "availability": "visible",
+      "sections_gated": [],
+      "options": [],
+      "css_selector": "input[id='awsccc-u-cb-functional']"
+    },
+    {
+      "key": "allow advertising category allowed",
+      "aws_aria_label": "allow advertising category allowed",
+      "gate_type": "TOGGLE",
+      "default_state": true,
+      "availability": "visible",
+      "sections_gated": [],
+      "options": [],
+      "css_selector": "input[id='awsccc-u-cb-advertising']"
+    },
+    {
+      "key": "UNKNOWN",
+      "aws_aria_label": "UNKNOWN",
+      "gate_type": "COMBOBOX",
+      "default_state": null,
+      "availability": "visible",
+      "sections_gated": [],
+      "options": [],
+      "css_selector": "input[aria-controls='option-list1303-1772187442581-3230']"
+    }
+  ],
+  "sections": [],
+  "dimensions": [],
+  "exploration_meta": {
+    "exploration_states": [
+      {
+        "state_id": "S0",
+        "entered_via": {
+          "gate_control": null,
+          "action": null,
+          "from_state": null
+        },
+        "fingerprint": "",
+        "sequence": []
+      }
+    ]
+  }
+}

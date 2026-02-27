@@ -1,0 +1,1941 @@
+{
+  "service_id": "ec2",
+  "service_name": "ec2",
+  "search_term": "ec2",
+  "calculator_page_title": "ec2",
+  "supported_regions": [],
+  "schema_version": "2.0",
+  "generated_at": "2026-02-27T15:14:59Z",
+  "source": "explorer_hybrid_v1",
+  "region_used": "us-east-1",
+  "status": "draft",
+  "ui_mapping": {
+    "search_keywords": [
+      "ec2",
+      "amazon ec2",
+      "create estimate: configure amazon ec2"
+    ],
+    "card_title": "amazon ec2",
+    "configure_button": "configure"
+  },
+  "section_expansion_triggers": [],
+  "gate_controls": [
+    {
+      "key": "allow performance category allowed",
+      "aws_aria_label": "allow performance category allowed",
+      "gate_type": "TOGGLE",
+      "default_state": true,
+      "availability": "visible",
+      "sections_gated": []
+    },
+    {
+      "key": "allow functional category allowed",
+      "aws_aria_label": "allow functional category allowed",
+      "gate_type": "TOGGLE",
+      "default_state": true,
+      "availability": "visible",
+      "sections_gated": []
+    },
+    {
+      "key": "allow advertising category allowed",
+      "aws_aria_label": "allow advertising category allowed",
+      "gate_type": "TOGGLE",
+      "default_state": true,
+      "availability": "visible",
+      "sections_gated": []
+    },
+    {
+      "key": "show only current generation instances.",
+      "aws_aria_label": "show only current generation instances.",
+      "gate_type": "TOGGLE",
+      "default_state": true,
+      "availability": "visible",
+      "sections_gated": []
+    },
+    {
+      "key": "enable monitoring",
+      "aws_aria_label": "enable monitoring",
+      "gate_type": "TOGGLE",
+      "default_state": false,
+      "availability": "visible",
+      "sections_gated": []
+    },
+    {
+      "key": "constant usage",
+      "aws_aria_label": "constant usage",
+      "gate_type": "RADIO",
+      "default_state": "Constant usage",
+      "availability": "visible",
+      "sections_gated": []
+    },
+    {
+      "key": "UNKNOWN",
+      "aws_aria_label": "UNKNOWN",
+      "gate_type": "RADIO",
+      "default_state": null,
+      "availability": "visible",
+      "sections_gated": []
+    },
+    {
+      "key": "compute savings plans",
+      "aws_aria_label": "compute savings plans",
+      "gate_type": "RADIO",
+      "default_state": "Compute Savings Plans",
+      "availability": "visible",
+      "sections_gated": []
+    },
+    {
+      "key": "1 year",
+      "aws_aria_label": "1 year",
+      "gate_type": "RADIO",
+      "default_state": "3 year",
+      "availability": "visible",
+      "sections_gated": []
+    },
+    {
+      "key": "no upfront",
+      "aws_aria_label": "no upfront",
+      "gate_type": "RADIO",
+      "default_state": "No upfront",
+      "availability": "visible",
+      "sections_gated": []
+    },
+    {
+      "key": "1 year",
+      "aws_aria_label": "1 year",
+      "gate_type": "RADIO",
+      "default_state": "3 year",
+      "availability": "visible",
+      "sections_gated": []
+    },
+    {
+      "key": "no upfront",
+      "aws_aria_label": "no upfront",
+      "gate_type": "RADIO",
+      "default_state": "No upfront",
+      "availability": "visible",
+      "sections_gated": []
+    },
+    {
+      "key": "1 year",
+      "aws_aria_label": "1 year",
+      "gate_type": "RADIO",
+      "default_state": "3 year",
+      "availability": "visible",
+      "sections_gated": []
+    },
+    {
+      "key": "no upfront",
+      "aws_aria_label": "no upfront",
+      "gate_type": "RADIO",
+      "default_state": "No upfront",
+      "availability": "visible",
+      "sections_gated": []
+    },
+    {
+      "key": "1 year",
+      "aws_aria_label": "1 year",
+      "gate_type": "RADIO",
+      "default_state": "3 year",
+      "availability": "visible",
+      "sections_gated": []
+    },
+    {
+      "key": "no upfront",
+      "aws_aria_label": "no upfront",
+      "gate_type": "RADIO",
+      "default_state": "No upfront",
+      "availability": "visible",
+      "sections_gated": []
+    },
+    {
+      "key": "UNKNOWN",
+      "aws_aria_label": "UNKNOWN",
+      "gate_type": "COMBOBOX",
+      "default_state": null,
+      "availability": "visible",
+      "sections_gated": []
+    }
+  ],
+  "sections": [
+    {
+      "key": "shared_instances",
+      "label": "shared instances",
+      "state_id": "S0",
+      "entered_via": {
+        "gate_control": null,
+        "action": null,
+        "from_state": null
+      },
+      "dimensions": [
+        {
+          "key": "search instance types search by instance name or filter by keyword",
+          "label_visible": "Search instance types Search by instance name or filter by keyword",
+          "aws_aria_label": "Search instance types Search by instance name or filter by keyword",
+          "field_type": "TEXT",
+          "default_value": null,
+          "unit_sibling": null,
+          "options": [],
+          "required": true,
+          "confidence": {
+            "label": 1,
+            "section": 0.8,
+            "overall": 0.68
+          },
+          "status": "REVIEW_REQUIRED",
+          "pattern_type": "UNKNOWN_PATTERN",
+          "review_note": "Low confidence score."
+        }
+      ]
+    },
+    {
+      "key": "linux",
+      "label": "linux",
+      "state_id": "S0",
+      "entered_via": {
+        "gate_control": null,
+        "action": null,
+        "from_state": null
+      },
+      "dimensions": [
+        {
+          "key": "unknown",
+          "label_visible": "UNKNOWN",
+          "aws_aria_label": "UNKNOWN",
+          "field_type": "RADIO",
+          "default_value": null,
+          "unit_sibling": null,
+          "options": [],
+          "required": true,
+          "confidence": {
+            "label": 0,
+            "section": 0.8,
+            "overall": 0.4
+          },
+          "status": "CONFLICT",
+          "pattern_type": "P5_RADIO_GROUP",
+          "review_note": "Very low confidence score."
+        },
+        {
+          "key": "unknown",
+          "label_visible": "UNKNOWN",
+          "aws_aria_label": "UNKNOWN",
+          "field_type": "RADIO",
+          "default_value": null,
+          "unit_sibling": null,
+          "options": [],
+          "required": true,
+          "confidence": {
+            "label": 0,
+            "section": 0.8,
+            "overall": 0.4
+          },
+          "status": "CONFLICT",
+          "pattern_type": "P5_RADIO_GROUP",
+          "review_note": "Very low confidence score."
+        },
+        {
+          "key": "unknown",
+          "label_visible": "UNKNOWN",
+          "aws_aria_label": "UNKNOWN",
+          "field_type": "RADIO",
+          "default_value": null,
+          "unit_sibling": null,
+          "options": [],
+          "required": true,
+          "confidence": {
+            "label": 0,
+            "section": 0.8,
+            "overall": 0.4
+          },
+          "status": "CONFLICT",
+          "pattern_type": "P5_RADIO_GROUP",
+          "review_note": "Very low confidence score."
+        },
+        {
+          "key": "unknown",
+          "label_visible": "UNKNOWN",
+          "aws_aria_label": "UNKNOWN",
+          "field_type": "RADIO",
+          "default_value": null,
+          "unit_sibling": null,
+          "options": [],
+          "required": true,
+          "confidence": {
+            "label": 0,
+            "section": 0.8,
+            "overall": 0.4
+          },
+          "status": "CONFLICT",
+          "pattern_type": "P5_RADIO_GROUP",
+          "review_note": "Very low confidence score."
+        },
+        {
+          "key": "number of instances enter amount",
+          "label_visible": "Number of instances Enter amount",
+          "aws_aria_label": "Number of instances Enter amount",
+          "field_type": "NUMBER",
+          "default_value": null,
+          "unit_sibling": null,
+          "options": [],
+          "required": true,
+          "confidence": {
+            "label": 1,
+            "section": 0.8,
+            "overall": 0.88
+          },
+          "status": "OK",
+          "pattern_type": "P1_NUMBER"
+        },
+        {
+          "key": "unknown",
+          "label_visible": "UNKNOWN",
+          "aws_aria_label": "Enter the minimum number of instances for your workload.",
+          "field_type": "NUMBER",
+          "default_value": null,
+          "unit_sibling": null,
+          "options": [],
+          "required": true,
+          "confidence": {
+            "label": 0,
+            "section": 0.8,
+            "overall": 0.4
+          },
+          "status": "CONFLICT",
+          "pattern_type": "P1_NUMBER",
+          "review_note": "Very low confidence score."
+        },
+        {
+          "key": "unknown",
+          "label_visible": "UNKNOWN",
+          "aws_aria_label": "Enter the maximum number of instances for your workload.",
+          "field_type": "NUMBER",
+          "default_value": null,
+          "unit_sibling": null,
+          "options": [],
+          "required": true,
+          "confidence": {
+            "label": 0,
+            "section": 0.8,
+            "overall": 0.4
+          },
+          "status": "CONFLICT",
+          "pattern_type": "P1_NUMBER",
+          "review_note": "Very low confidence score."
+        },
+        {
+          "key": "unknown",
+          "label_visible": "UNKNOWN",
+          "aws_aria_label": "Enter the amount of days your instances are running at peak.",
+          "field_type": "NUMBER",
+          "default_value": null,
+          "unit_sibling": null,
+          "options": [],
+          "required": true,
+          "confidence": {
+            "label": 0,
+            "section": 0.8,
+            "overall": 0.4
+          },
+          "status": "CONFLICT",
+          "pattern_type": "P1_NUMBER",
+          "review_note": "Very low confidence score."
+        },
+        {
+          "key": "unknown",
+          "label_visible": "UNKNOWN",
+          "aws_aria_label": "Enter the amount of hours your instances are running at peak.",
+          "field_type": "NUMBER",
+          "default_value": null,
+          "unit_sibling": null,
+          "options": [],
+          "required": true,
+          "confidence": {
+            "label": 0,
+            "section": 0.8,
+            "overall": 0.4
+          },
+          "status": "CONFLICT",
+          "pattern_type": "P1_NUMBER",
+          "review_note": "Very low confidence score."
+        },
+        {
+          "key": "unknown",
+          "label_visible": "UNKNOWN",
+          "aws_aria_label": "Enter the amount of minutes your instances are running at peak.",
+          "field_type": "NUMBER",
+          "default_value": null,
+          "unit_sibling": null,
+          "options": [],
+          "required": true,
+          "confidence": {
+            "label": 0,
+            "section": 0.8,
+            "overall": 0.4
+          },
+          "status": "CONFLICT",
+          "pattern_type": "P1_NUMBER",
+          "review_note": "Very low confidence score."
+        }
+      ]
+    },
+    {
+      "key": "any_instance_family",
+      "label": "any instance family",
+      "state_id": "S0",
+      "entered_via": {
+        "gate_control": null,
+        "action": null,
+        "from_state": null
+      },
+      "dimensions": [
+        {
+          "key": "unknown",
+          "label_visible": "UNKNOWN",
+          "aws_aria_label": "UNKNOWN",
+          "field_type": "TOGGLE",
+          "default_value": null,
+          "unit_sibling": null,
+          "options": [],
+          "required": true,
+          "confidence": {
+            "label": 0,
+            "section": 0.8,
+            "overall": 0.4
+          },
+          "status": "CONFLICT",
+          "pattern_type": "P4_TOGGLE",
+          "review_note": "Very low confidence score."
+        },
+        {
+          "key": "unknown",
+          "label_visible": "UNKNOWN",
+          "aws_aria_label": "UNKNOWN",
+          "field_type": "RADIO",
+          "default_value": null,
+          "unit_sibling": null,
+          "options": [],
+          "required": true,
+          "confidence": {
+            "label": 0,
+            "section": 0.8,
+            "overall": 0.4
+          },
+          "status": "CONFLICT",
+          "pattern_type": "P5_RADIO_GROUP",
+          "review_note": "Very low confidence score."
+        },
+        {
+          "key": "unknown",
+          "label_visible": "UNKNOWN",
+          "aws_aria_label": "UNKNOWN",
+          "field_type": "RADIO",
+          "default_value": null,
+          "unit_sibling": null,
+          "options": [],
+          "required": true,
+          "confidence": {
+            "label": 0,
+            "section": 0.8,
+            "overall": 0.4
+          },
+          "status": "CONFLICT",
+          "pattern_type": "P5_RADIO_GROUP",
+          "review_note": "Very low confidence score."
+        },
+        {
+          "key": "unknown",
+          "label_visible": "UNKNOWN",
+          "aws_aria_label": "UNKNOWN",
+          "field_type": "RADIO",
+          "default_value": null,
+          "unit_sibling": null,
+          "options": [],
+          "required": true,
+          "confidence": {
+            "label": 0,
+            "section": 0.8,
+            "overall": 0.4
+          },
+          "status": "CONFLICT",
+          "pattern_type": "P5_RADIO_GROUP",
+          "review_note": "Very low confidence score."
+        },
+        {
+          "key": "unknown",
+          "label_visible": "UNKNOWN",
+          "aws_aria_label": "UNKNOWN",
+          "field_type": "RADIO",
+          "default_value": null,
+          "unit_sibling": null,
+          "options": [],
+          "required": true,
+          "confidence": {
+            "label": 0,
+            "section": 0.8,
+            "overall": 0.4
+          },
+          "status": "CONFLICT",
+          "pattern_type": "P5_RADIO_GROUP",
+          "review_note": "Very low confidence score."
+        },
+        {
+          "key": "unknown",
+          "label_visible": "UNKNOWN",
+          "aws_aria_label": "UNKNOWN",
+          "field_type": "RADIO",
+          "default_value": null,
+          "unit_sibling": null,
+          "options": [],
+          "required": true,
+          "confidence": {
+            "label": 0,
+            "section": 0.8,
+            "overall": 0.4
+          },
+          "status": "CONFLICT",
+          "pattern_type": "P5_RADIO_GROUP",
+          "review_note": "Very low confidence score."
+        },
+        {
+          "key": "unknown",
+          "label_visible": "UNKNOWN",
+          "aws_aria_label": "UNKNOWN",
+          "field_type": "RADIO",
+          "default_value": null,
+          "unit_sibling": null,
+          "options": [],
+          "required": true,
+          "confidence": {
+            "label": 0,
+            "section": 0.8,
+            "overall": 0.4
+          },
+          "status": "CONFLICT",
+          "pattern_type": "P5_RADIO_GROUP",
+          "review_note": "Very low confidence score."
+        },
+        {
+          "key": "unknown",
+          "label_visible": "UNKNOWN",
+          "aws_aria_label": "UNKNOWN",
+          "field_type": "RADIO",
+          "default_value": null,
+          "unit_sibling": null,
+          "options": [],
+          "required": true,
+          "confidence": {
+            "label": 0,
+            "section": 0.8,
+            "overall": 0.4
+          },
+          "status": "CONFLICT",
+          "pattern_type": "P5_RADIO_GROUP",
+          "review_note": "Very low confidence score."
+        },
+        {
+          "key": "unknown",
+          "label_visible": "UNKNOWN",
+          "aws_aria_label": "UNKNOWN",
+          "field_type": "RADIO",
+          "default_value": null,
+          "unit_sibling": null,
+          "options": [],
+          "required": true,
+          "confidence": {
+            "label": 0,
+            "section": 0.8,
+            "overall": 0.4
+          },
+          "status": "CONFLICT",
+          "pattern_type": "P5_RADIO_GROUP",
+          "review_note": "Very low confidence score."
+        },
+        {
+          "key": "unknown",
+          "label_visible": "UNKNOWN",
+          "aws_aria_label": "UNKNOWN",
+          "field_type": "RADIO",
+          "default_value": null,
+          "unit_sibling": null,
+          "options": [],
+          "required": true,
+          "confidence": {
+            "label": 0,
+            "section": 0.8,
+            "overall": 0.4
+          },
+          "status": "CONFLICT",
+          "pattern_type": "P5_RADIO_GROUP",
+          "review_note": "Very low confidence score."
+        },
+        {
+          "key": "unknown",
+          "label_visible": "UNKNOWN",
+          "aws_aria_label": "UNKNOWN",
+          "field_type": "RADIO",
+          "default_value": null,
+          "unit_sibling": null,
+          "options": [],
+          "required": true,
+          "confidence": {
+            "label": 0,
+            "section": 0.8,
+            "overall": 0.4
+          },
+          "status": "CONFLICT",
+          "pattern_type": "P5_RADIO_GROUP",
+          "review_note": "Very low confidence score."
+        }
+      ]
+    },
+    {
+      "key": "utilization_percent_per_month",
+      "label": "utilization percent per month",
+      "state_id": "S0",
+      "entered_via": {
+        "gate_control": null,
+        "action": null,
+        "from_state": null
+      },
+      "dimensions": [
+        {
+          "key": "no upfront",
+          "label_visible": "No upfront",
+          "aws_aria_label": "No upfront",
+          "field_type": "RADIO",
+          "default_value": null,
+          "unit_sibling": null,
+          "options": [],
+          "required": true,
+          "confidence": {
+            "label": 1,
+            "section": 0.8,
+            "overall": 0.88
+          },
+          "status": "CONFLICT",
+          "pattern_type": "P5_RADIO_GROUP",
+          "review_note": "Duplicate aws_aria_label across dimensions."
+        },
+        {
+          "key": "partial upfront",
+          "label_visible": "Partial upfront",
+          "aws_aria_label": "Partial upfront",
+          "field_type": "RADIO",
+          "default_value": null,
+          "unit_sibling": null,
+          "options": [],
+          "required": true,
+          "confidence": {
+            "label": 1,
+            "section": 0.8,
+            "overall": 0.88
+          },
+          "status": "CONFLICT",
+          "pattern_type": "P5_RADIO_GROUP",
+          "review_note": "Duplicate aws_aria_label across dimensions."
+        }
+      ]
+    },
+    {
+      "key": "other_purchasing_options",
+      "label": "other purchasing options",
+      "state_id": "S0",
+      "entered_via": {
+        "gate_control": null,
+        "action": null,
+        "from_state": null
+      },
+      "dimensions": [
+        {
+          "key": "standard reserved instances",
+          "label_visible": "Standard Reserved Instances",
+          "aws_aria_label": "Standard Reserved Instances",
+          "field_type": "RADIO",
+          "default_value": null,
+          "unit_sibling": null,
+          "options": [],
+          "required": true,
+          "confidence": {
+            "label": 1,
+            "section": 0.8,
+            "overall": 0.88
+          },
+          "status": "OK",
+          "pattern_type": "P5_RADIO_GROUP"
+        },
+        {
+          "key": "1 year",
+          "label_visible": "1 year",
+          "aws_aria_label": "1 year",
+          "field_type": "RADIO",
+          "default_value": null,
+          "unit_sibling": null,
+          "options": [],
+          "required": true,
+          "confidence": {
+            "label": 1,
+            "section": 0.8,
+            "overall": 0.88
+          },
+          "status": "CONFLICT",
+          "pattern_type": "P5_RADIO_GROUP",
+          "review_note": "Duplicate aws_aria_label across dimensions."
+        },
+        {
+          "key": "3 year",
+          "label_visible": "3 year",
+          "aws_aria_label": "3 year",
+          "field_type": "RADIO",
+          "default_value": null,
+          "unit_sibling": null,
+          "options": [],
+          "required": true,
+          "confidence": {
+            "label": 1,
+            "section": 0.8,
+            "overall": 0.88
+          },
+          "status": "CONFLICT",
+          "pattern_type": "P5_RADIO_GROUP",
+          "review_note": "Duplicate aws_aria_label across dimensions."
+        },
+        {
+          "key": "no upfront",
+          "label_visible": "No upfront",
+          "aws_aria_label": "No upfront",
+          "field_type": "RADIO",
+          "default_value": null,
+          "unit_sibling": null,
+          "options": [],
+          "required": true,
+          "confidence": {
+            "label": 1,
+            "section": 0.8,
+            "overall": 0.88
+          },
+          "status": "CONFLICT",
+          "pattern_type": "P5_RADIO_GROUP",
+          "review_note": "Duplicate aws_aria_label across dimensions."
+        },
+        {
+          "key": "partial upfront",
+          "label_visible": "Partial upfront",
+          "aws_aria_label": "Partial upfront",
+          "field_type": "RADIO",
+          "default_value": null,
+          "unit_sibling": null,
+          "options": [],
+          "required": true,
+          "confidence": {
+            "label": 1,
+            "section": 0.8,
+            "overall": 0.88
+          },
+          "status": "CONFLICT",
+          "pattern_type": "P5_RADIO_GROUP",
+          "review_note": "Duplicate aws_aria_label across dimensions."
+        },
+        {
+          "key": "all upfront",
+          "label_visible": "All upfront",
+          "aws_aria_label": "All upfront",
+          "field_type": "RADIO",
+          "default_value": null,
+          "unit_sibling": null,
+          "options": [],
+          "required": true,
+          "confidence": {
+            "label": 1,
+            "section": 0.8,
+            "overall": 0.88
+          },
+          "status": "CONFLICT",
+          "pattern_type": "P5_RADIO_GROUP",
+          "review_note": "Duplicate aws_aria_label across dimensions."
+        },
+        {
+          "key": "convertible reserved instances",
+          "label_visible": "Convertible Reserved Instances",
+          "aws_aria_label": "Convertible Reserved Instances",
+          "field_type": "RADIO",
+          "default_value": null,
+          "unit_sibling": null,
+          "options": [],
+          "required": true,
+          "confidence": {
+            "label": 1,
+            "section": 0.8,
+            "overall": 0.88
+          },
+          "status": "OK",
+          "pattern_type": "P5_RADIO_GROUP"
+        },
+        {
+          "key": "1 year",
+          "label_visible": "1 year",
+          "aws_aria_label": "1 year",
+          "field_type": "RADIO",
+          "default_value": null,
+          "unit_sibling": null,
+          "options": [],
+          "required": true,
+          "confidence": {
+            "label": 1,
+            "section": 0.8,
+            "overall": 0.88
+          },
+          "status": "CONFLICT",
+          "pattern_type": "P5_RADIO_GROUP",
+          "review_note": "Duplicate aws_aria_label across dimensions."
+        },
+        {
+          "key": "3 year",
+          "label_visible": "3 year",
+          "aws_aria_label": "3 year",
+          "field_type": "RADIO",
+          "default_value": null,
+          "unit_sibling": null,
+          "options": [],
+          "required": true,
+          "confidence": {
+            "label": 1,
+            "section": 0.8,
+            "overall": 0.88
+          },
+          "status": "CONFLICT",
+          "pattern_type": "P5_RADIO_GROUP",
+          "review_note": "Duplicate aws_aria_label across dimensions."
+        },
+        {
+          "key": "no upfront",
+          "label_visible": "No upfront",
+          "aws_aria_label": "No upfront",
+          "field_type": "RADIO",
+          "default_value": null,
+          "unit_sibling": null,
+          "options": [],
+          "required": true,
+          "confidence": {
+            "label": 1,
+            "section": 0.8,
+            "overall": 0.88
+          },
+          "status": "CONFLICT",
+          "pattern_type": "P5_RADIO_GROUP",
+          "review_note": "Duplicate aws_aria_label across dimensions."
+        },
+        {
+          "key": "partial upfront",
+          "label_visible": "Partial upfront",
+          "aws_aria_label": "Partial upfront",
+          "field_type": "RADIO",
+          "default_value": null,
+          "unit_sibling": null,
+          "options": [],
+          "required": true,
+          "confidence": {
+            "label": 1,
+            "section": 0.8,
+            "overall": 0.88
+          },
+          "status": "CONFLICT",
+          "pattern_type": "P5_RADIO_GROUP",
+          "review_note": "Duplicate aws_aria_label across dimensions."
+        },
+        {
+          "key": "all upfront",
+          "label_visible": "All upfront",
+          "aws_aria_label": "All upfront",
+          "field_type": "RADIO",
+          "default_value": null,
+          "unit_sibling": null,
+          "options": [],
+          "required": true,
+          "confidence": {
+            "label": 1,
+            "section": 0.8,
+            "overall": 0.88
+          },
+          "status": "CONFLICT",
+          "pattern_type": "P5_RADIO_GROUP",
+          "review_note": "Duplicate aws_aria_label across dimensions."
+        }
+      ]
+    },
+    {
+      "key": "amazon_elastic_block_store_ebs_optionalinfo",
+      "label": "amazon elastic block store (ebs) - optionalinfo:",
+      "state_id": "S0",
+      "entered_via": {
+        "gate_control": null,
+        "action": null,
+        "from_state": null
+      },
+      "dimensions": [
+        {
+          "key": "description - optional",
+          "label_visible": "Description - optional",
+          "aws_aria_label": "Description - optional",
+          "field_type": "TEXT",
+          "default_value": null,
+          "unit_sibling": null,
+          "options": [],
+          "required": true,
+          "confidence": {
+            "label": 1,
+            "section": 0.8,
+            "overall": 0.68
+          },
+          "status": "REVIEW_REQUIRED",
+          "pattern_type": "UNKNOWN_PATTERN",
+          "review_note": "Low confidence score."
+        }
+      ]
+    },
+    {
+      "key": "general_purpose_ssd_gp3",
+      "label": "general purpose ssd (gp3)",
+      "state_id": "S0",
+      "entered_via": {
+        "gate_control": null,
+        "action": null,
+        "from_state": null
+      },
+      "dimensions": [
+        {
+          "key": "unknown",
+          "label_visible": "UNKNOWN",
+          "aws_aria_label": "General Purpose SSD (gp3) - IOPS Enter amount of IOPS per volume",
+          "field_type": "TEXT",
+          "default_value": null,
+          "unit_sibling": null,
+          "options": [],
+          "required": true,
+          "confidence": {
+            "label": 0,
+            "section": 0.8,
+            "overall": 0.2
+          },
+          "status": "CONFLICT",
+          "pattern_type": "UNKNOWN_PATTERN",
+          "review_note": "Very low confidence score."
+        }
+      ]
+    },
+    {
+      "key": "mbps",
+      "label": "mbps",
+      "state_id": "S0",
+      "entered_via": {
+        "gate_control": null,
+        "action": null,
+        "from_state": null
+      },
+      "dimensions": [
+        {
+          "key": "unknown",
+          "label_visible": "UNKNOWN",
+          "aws_aria_label": "General Purpose SSD (gp3) - Throughput Value",
+          "field_type": "NUMBER",
+          "default_value": null,
+          "unit_sibling": null,
+          "options": [],
+          "required": true,
+          "confidence": {
+            "label": 0,
+            "section": 0.8,
+            "overall": 0.4
+          },
+          "status": "CONFLICT",
+          "pattern_type": "P1_NUMBER",
+          "review_note": "Very low confidence score."
+        },
+        {
+          "key": "unknown",
+          "label_visible": "UNKNOWN",
+          "aws_aria_label": "Storage amount Value",
+          "field_type": "NUMBER",
+          "default_value": null,
+          "unit_sibling": null,
+          "options": [],
+          "required": true,
+          "confidence": {
+            "label": 0,
+            "section": 0.8,
+            "overall": 0.4
+          },
+          "status": "CONFLICT",
+          "pattern_type": "P1_NUMBER",
+          "review_note": "Very low confidence score."
+        }
+      ]
+    }
+  ],
+  "dimensions": [
+    {
+      "key": "search instance types search by instance name or filter by keyword",
+      "label_visible": "Search instance types Search by instance name or filter by keyword",
+      "aws_aria_label": "Search instance types Search by instance name or filter by keyword",
+      "field_type": "TEXT",
+      "default_value": null,
+      "unit_sibling": null,
+      "options": [],
+      "required": true,
+      "confidence": {
+        "label": 1,
+        "section": 0.8,
+        "overall": 0.68
+      },
+      "status": "REVIEW_REQUIRED",
+      "pattern_type": "UNKNOWN_PATTERN",
+      "review_note": "Low confidence score.",
+      "section": "shared instances",
+      "discovered_in_state": "S0"
+    },
+    {
+      "key": "unknown",
+      "label_visible": "UNKNOWN",
+      "aws_aria_label": "UNKNOWN",
+      "field_type": "RADIO",
+      "default_value": null,
+      "unit_sibling": null,
+      "options": [],
+      "required": true,
+      "confidence": {
+        "label": 0,
+        "section": 0.8,
+        "overall": 0.4
+      },
+      "status": "CONFLICT",
+      "pattern_type": "P5_RADIO_GROUP",
+      "review_note": "Very low confidence score.",
+      "section": "linux",
+      "discovered_in_state": "S0"
+    },
+    {
+      "key": "unknown",
+      "label_visible": "UNKNOWN",
+      "aws_aria_label": "UNKNOWN",
+      "field_type": "RADIO",
+      "default_value": null,
+      "unit_sibling": null,
+      "options": [],
+      "required": true,
+      "confidence": {
+        "label": 0,
+        "section": 0.8,
+        "overall": 0.4
+      },
+      "status": "CONFLICT",
+      "pattern_type": "P5_RADIO_GROUP",
+      "review_note": "Very low confidence score.",
+      "section": "linux",
+      "discovered_in_state": "S0"
+    },
+    {
+      "key": "unknown",
+      "label_visible": "UNKNOWN",
+      "aws_aria_label": "UNKNOWN",
+      "field_type": "RADIO",
+      "default_value": null,
+      "unit_sibling": null,
+      "options": [],
+      "required": true,
+      "confidence": {
+        "label": 0,
+        "section": 0.8,
+        "overall": 0.4
+      },
+      "status": "CONFLICT",
+      "pattern_type": "P5_RADIO_GROUP",
+      "review_note": "Very low confidence score.",
+      "section": "linux",
+      "discovered_in_state": "S0"
+    },
+    {
+      "key": "unknown",
+      "label_visible": "UNKNOWN",
+      "aws_aria_label": "UNKNOWN",
+      "field_type": "RADIO",
+      "default_value": null,
+      "unit_sibling": null,
+      "options": [],
+      "required": true,
+      "confidence": {
+        "label": 0,
+        "section": 0.8,
+        "overall": 0.4
+      },
+      "status": "CONFLICT",
+      "pattern_type": "P5_RADIO_GROUP",
+      "review_note": "Very low confidence score.",
+      "section": "linux",
+      "discovered_in_state": "S0"
+    },
+    {
+      "key": "number of instances enter amount",
+      "label_visible": "Number of instances Enter amount",
+      "aws_aria_label": "Number of instances Enter amount",
+      "field_type": "NUMBER",
+      "default_value": null,
+      "unit_sibling": null,
+      "options": [],
+      "required": true,
+      "confidence": {
+        "label": 1,
+        "section": 0.8,
+        "overall": 0.88
+      },
+      "status": "OK",
+      "pattern_type": "P1_NUMBER",
+      "section": "linux",
+      "discovered_in_state": "S0"
+    },
+    {
+      "key": "unknown",
+      "label_visible": "UNKNOWN",
+      "aws_aria_label": "Enter the minimum number of instances for your workload.",
+      "field_type": "NUMBER",
+      "default_value": null,
+      "unit_sibling": null,
+      "options": [],
+      "required": true,
+      "confidence": {
+        "label": 0,
+        "section": 0.8,
+        "overall": 0.4
+      },
+      "status": "CONFLICT",
+      "pattern_type": "P1_NUMBER",
+      "review_note": "Very low confidence score.",
+      "section": "linux",
+      "discovered_in_state": "S0"
+    },
+    {
+      "key": "unknown",
+      "label_visible": "UNKNOWN",
+      "aws_aria_label": "Enter the maximum number of instances for your workload.",
+      "field_type": "NUMBER",
+      "default_value": null,
+      "unit_sibling": null,
+      "options": [],
+      "required": true,
+      "confidence": {
+        "label": 0,
+        "section": 0.8,
+        "overall": 0.4
+      },
+      "status": "CONFLICT",
+      "pattern_type": "P1_NUMBER",
+      "review_note": "Very low confidence score.",
+      "section": "linux",
+      "discovered_in_state": "S0"
+    },
+    {
+      "key": "unknown",
+      "label_visible": "UNKNOWN",
+      "aws_aria_label": "Enter the amount of days your instances are running at peak.",
+      "field_type": "NUMBER",
+      "default_value": null,
+      "unit_sibling": null,
+      "options": [],
+      "required": true,
+      "confidence": {
+        "label": 0,
+        "section": 0.8,
+        "overall": 0.4
+      },
+      "status": "CONFLICT",
+      "pattern_type": "P1_NUMBER",
+      "review_note": "Very low confidence score.",
+      "section": "linux",
+      "discovered_in_state": "S0"
+    },
+    {
+      "key": "unknown",
+      "label_visible": "UNKNOWN",
+      "aws_aria_label": "Enter the amount of hours your instances are running at peak.",
+      "field_type": "NUMBER",
+      "default_value": null,
+      "unit_sibling": null,
+      "options": [],
+      "required": true,
+      "confidence": {
+        "label": 0,
+        "section": 0.8,
+        "overall": 0.4
+      },
+      "status": "CONFLICT",
+      "pattern_type": "P1_NUMBER",
+      "review_note": "Very low confidence score.",
+      "section": "linux",
+      "discovered_in_state": "S0"
+    },
+    {
+      "key": "unknown",
+      "label_visible": "UNKNOWN",
+      "aws_aria_label": "Enter the amount of minutes your instances are running at peak.",
+      "field_type": "NUMBER",
+      "default_value": null,
+      "unit_sibling": null,
+      "options": [],
+      "required": true,
+      "confidence": {
+        "label": 0,
+        "section": 0.8,
+        "overall": 0.4
+      },
+      "status": "CONFLICT",
+      "pattern_type": "P1_NUMBER",
+      "review_note": "Very low confidence score.",
+      "section": "linux",
+      "discovered_in_state": "S0"
+    },
+    {
+      "key": "unknown",
+      "label_visible": "UNKNOWN",
+      "aws_aria_label": "UNKNOWN",
+      "field_type": "TOGGLE",
+      "default_value": null,
+      "unit_sibling": null,
+      "options": [],
+      "required": true,
+      "confidence": {
+        "label": 0,
+        "section": 0.8,
+        "overall": 0.4
+      },
+      "status": "CONFLICT",
+      "pattern_type": "P4_TOGGLE",
+      "review_note": "Very low confidence score.",
+      "section": "any instance family",
+      "discovered_in_state": "S0"
+    },
+    {
+      "key": "unknown",
+      "label_visible": "UNKNOWN",
+      "aws_aria_label": "UNKNOWN",
+      "field_type": "RADIO",
+      "default_value": null,
+      "unit_sibling": null,
+      "options": [],
+      "required": true,
+      "confidence": {
+        "label": 0,
+        "section": 0.8,
+        "overall": 0.4
+      },
+      "status": "CONFLICT",
+      "pattern_type": "P5_RADIO_GROUP",
+      "review_note": "Very low confidence score.",
+      "section": "any instance family",
+      "discovered_in_state": "S0"
+    },
+    {
+      "key": "unknown",
+      "label_visible": "UNKNOWN",
+      "aws_aria_label": "UNKNOWN",
+      "field_type": "RADIO",
+      "default_value": null,
+      "unit_sibling": null,
+      "options": [],
+      "required": true,
+      "confidence": {
+        "label": 0,
+        "section": 0.8,
+        "overall": 0.4
+      },
+      "status": "CONFLICT",
+      "pattern_type": "P5_RADIO_GROUP",
+      "review_note": "Very low confidence score.",
+      "section": "any instance family",
+      "discovered_in_state": "S0"
+    },
+    {
+      "key": "unknown",
+      "label_visible": "UNKNOWN",
+      "aws_aria_label": "UNKNOWN",
+      "field_type": "RADIO",
+      "default_value": null,
+      "unit_sibling": null,
+      "options": [],
+      "required": true,
+      "confidence": {
+        "label": 0,
+        "section": 0.8,
+        "overall": 0.4
+      },
+      "status": "CONFLICT",
+      "pattern_type": "P5_RADIO_GROUP",
+      "review_note": "Very low confidence score.",
+      "section": "any instance family",
+      "discovered_in_state": "S0"
+    },
+    {
+      "key": "unknown",
+      "label_visible": "UNKNOWN",
+      "aws_aria_label": "UNKNOWN",
+      "field_type": "RADIO",
+      "default_value": null,
+      "unit_sibling": null,
+      "options": [],
+      "required": true,
+      "confidence": {
+        "label": 0,
+        "section": 0.8,
+        "overall": 0.4
+      },
+      "status": "CONFLICT",
+      "pattern_type": "P5_RADIO_GROUP",
+      "review_note": "Very low confidence score.",
+      "section": "any instance family",
+      "discovered_in_state": "S0"
+    },
+    {
+      "key": "unknown",
+      "label_visible": "UNKNOWN",
+      "aws_aria_label": "UNKNOWN",
+      "field_type": "RADIO",
+      "default_value": null,
+      "unit_sibling": null,
+      "options": [],
+      "required": true,
+      "confidence": {
+        "label": 0,
+        "section": 0.8,
+        "overall": 0.4
+      },
+      "status": "CONFLICT",
+      "pattern_type": "P5_RADIO_GROUP",
+      "review_note": "Very low confidence score.",
+      "section": "any instance family",
+      "discovered_in_state": "S0"
+    },
+    {
+      "key": "unknown",
+      "label_visible": "UNKNOWN",
+      "aws_aria_label": "UNKNOWN",
+      "field_type": "RADIO",
+      "default_value": null,
+      "unit_sibling": null,
+      "options": [],
+      "required": true,
+      "confidence": {
+        "label": 0,
+        "section": 0.8,
+        "overall": 0.4
+      },
+      "status": "CONFLICT",
+      "pattern_type": "P5_RADIO_GROUP",
+      "review_note": "Very low confidence score.",
+      "section": "any instance family",
+      "discovered_in_state": "S0"
+    },
+    {
+      "key": "unknown",
+      "label_visible": "UNKNOWN",
+      "aws_aria_label": "UNKNOWN",
+      "field_type": "RADIO",
+      "default_value": null,
+      "unit_sibling": null,
+      "options": [],
+      "required": true,
+      "confidence": {
+        "label": 0,
+        "section": 0.8,
+        "overall": 0.4
+      },
+      "status": "CONFLICT",
+      "pattern_type": "P5_RADIO_GROUP",
+      "review_note": "Very low confidence score.",
+      "section": "any instance family",
+      "discovered_in_state": "S0"
+    },
+    {
+      "key": "unknown",
+      "label_visible": "UNKNOWN",
+      "aws_aria_label": "UNKNOWN",
+      "field_type": "RADIO",
+      "default_value": null,
+      "unit_sibling": null,
+      "options": [],
+      "required": true,
+      "confidence": {
+        "label": 0,
+        "section": 0.8,
+        "overall": 0.4
+      },
+      "status": "CONFLICT",
+      "pattern_type": "P5_RADIO_GROUP",
+      "review_note": "Very low confidence score.",
+      "section": "any instance family",
+      "discovered_in_state": "S0"
+    },
+    {
+      "key": "unknown",
+      "label_visible": "UNKNOWN",
+      "aws_aria_label": "UNKNOWN",
+      "field_type": "RADIO",
+      "default_value": null,
+      "unit_sibling": null,
+      "options": [],
+      "required": true,
+      "confidence": {
+        "label": 0,
+        "section": 0.8,
+        "overall": 0.4
+      },
+      "status": "CONFLICT",
+      "pattern_type": "P5_RADIO_GROUP",
+      "review_note": "Very low confidence score.",
+      "section": "any instance family",
+      "discovered_in_state": "S0"
+    },
+    {
+      "key": "unknown",
+      "label_visible": "UNKNOWN",
+      "aws_aria_label": "UNKNOWN",
+      "field_type": "RADIO",
+      "default_value": null,
+      "unit_sibling": null,
+      "options": [],
+      "required": true,
+      "confidence": {
+        "label": 0,
+        "section": 0.8,
+        "overall": 0.4
+      },
+      "status": "CONFLICT",
+      "pattern_type": "P5_RADIO_GROUP",
+      "review_note": "Very low confidence score.",
+      "section": "any instance family",
+      "discovered_in_state": "S0"
+    },
+    {
+      "key": "no upfront",
+      "label_visible": "No upfront",
+      "aws_aria_label": "No upfront",
+      "field_type": "RADIO",
+      "default_value": null,
+      "unit_sibling": null,
+      "options": [],
+      "required": true,
+      "confidence": {
+        "label": 1,
+        "section": 0.8,
+        "overall": 0.88
+      },
+      "status": "CONFLICT",
+      "pattern_type": "P5_RADIO_GROUP",
+      "review_note": "Duplicate aws_aria_label across dimensions.",
+      "section": "utilization percent per month",
+      "discovered_in_state": "S0"
+    },
+    {
+      "key": "partial upfront",
+      "label_visible": "Partial upfront",
+      "aws_aria_label": "Partial upfront",
+      "field_type": "RADIO",
+      "default_value": null,
+      "unit_sibling": null,
+      "options": [],
+      "required": true,
+      "confidence": {
+        "label": 1,
+        "section": 0.8,
+        "overall": 0.88
+      },
+      "status": "CONFLICT",
+      "pattern_type": "P5_RADIO_GROUP",
+      "review_note": "Duplicate aws_aria_label across dimensions.",
+      "section": "utilization percent per month",
+      "discovered_in_state": "S0"
+    },
+    {
+      "key": "standard reserved instances",
+      "label_visible": "Standard Reserved Instances",
+      "aws_aria_label": "Standard Reserved Instances",
+      "field_type": "RADIO",
+      "default_value": null,
+      "unit_sibling": null,
+      "options": [],
+      "required": true,
+      "confidence": {
+        "label": 1,
+        "section": 0.8,
+        "overall": 0.88
+      },
+      "status": "OK",
+      "pattern_type": "P5_RADIO_GROUP",
+      "section": "other purchasing options",
+      "discovered_in_state": "S0"
+    },
+    {
+      "key": "1 year",
+      "label_visible": "1 year",
+      "aws_aria_label": "1 year",
+      "field_type": "RADIO",
+      "default_value": null,
+      "unit_sibling": null,
+      "options": [],
+      "required": true,
+      "confidence": {
+        "label": 1,
+        "section": 0.8,
+        "overall": 0.88
+      },
+      "status": "CONFLICT",
+      "pattern_type": "P5_RADIO_GROUP",
+      "review_note": "Duplicate aws_aria_label across dimensions.",
+      "section": "other purchasing options",
+      "discovered_in_state": "S0"
+    },
+    {
+      "key": "3 year",
+      "label_visible": "3 year",
+      "aws_aria_label": "3 year",
+      "field_type": "RADIO",
+      "default_value": null,
+      "unit_sibling": null,
+      "options": [],
+      "required": true,
+      "confidence": {
+        "label": 1,
+        "section": 0.8,
+        "overall": 0.88
+      },
+      "status": "CONFLICT",
+      "pattern_type": "P5_RADIO_GROUP",
+      "review_note": "Duplicate aws_aria_label across dimensions.",
+      "section": "other purchasing options",
+      "discovered_in_state": "S0"
+    },
+    {
+      "key": "no upfront",
+      "label_visible": "No upfront",
+      "aws_aria_label": "No upfront",
+      "field_type": "RADIO",
+      "default_value": null,
+      "unit_sibling": null,
+      "options": [],
+      "required": true,
+      "confidence": {
+        "label": 1,
+        "section": 0.8,
+        "overall": 0.88
+      },
+      "status": "CONFLICT",
+      "pattern_type": "P5_RADIO_GROUP",
+      "review_note": "Duplicate aws_aria_label across dimensions.",
+      "section": "other purchasing options",
+      "discovered_in_state": "S0"
+    },
+    {
+      "key": "partial upfront",
+      "label_visible": "Partial upfront",
+      "aws_aria_label": "Partial upfront",
+      "field_type": "RADIO",
+      "default_value": null,
+      "unit_sibling": null,
+      "options": [],
+      "required": true,
+      "confidence": {
+        "label": 1,
+        "section": 0.8,
+        "overall": 0.88
+      },
+      "status": "CONFLICT",
+      "pattern_type": "P5_RADIO_GROUP",
+      "review_note": "Duplicate aws_aria_label across dimensions.",
+      "section": "other purchasing options",
+      "discovered_in_state": "S0"
+    },
+    {
+      "key": "all upfront",
+      "label_visible": "All upfront",
+      "aws_aria_label": "All upfront",
+      "field_type": "RADIO",
+      "default_value": null,
+      "unit_sibling": null,
+      "options": [],
+      "required": true,
+      "confidence": {
+        "label": 1,
+        "section": 0.8,
+        "overall": 0.88
+      },
+      "status": "CONFLICT",
+      "pattern_type": "P5_RADIO_GROUP",
+      "review_note": "Duplicate aws_aria_label across dimensions.",
+      "section": "other purchasing options",
+      "discovered_in_state": "S0"
+    },
+    {
+      "key": "convertible reserved instances",
+      "label_visible": "Convertible Reserved Instances",
+      "aws_aria_label": "Convertible Reserved Instances",
+      "field_type": "RADIO",
+      "default_value": null,
+      "unit_sibling": null,
+      "options": [],
+      "required": true,
+      "confidence": {
+        "label": 1,
+        "section": 0.8,
+        "overall": 0.88
+      },
+      "status": "OK",
+      "pattern_type": "P5_RADIO_GROUP",
+      "section": "other purchasing options",
+      "discovered_in_state": "S0"
+    },
+    {
+      "key": "1 year",
+      "label_visible": "1 year",
+      "aws_aria_label": "1 year",
+      "field_type": "RADIO",
+      "default_value": null,
+      "unit_sibling": null,
+      "options": [],
+      "required": true,
+      "confidence": {
+        "label": 1,
+        "section": 0.8,
+        "overall": 0.88
+      },
+      "status": "CONFLICT",
+      "pattern_type": "P5_RADIO_GROUP",
+      "review_note": "Duplicate aws_aria_label across dimensions.",
+      "section": "other purchasing options",
+      "discovered_in_state": "S0"
+    },
+    {
+      "key": "3 year",
+      "label_visible": "3 year",
+      "aws_aria_label": "3 year",
+      "field_type": "RADIO",
+      "default_value": null,
+      "unit_sibling": null,
+      "options": [],
+      "required": true,
+      "confidence": {
+        "label": 1,
+        "section": 0.8,
+        "overall": 0.88
+      },
+      "status": "CONFLICT",
+      "pattern_type": "P5_RADIO_GROUP",
+      "review_note": "Duplicate aws_aria_label across dimensions.",
+      "section": "other purchasing options",
+      "discovered_in_state": "S0"
+    },
+    {
+      "key": "no upfront",
+      "label_visible": "No upfront",
+      "aws_aria_label": "No upfront",
+      "field_type": "RADIO",
+      "default_value": null,
+      "unit_sibling": null,
+      "options": [],
+      "required": true,
+      "confidence": {
+        "label": 1,
+        "section": 0.8,
+        "overall": 0.88
+      },
+      "status": "CONFLICT",
+      "pattern_type": "P5_RADIO_GROUP",
+      "review_note": "Duplicate aws_aria_label across dimensions.",
+      "section": "other purchasing options",
+      "discovered_in_state": "S0"
+    },
+    {
+      "key": "partial upfront",
+      "label_visible": "Partial upfront",
+      "aws_aria_label": "Partial upfront",
+      "field_type": "RADIO",
+      "default_value": null,
+      "unit_sibling": null,
+      "options": [],
+      "required": true,
+      "confidence": {
+        "label": 1,
+        "section": 0.8,
+        "overall": 0.88
+      },
+      "status": "CONFLICT",
+      "pattern_type": "P5_RADIO_GROUP",
+      "review_note": "Duplicate aws_aria_label across dimensions.",
+      "section": "other purchasing options",
+      "discovered_in_state": "S0"
+    },
+    {
+      "key": "all upfront",
+      "label_visible": "All upfront",
+      "aws_aria_label": "All upfront",
+      "field_type": "RADIO",
+      "default_value": null,
+      "unit_sibling": null,
+      "options": [],
+      "required": true,
+      "confidence": {
+        "label": 1,
+        "section": 0.8,
+        "overall": 0.88
+      },
+      "status": "CONFLICT",
+      "pattern_type": "P5_RADIO_GROUP",
+      "review_note": "Duplicate aws_aria_label across dimensions.",
+      "section": "other purchasing options",
+      "discovered_in_state": "S0"
+    },
+    {
+      "key": "description - optional",
+      "label_visible": "Description - optional",
+      "aws_aria_label": "Description - optional",
+      "field_type": "TEXT",
+      "default_value": null,
+      "unit_sibling": null,
+      "options": [],
+      "required": true,
+      "confidence": {
+        "label": 1,
+        "section": 0.8,
+        "overall": 0.68
+      },
+      "status": "REVIEW_REQUIRED",
+      "pattern_type": "UNKNOWN_PATTERN",
+      "review_note": "Low confidence score.",
+      "section": "amazon elastic block store (ebs) - optionalinfo:",
+      "discovered_in_state": "S0"
+    },
+    {
+      "key": "unknown",
+      "label_visible": "UNKNOWN",
+      "aws_aria_label": "General Purpose SSD (gp3) - IOPS Enter amount of IOPS per volume",
+      "field_type": "TEXT",
+      "default_value": null,
+      "unit_sibling": null,
+      "options": [],
+      "required": true,
+      "confidence": {
+        "label": 0,
+        "section": 0.8,
+        "overall": 0.2
+      },
+      "status": "CONFLICT",
+      "pattern_type": "UNKNOWN_PATTERN",
+      "review_note": "Very low confidence score.",
+      "section": "general purpose ssd (gp3)",
+      "discovered_in_state": "S0"
+    },
+    {
+      "key": "unknown",
+      "label_visible": "UNKNOWN",
+      "aws_aria_label": "General Purpose SSD (gp3) - Throughput Value",
+      "field_type": "NUMBER",
+      "default_value": null,
+      "unit_sibling": null,
+      "options": [],
+      "required": true,
+      "confidence": {
+        "label": 0,
+        "section": 0.8,
+        "overall": 0.4
+      },
+      "status": "CONFLICT",
+      "pattern_type": "P1_NUMBER",
+      "review_note": "Very low confidence score.",
+      "section": "mbps",
+      "discovered_in_state": "S0"
+    },
+    {
+      "key": "unknown",
+      "label_visible": "UNKNOWN",
+      "aws_aria_label": "Storage amount Value",
+      "field_type": "NUMBER",
+      "default_value": null,
+      "unit_sibling": null,
+      "options": [],
+      "required": true,
+      "confidence": {
+        "label": 0,
+        "section": 0.8,
+        "overall": 0.4
+      },
+      "status": "CONFLICT",
+      "pattern_type": "P1_NUMBER",
+      "review_note": "Very low confidence score.",
+      "section": "mbps",
+      "discovered_in_state": "S0"
+    }
+  ],
+  "exploration_meta": {
+    "activated_toggles": [
+      "show only current generation instances."
+    ],
+    "exploration_states": [
+      {
+        "state_id": "S0",
+        "entered_via": {
+          "gate_control": null,
+          "action": null,
+          "from_state": null
+        },
+        "fingerprint": "amazon elastic block store (ebs) - optionalinfo:|description - optional|TEXT|input[aria-label='Description - optional']||any instance family|unknown|RADIO|input[id='1653-1772205199462-6170']||any instance family|unknown|RADIO|input[id='1655-1772205199463-4335']||any instance family|unknown|RADIO|input[id='1657-1772205199464-9567']||any instance family|unknown|RADIO|input[id='1659-1772205199464-9331']||any instance family|unknown|RADIO|input[id='1661-1772205199464-1441']||any instance family|unknown|RADIO|input[id='1663-1772205199465-5265']||any instance family|unknown|RADIO|input[id='1665-1772205199465-1189']||any instance family|unknown|RADIO|input[id='1667-1772205199465-28']||any instance family|unknown|RADIO|input[id='1669-1772205199465-4397']||any instance family|unknown|RADIO|input[id='1671-1772205199466-490']||any instance family|unknown|TOGGLE|input[id='1573-1772205196437-3624']||general purpose ssd (gp3)|unknown|TEXT|input[aria-label='General Purpose SSD (gp3) - IOPS Enter amount of IOPS per volume']||linux|number of instances enter amount|NUMBER|input[aria-label='Number of instances Enter amount']||linux|unknown|RADIO|input[id='1336-1772205195284-5555']||linux|unknown|RADIO|input[id='1338-1772205195284-3932']||linux|unknown|RADIO|input[id='1340-1772205195284-25']||linux|unknown|RADIO|input[id='1342-1772205195284-3064']||mbps|unknown|NUMBER|input[aria-label='General Purpose SSD (gp3) - Throughput Value']||mbps|unknown|NUMBER|input[aria-label='Storage amount Value']||other purchasing options|1 year|RADIO|input[id='convertible-1 Year']||other purchasing options|1 year|RADIO|input[id='standard-1 Year']||other purchasing options|3 year|RADIO|input[id='convertible-3 Year']||other purchasing options|3 year|RADIO|input[id='standard-3 Year']||other purchasing options|all upfront|RADIO|input[id='convertible-All']||other purchasing options|all upfront|RADIO|input[id='standard-All']||other purchasing options|convertible reserved instances|RADIO|input[id='convertible']||other purchasing options|no upfront|RADIO|input[id='convertible-None']||other purchasing options|no upfront|RADIO|input[id='standard-None']||other purchasing options|partial upfront|RADIO|input[id='convertible-Partial']||other purchasing options|partial upfront|RADIO|input[id='standard-Partial']||other purchasing options|standard reserved instances|RADIO|input[id='standard']||shared instances|search instance types search by instance name or filter by keyword|TEXT|input[aria-label='Search instance types Search by instance name or filter by keyword']||utilization percent per month|no upfront|RADIO|input[id='compute-savings-None']||utilization percent per month|partial upfront|RADIO|input[id='instance-savings-Partial']",
+        "sequence": []
+      },
+      {
+        "state_id": "S1",
+        "entered_via": {
+          "gate_control": "show only current generation instances.",
+          "action": "click",
+          "from_state": "S0"
+        },
+        "fingerprint": "amazon elastic block store (ebs) - optionalinfo:|description - optional|TEXT|input[aria-label='Description - optional']||any instance family|unknown|RADIO|input[id='1653-1772205199462-6170']||any instance family|unknown|RADIO|input[id='1655-1772205199463-4335']||any instance family|unknown|RADIO|input[id='1657-1772205199464-9567']||any instance family|unknown|RADIO|input[id='1659-1772205199464-9331']||any instance family|unknown|RADIO|input[id='1661-1772205199464-1441']||any instance family|unknown|RADIO|input[id='1663-1772205199465-5265']||any instance family|unknown|RADIO|input[id='1665-1772205199465-1189']||any instance family|unknown|RADIO|input[id='1667-1772205199465-28']||any instance family|unknown|RADIO|input[id='1669-1772205199465-4397']||any instance family|unknown|RADIO|input[id='1671-1772205199466-490']||any instance family|unknown|TOGGLE|input[id='1573-1772205196437-3624']||general purpose ssd (gp3)|general purpose ssd (gp3) - iops enter amount of iops per volume|TEXT|input[aria-label='General Purpose SSD (gp3) - IOPS Enter amount of IOPS per volume']||mbps|general purpose ssd (gp3) - throughput value|NUMBER|input[aria-label='General Purpose SSD (gp3) - Throughput Value']||mbps|storage amount value|NUMBER|input[aria-label='Storage amount Value']||other purchasing options|1 year|RADIO|input[id='convertible-1 Year']||other purchasing options|1 year|RADIO|input[id='standard-1 Year']||other purchasing options|3 year|RADIO|input[id='convertible-3 Year']||other purchasing options|3 year|RADIO|input[id='standard-3 Year']||other purchasing options|all upfront|RADIO|input[id='convertible-All']||other purchasing options|all upfront|RADIO|input[id='standard-All']||other purchasing options|convertible reserved instances|RADIO|input[id='convertible']||other purchasing options|no upfront|RADIO|input[id='convertible-None']||other purchasing options|no upfront|RADIO|input[id='standard-None']||other purchasing options|partial upfront|RADIO|input[id='convertible-Partial']||other purchasing options|partial upfront|RADIO|input[id='standard-Partial']||other purchasing options|standard reserved instances|RADIO|input[id='standard']||shared instances|unknown|TEXT|input[aria-label='Search instance types Search by instance name or filter by keyword']||utilization percent per month|no upfront|RADIO|input[id='compute-savings-None']||utilization percent per month|partial upfront|RADIO|input[id='instance-savings-Partial']",
+        "sequence": [
+          {
+            "control": {
+              "key": "show only current generation instances.",
+              "aws_aria_label": "show only current generation instances.",
+              "gate_type": "TOGGLE",
+              "default_state": true,
+              "availability": "visible",
+              "sections_gated": [],
+              "css_selector": "input[id='1573-1772205196437-3624']",
+              "options": []
+            },
+            "action": "click",
+            "value": null
+          }
+        ]
+      },
+      {
+        "state_id": "S2",
+        "entered_via": {
+          "gate_control": "awsui-radio-1335-1772205195283-7887",
+          "action": "select:Daily spike traffic",
+          "from_state": "S1"
+        },
+        "fingerprint": "660f5e6f",
+        "sequence": []
+      },
+      {
+        "state_id": "S3",
+        "entered_via": {
+          "gate_control": "awsui-radio-1335-1772205195283-7887",
+          "action": "select:Weekly spike traffic",
+          "from_state": "S2"
+        },
+        "fingerprint": "40e95e15",
+        "sequence": []
+      },
+      {
+        "state_id": "S4",
+        "entered_via": {
+          "gate_control": "1524-1772205196435-5166",
+          "action": "select:option_5",
+          "from_state": "S3"
+        },
+        "fingerprint": "13a9e066",
+        "sequence": []
+      },
+      {
+        "state_id": "S5",
+        "entered_via": {
+          "gate_control": "1524-1772205196435-5166",
+          "action": "select:option_6",
+          "from_state": "S4"
+        },
+        "fingerprint": "36e4acc5",
+        "sequence": []
+      },
+      {
+        "state_id": "S6",
+        "entered_via": {
+          "gate_control": "1524-1772205196435-5166",
+          "action": "select:option_7",
+          "from_state": "S5"
+        },
+        "fingerprint": "2010f398",
+        "sequence": []
+      },
+      {
+        "state_id": "S7",
+        "entered_via": {
+          "gate_control": "1524-1772205196435-5166",
+          "action": "select:option_8",
+          "from_state": "S6"
+        },
+        "fingerprint": "5a17a9c7",
+        "sequence": []
+      },
+      {
+        "state_id": "S8",
+        "entered_via": {
+          "gate_control": "1524-1772205196435-5166",
+          "action": "select:option_9",
+          "from_state": "S7"
+        },
+        "fingerprint": "4afc1a22",
+        "sequence": []
+      },
+      {
+        "state_id": "S9",
+        "entered_via": {
+          "gate_control": "1524-1772205196435-5166",
+          "action": "select:option_10",
+          "from_state": "S8"
+        },
+        "fingerprint": "284fe6fd",
+        "sequence": []
+      },
+      {
+        "state_id": "S10",
+        "entered_via": {
+          "gate_control": "1524-1772205196435-5166",
+          "action": "select:option_11",
+          "from_state": "S9"
+        },
+        "fingerprint": "42f315fc",
+        "sequence": []
+      },
+      {
+        "state_id": "S11",
+        "entered_via": {
+          "gate_control": "1524-1772205196435-5166",
+          "action": "select:option_12",
+          "from_state": "S10"
+        },
+        "fingerprint": "1bfb9701",
+        "sequence": []
+      },
+      {
+        "state_id": "S12",
+        "entered_via": {
+          "gate_control": "1524-1772205196435-5166",
+          "action": "select:option_13",
+          "from_state": "S11"
+        },
+        "fingerprint": "4e8a280b",
+        "sequence": []
+      }
+    ],
+    "screenshots": {
+      "S0": "artifacts/ec2/state_S0.png",
+      "S1": "artifacts/ec2/state_S1.png",
+      "S2": "artifacts/ec2/state_S2.png",
+      "S3": "artifacts/ec2/state_S3.png",
+      "S4": "artifacts/ec2/state_S4.png",
+      "S5": "artifacts/ec2/state_S5.png",
+      "S6": "artifacts/ec2/state_S6.png",
+      "S7": "artifacts/ec2/state_S7.png",
+      "S8": "artifacts/ec2/state_S8.png",
+      "S9": "artifacts/ec2/state_S9.png",
+      "S10": "artifacts/ec2/state_S10.png",
+      "S11": "artifacts/ec2/state_S11.png",
+      "S12": "artifacts/ec2/state_S12.png"
+    }
+  }
+}

@@ -1,0 +1,4 @@
+# Core module
+*.log
+*.tmp
+.DS_Store

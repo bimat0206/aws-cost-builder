@@ -1,0 +1,4 @@
+# Builder module
+*.log
+*.tmp
+.DS_Store
