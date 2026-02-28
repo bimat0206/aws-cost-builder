@@ -16,16 +16,11 @@ import {
   UNKNOWN, 
   INTERACTIVE_SELECTORS, 
   SERVICE_CARD_SELECTOR,
+  LOG_LEVELS,
 } from '../constants.js';
 import { cleanLabel, deriveCssSelector, normalizeText } from '../utils.js';
 
 // ─── Logging helpers ──────────────────────────────────────────────────────────
-
-const LOG_LEVELS = {
-  INFO: 'INFO',
-  WARNING: 'WARNING',
-  ERROR: 'ERROR',
-};
 
 /**
  * Format and print a log line.

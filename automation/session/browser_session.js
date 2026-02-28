@@ -10,15 +10,9 @@
  */
 
 import { chromium } from 'playwright';
+import { LOG_LEVELS } from '../../explorer/constants.js';
 
 // ─── Logging helpers ──────────────────────────────────────────────────────────
-
-const LOG_LEVELS = {
-  INFO: 'INFO',
-  WARNING: 'WARNING',
-  ERROR: 'ERROR',
-  CRITICAL: 'CRITICAL',
-};
 
 const MODULE = 'automation/session/browser_session';
 
@@ -106,8 +100,6 @@ export class BrowserSession {
         headless: this._headless,
         args: [
           '--disable-gpu',
-          '--no-sandbox',
-          '--disable-setuid-sandbox',
           '--disable-dev-shm-usage',
         ],
       });

@@ -29,6 +29,7 @@ vi.mock('playwright', () => {
     setDefaultNavigationTimeout: vi.fn(),
     url: vi.fn().mockReturnValue('https://calculator.aws/#/estimate'),
     screenshot: vi.fn().mockResolvedValue(undefined),
+    on: vi.fn(),
   };
 
   const mockContext = {
@@ -106,8 +107,6 @@ describe('automation/session/browser_session.js', () => {
         headless: true,
         args: [
           '--disable-gpu',
-          '--no-sandbox',
-          '--disable-setuid-sandbox',
           '--disable-dev-shm-usage',
         ],
       });
@@ -252,7 +251,7 @@ describe('automation/session/browser_session.js', () => {
 
       expect(mockPage.goto).toHaveBeenCalledWith(
         'https://calculator.aws/#/estimate',
-        { waitUntil: 'networkidle', timeout: 30000 }
+        { waitUntil: 'domcontentloaded', timeout: 30000 }
       );
     });
 
@@ -267,7 +266,7 @@ describe('automation/session/browser_session.js', () => {
 
       expect(mockPage.goto).toHaveBeenCalledWith(
         'https://calculator.aws/#/custom',
-        { waitUntil: 'networkidle', timeout: 30000 }
+        { waitUntil: 'domcontentloaded', timeout: 30000 }
       );
     });
 

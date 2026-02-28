@@ -11,15 +11,9 @@
  */
 
 import { DraftDimension } from '../models.js';
-import { UNKNOWN } from '../constants.js';
+import { UNKNOWN, LOG_LEVELS } from '../constants.js';
 
 // ─── Logging helpers ──────────────────────────────────────────────────────────
-
-const LOG_LEVELS = {
-  INFO: 'INFO',
-  WARNING: 'WARNING',
-  ERROR: 'ERROR',
-};
 
 /**
  * Format and print a log line.
@@ -311,6 +305,7 @@ export async function captureOptionsForDimensions(page, dimensions) {
     const selector = dim.css_selector;
     if (!selector || selector === UNKNOWN) {
       logError('explorer/scanner/options_scanner', 'EVT-OPT-NOSEL', `Cannot capture options: missing CSS selector.`);
+      logError('explorer/scanner/options_scanner', 'EVT-OPT-FAIL', `Cannot capture options for ${key}: missing CSS selector.`);
       continue;
     }
 
@@ -326,6 +321,7 @@ export async function captureOptionsForDimensions(page, dimensions) {
       }
     } catch (error) {
       logError('explorer/scanner/options_scanner', 'EVT-OPT-FAIL', `Error capturing options: ${error.message}`);
+      logError('explorer/scanner/options_scanner', 'EVT-OPT-FAIL', `Error capturing options for ${key}: ${error.message}`);
       continue;
     }
 
