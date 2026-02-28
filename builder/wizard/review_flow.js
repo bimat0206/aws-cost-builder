@@ -160,17 +160,17 @@ export async function runSectionReview(opts) {
     let firstInGroup = true;
     for (const sec of sections) {
       firstInGroup = true;
-      for (const dim of sec.dimensions) {
-        if (!Object.prototype.hasOwnProperty.call(sectionValues, dim.key)) continue;
-        const value = sectionValues[dim.key];
+      for (const dimDef of sec.dimensions) {  // Fix #6: Rename to avoid shadowing dim() function
+        if (!Object.prototype.hasOwnProperty.call(sectionValues, dimDef.key)) continue;
+        const value = sectionValues[dimDef.key];
         const secLabel = firstInGroup
           ? bold(fg(sec.name, COL_YELLOW))
           : fg('', COL_DIM);
         rows.push([
           secLabel,
-          fg(dim.display_name ?? dim.key, COL_MUTED),
+          fg(dimDef.display_name ?? dimDef.key, COL_MUTED),
           formatValueForReview(value, null),
-          dim.unit ? fg(dim.unit, COL_YELLOW) : dim('─'),
+          dimDef.unit ? fg(dimDef.unit, COL_YELLOW) : dim('─'),
         ]);
         firstInGroup = false;
       }
@@ -371,7 +371,7 @@ export async function runFinalReview(opts) {
   const actionMap = {
     'Save profile': 'confirm',
     'Edit a field': 'edit',
-    'Start over': 'edit',
+    'Start over': 'restart',  // Fix #7: Map to distinct 'restart' action
   };
 
   return actionMap[action] || 'confirm';

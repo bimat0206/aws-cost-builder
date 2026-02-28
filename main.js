@@ -16,7 +16,7 @@ import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
 import * as readline from 'node:readline';
 import { basename, join } from 'node:path';
-import { loadProfile } from './core/profile/loader.js';
+import { loadProfile, ProfileFileNotFoundError, ProfileJSONParseError, ProfileSchemaValidationError } from './core/profile/loader.js';
 import { applyOverrides, resolveDimensions, assertNoUnresolved, ResolutionError } from './core/resolver/priority_chain.js';
 import { runInteractiveBuilder } from './builder/wizard/interactive_builder.js';
 import { parseOverrides } from './core/resolver/override_parser.js';
@@ -43,7 +43,6 @@ import { fg, bg, bold, dim, padEnd, visibleLength } from './builder/layout/compo
 
 // ─── UI helpers ───────────────────────────────────────────────────────────────
 
-const RESET = '\x1b[0m';
 const NEWLINE = '\n';
 
 /** Print a styled line to stdout. */
@@ -188,8 +187,8 @@ async function promptInteractiveModeSelection() {
   if (mode === 'run' || mode === 'dryRun') {
     // Auto-discover profiles from profiles/ directory
     const { readdir } = await import('node:fs/promises');
-    const { join } = await import('node:path');
-    
+    // `join` is already imported statically at the top of the file.
+
     try {
       const profilesDir = join(process.cwd(), 'profiles');
       const files = await readdir(profilesDir).catch(() => []);
@@ -392,11 +391,11 @@ export async function runRunnerMode(opts) {
     statusLine('ok', `Profile loaded: ${profile.project_name || opts.profile}`);
   } catch (err) {
     statusLine('error', `Failed to load profile: ${err.message}`);
-    if (err.constructor.name === 'ProfileFileNotFoundError') {
+    if (err instanceof ProfileFileNotFoundError) {
       statusLine('error', `File does not exist: ${opts.profile}`);
-    } else if (err.constructor.name === 'ProfileJSONParseError') {
+    } else if (err instanceof ProfileJSONParseError) {
       statusLine('error', 'Invalid JSON in profile file');
-    } else if (err.constructor.name === 'ProfileSchemaValidationError') {
+    } else if (err instanceof ProfileSchemaValidationError) {
       statusLine('error', 'Profile schema validation failed');
     }
     throw err;
@@ -483,10 +482,28 @@ export async function runRunnerMode(opts) {
 
           if (dimension.resolved_value === null || dimension.resolved_value === undefined) {
             const unresolvedStatus = dimension.required ? 'failed' : 'skipped';
+            // Capture diagnostic screenshot for failed required dimensions
+            let screenshotPath = null;
+            if (unresolvedStatus === 'failed' && context.runId && context.screenshotsDir) {
+              try {
+                const { buildScreenshotPath } = await import('./core/emitter/screenshot_manager.js');
+                screenshotPath = buildScreenshotPath(
+                  context.screenshotsDir,
+                  context.runId,
+                  context.groupName,
+                  context.serviceName,
+                  `unresolved_${dimension.key}`
+                );
+                await session.page.screenshot({ path: screenshotPath });
+              } catch {
+                screenshotPath = null;
+              }
+            }
             serviceResult.addDimension(new DimensionResult({
               key: dimension.key,
               status: unresolvedStatus,
               error_detail: unresolvedStatus === 'failed' ? 'No resolved value' : null,
+              screenshot_path: screenshotPath,
             }));
             continue;
           }
@@ -534,20 +551,18 @@ export async function runRunnerMode(opts) {
       runResult.addGroup(groupResult);
     }
 
-    runResult.timestamp_end = new Date().toISOString();
     runResult.calculator_url = session.currentUrl();
     runResult.status = runResult.determineStatus();
   } catch (error) {
-    runResult.timestamp_end = new Date().toISOString();
     if (error instanceof AutomationFatalError) {
       runResult.status = 'failed';
       statusLine('error', error.message);
-      await writeRunResult(runResult, join(outputDir, 'run_result.json'));
-      return 3;
+    } else {
+      runResult.status = 'failed';
+      throw error;
     }
-    runResult.status = 'failed';
-    throw error;
   } finally {
+    runResult.timestamp_end = new Date().toISOString();
     await session.stop();
   }
 

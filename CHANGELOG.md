@@ -5,6 +5,68 @@ All notable changes to the AWS Cost Profile Builder project are documented in th
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.11.0] - 2026-02-27
+
+### Fixed
+- **Code review findings** — Addressed all 15 issues from code health & app logic review
+- **Mixed mutability in wizard state** (`builder/wizard/interactive_builder.js`)
+  - Changed `const profileState` to `let profileState` for immutable updates
+  - Added `removeService()` pure helper function
+  - Replaced all `Object.assign(profileState, addXxx(...))` with `profileState = addXxx(...)`
+  - Fixed redo path to use `profileState = removeService(...)` instead of direct mutation
+- **Missing screenshots for unresolved dimensions** (`main.js`)
+  - Added diagnostic screenshot capture for failed required dimensions
+  - Screenshots saved as `unresolved_{dimension.key}.png`
+- **Inaccurate timestamp_end on errors** (`main.js`)
+  - Moved `timestamp_end` assignment to `finally` block after `session.stop()`
+  - Ensures accurate timestamps in run results even on errors
+- **Duplicate dynamic import** (`main.js`)
+  - Removed redundant `import('node:path')` (already imported statically)
+- **Error type checking by constructor.name** (`main.js`)
+  - Replaced `err.constructor.name === 'XxxError'` with `err instanceof XxxError`
+  - More robust under minification or class renames
+- **handledKeys bookkeeping** (`builder/wizard/section_flow.js`)
+  - Consolidated to single clear block after value collection loop
+  - Removed redundant `handledKeys.add()` calls
+- **Variable shadowing** (`builder/wizard/review_flow.js`)
+  - Renamed loop variable from `dim` to `dimDef` to avoid shadowing `dim()` function
+- **'Start over' action mapping** (`builder/wizard/review_flow.js`)
+  - Changed from `'edit'` to `'restart'` for distinct action code
+- **DiamondHeader arguments object** (`builder/layout/components.js`)
+  - Changed from `arguments.length > 1 ? arguments[1]` to named parameter `subtitle = null`
+- **Unused RESET constant** (`main.js`)
+  - Removed unused `const RESET = '\x1b[0m'` (already exported from components.js)
+- **Side-effect import undocumented** (`builder/wizard/section_flow.js`)
+  - Added comment: `// registers EC2 prompt policy on module load`
+- **completedCount increment logic** (`builder/wizard/section_flow.js`)
+  - Now increments once per user-visible prompt, not per sub-key
+  - Progress bar accuracy improved for compound fields
+- **Nullish check for unit_sibling** (`builder/wizard/section_flow.js`)
+  - Changed from `!== null && !== undefined` to `!= null`
+- **Option renamed** (`core/resolver/priority_chain.js`)
+  - `allowUnresolvedOptional` → `includeOptionalInReport`
+  - Clearer semantics: includes optional unresolveds in report when true
+- **EC2 policy reorder** (`builder/policies/ec2_policy.js`)
+  - Core dimensions now always show, regardless of workload
+  - "Number of instances" and "Utilization" now visible under "daily spike traffic"
+
+### Changed
+- **Immutable state management** — All wizard state updates now use pure functions
+- **Error handling** — Uses `instanceof` for type checking
+- **Progress bar** — Accurate counting for compound fields
+- **Timestamp accuracy** — `timestamp_end` always set after session cleanup
+
+### Design Compliance
+- **Consistent immutability** — Pure function pattern throughout wizard
+- **Better error diagnostics** — Screenshots for unresolved dimensions
+- **Cleaner code** — No duplicates, unused constants, or variable shadowing
+- **Clearer semantics** — Option names match their behavior
+
+### ⚠️ Behavior Changes
+- **`resolveDimensions` option** — Renamed from `allowUnresolvedOptional` to `includeOptionalInReport`
+- **EC2 core dims** — Now always visible under all workloads (verify against AWS Calculator)
+- **'Start over' action** — Now returns `'restart'` instead of `'edit'`
+
 ## [1.10.0] - 2026-02-27
 
 ### Fixed

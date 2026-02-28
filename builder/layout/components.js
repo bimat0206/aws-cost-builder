@@ -160,8 +160,7 @@ export function padEnd(str, width, padChar = ' ') {
  * @param {string} title  - The header text, e.g. "Project Setup · Step 1 of 3".
  * @returns {string}      - Single line string with ANSI codes.
  */
-export function DiamondHeader(title) {
-  const subtitle = arguments.length > 1 ? arguments[1] : null;
+export function DiamondHeader(title, subtitle = null) {
   const heading = TextInlineHeader(title, subtitle);
   const innerWidth = Math.max(24, Math.min(74, visibleLength(heading) + 2));
   const border = (s) => fg(s, COL_SECTION);

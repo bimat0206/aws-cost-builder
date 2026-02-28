@@ -21,7 +21,7 @@ import { fieldPrompt } from '../prompts/field_prompt.js';
 import { selectPrompt } from '../prompts/select_prompt.js';
 import { compoundInputPrompt } from '../prompts/compound_input.js';
 import { togglePrompt, renderPhase2Bar } from '../prompts/toggle_prompt.js';
-import '../policies/ec2_policy.js';
+import '../policies/ec2_policy.js'; // registers EC2 prompt policy on module load
 import { getPromptPolicy } from '../policies/service_prompt_policies.js';
 import { DiamondHeader, Breadcrumb, ProgBar, EventMessage, dim } from '../layout/components.js';
 import { serializeToYaml, highlightYaml } from '../preview/yaml_preview.js';
@@ -370,8 +370,7 @@ export async function runSectionFlow(opts) {
 
     const promptType = getPromptType(nextDim.field_type);
     const isCompound =
-      nextDim.unit_sibling !== null &&
-      nextDim.unit_sibling !== undefined &&
+      nextDim.unit_sibling != null &&  // Fix #5: Use nullish check
       promptType === 'field';
 
     const result = await promptForDimension({
@@ -381,19 +380,18 @@ export async function runSectionFlow(opts) {
       layoutEngine,
     });
 
+    // Collect values from result
     for (const [key, value] of Object.entries(result)) {
       collectedValues[key] = value;
       if (sectionKeys.has(key)) handledKeys.add(key);
-      completedCount += 1;
     }
 
-    if (isCompound) {
+    // Fix #4/#18: Increment completedCount once per user-visible prompt, not per sub-key
+    completedCount += 1;
+    
+    // Fix #4: Consolidate handledKeys bookkeeping - add keys after the loop
+    if (isCompound && nextDim.unit_sibling) {
       handledKeys.add(nextDim.unit_sibling);
-    } else {
-      handledKeys.add(nextDim.key);
-      if (result[nextDim.key] === undefined) {
-        collectedValues[nextDim.key] = getResolvedValue(collectedValues, nextDim.key) ?? null;
-      }
     }
   }
 

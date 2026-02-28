@@ -174,11 +174,11 @@ function resolveDimension(dimension, groupName, serviceName) {
  *
  * @param {ProfileDocument} profile
  * @param {Object} [opts]
- * @param {boolean} [opts.allowUnresolvedOptional] - If true, allow optional dimensions to remain unresolved
+ * @param {boolean} [opts.includeOptionalInReport] - If true, include optional dimensions in unresolved report
  * @returns {{ profile: ProfileDocument, unresolved: UnresolvedDimension[] }}
  */
 export function resolveDimensions(profile, opts = {}) {
-    const { allowUnresolvedOptional = true } = opts;
+    const { includeOptionalInReport = true } = opts;
     const unresolved = [];
 
     const groups = profile.getGroups();
@@ -189,8 +189,8 @@ export function resolveDimensions(profile, opts = {}) {
                 const result = resolveDimension(dimension, group.group_name, service.service_name);
 
                 if (result.unresolved) {
-                    // Only track unresolved if it's required OR if we're allowing unresolved optional
-                    if (result.unresolved.required || allowUnresolvedOptional) {
+                    // Only track unresolved if it's required OR if we're including optional in report
+                    if (result.unresolved.required || includeOptionalInReport) {
                         unresolved.push(result.unresolved);
                     }
                 }

@@ -68,6 +68,23 @@ function addService(profileState, groupName, serviceName, region, humanLabel) {
 }
 
 /**
+ * @param {object} profileState
+ * @param {string} groupName
+ * @param {string} serviceName
+ * @returns {object}
+ */
+function removeService(profileState, groupName, serviceName) {
+  const groups = profileState.groups.map((group) => {
+    if (group.group_name !== groupName) return group;
+    return {
+      ...group,
+      services: group.services.filter((s) => s.service_name !== serviceName),
+    };
+  });
+  return { ...profileState, groups };
+}
+
+/**
  * @param {unknown} value
  * @returns {string|number|boolean|null}
  */
@@ -315,7 +332,7 @@ export async function runInteractiveBuilder(opts = {}) {
 
   const layoutEngine = injectedLayout ?? new LayoutEngine();
   const ownsLayout = !injectedLayout;
-  const profileState = createInitialProfileState();
+  let profileState = createInitialProfileState(); // Changed from const to let for immutable updates
   let cancelled = false;
 
   const sigintHandler = () => {
@@ -414,7 +431,7 @@ export async function runInteractiveBuilder(opts = {}) {
       }
 
       if (!profileState.groups.find((g) => g.group_name === groupName)) {
-        Object.assign(profileState, addGroup(profileState, groupName));
+        profileState = addGroup(profileState, groupName);
       }
 
       let addMoreServices = true;
@@ -448,15 +465,12 @@ export async function runInteractiveBuilder(opts = {}) {
           promptRegionSelection(serviceCatalog, regionMap));
         if (cancelled) throw new WizardCancelledError();
 
-        Object.assign(
+        profileState = addService(
           profileState,
-          addService(
-            profileState,
-            groupName,
-            serviceCatalog.service_name,
-            region,
-            serviceCatalog.service_name,
-          ),
+          groupName,
+          serviceCatalog.service_name,
+          region,
+          serviceCatalog.service_name,
         );
 
         let allSectionValues = null;
@@ -487,15 +501,12 @@ export async function runInteractiveBuilder(opts = {}) {
           break;
         }
 
-        Object.assign(
+        profileState = updateServiceDimensions(
           profileState,
-          updateServiceDimensions(
-            profileState,
-            groupName,
-            serviceCatalog.service_name,
-            allSectionValues,
-            serviceCatalog,
-          ),
+          groupName,
+          serviceCatalog.service_name,
+          allSectionValues,
+          serviceCatalog,
         );
 
         const serviceReviewAction = await runPrompt(layoutEngine, () => runServiceReview({
@@ -506,9 +517,7 @@ export async function runInteractiveBuilder(opts = {}) {
         }));
         if (cancelled) throw new WizardCancelledError();
         if (serviceReviewAction === 'redo') {
-          currentGroup.services = currentGroup.services.filter(
-            (s) => s.service_name !== serviceCatalog.service_name,
-          );
+          profileState = removeService(profileState, groupName, serviceCatalog.service_name);
           if (layoutEngine) {
             layoutEngine.printAbove(EventMessage('warning', `${serviceCatalog.service_name} restarted — all values cleared`));
           }

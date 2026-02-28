@@ -110,17 +110,17 @@ const ec2Policy = {
       resolveDimensionValue(dimensions, 'Workload');
     const workload = normalizeWorkload(workloadValue);
 
-    // Workload-specific visibility rules.
+    // Core dimensions are always prompted regardless of workload
+    if (EC2_CORE_DIMS.has(dimKey)) {
+      return true;
+    }
+
+    // Workload-specific visibility rules (applied after core check)
     if (workload === 'daily spike traffic' && DAILY_SPIKE_SKIP_DIMS.has(dimKey)) {
       return false;
     }
     if (workload === 'constant usage' && CONSTANT_USAGE_SKIP_DIMS.has(dimKey)) {
       return false;
-    }
-
-    // Core dimensions are always prompted
-    if (EC2_CORE_DIMS.has(dimKey)) {
-      return true;
     }
 
     // EBS storage gating: check if user wants EBS storage
