@@ -100,8 +100,6 @@ export class BrowserSession {
         headless: this._headless,
         args: [
           '--disable-gpu',
-          '--no-sandbox',
-          '--disable-setuid-sandbox',
           '--disable-dev-shm-usage',
         ],
       });
