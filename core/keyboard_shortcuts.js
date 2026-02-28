@@ -156,7 +156,7 @@ export async function pressShortcut(page, action) {
   
   // Press modifiers
   for (const modifier of modifiers) {
-    await page.keyboard.down(modifier.toLowerCase());
+    await page.keyboard.down(modifier);
   }
   
   // Press key
@@ -164,6 +164,6 @@ export async function pressShortcut(page, action) {
   
   // Release modifiers
   for (const modifier of [...modifiers].reverse()) {
-    await page.keyboard.up(modifier.toLowerCase());
+    await page.keyboard.up(modifier);
   }
 }

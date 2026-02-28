@@ -146,7 +146,7 @@ export function getFindInPageShortcut() {
  */
 export async function triggerFindInPage(page) {
   const shortcut = getFindInPageShortcut();
-  const modifiers = shortcut.modifiers.map(m => m.toLowerCase());
+  const modifiers = shortcut.modifiers;
 
   // Use Playwright's keyboard API to press the shortcut
   for (const modifier of modifiers) {
