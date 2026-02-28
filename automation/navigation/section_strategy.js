@@ -251,6 +251,26 @@ export async function expandAllSections(page, hintStore, opts = {}) {
   }
 
   // Phase 2: Discover and expand via aria-expanded triggers
+  // Filter out UI chrome (language, region, show calculations, etc.)
+  const NOISE_PATTERNS = [
+    /^language/i,
+    /^region$/i,
+    /^show calculations/i,
+    /^show details/i,
+    /^us west/i,
+    /^us east/i,
+    /^europe/i,
+    /^asia pacific/i,
+    /^south america/i,
+    /^middle east/i,
+    /^africa/i,
+    /^canada/i,
+    /^australia/i,
+    /^india/i,
+    /^japan/i,
+    /^global$/i,
+  ];
+  
   const triggers = page.locator(
     "button[aria-expanded], [role='button'][aria-expanded], summary"
   );
@@ -268,6 +288,12 @@ export async function expandAllSections(page, hintStore, opts = {}) {
       .then((t) => (t || '').replace(/\s+/g, ' ').trim());
 
     if (!sectionLabel || hintStore.isExpanded(sectionLabel)) {
+      continue;
+    }
+
+    // Skip UI chrome / noise
+    const isNoise = NOISE_PATTERNS.some(pattern => pattern.test(sectionLabel));
+    if (isNoise) {
       continue;
     }
 
