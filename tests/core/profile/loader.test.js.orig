@@ -10,7 +10,6 @@ import {
     loadProfile,
     ProfileLoadError,
     ProfileFileNotFoundError,
-    ProfilePermissionError,
     ProfileJSONParseError,
     ProfileSchemaValidationError,
     ProfileCrossValidationError,
@@ -129,23 +128,6 @@ describe('Profile Loader — F-L1: File I/O Errors', () => {
             await loadProfile(nonExistentPath, testCatalog, testRegionMap);
         } catch (err) {
             expect(err).toBeInstanceOf(ProfileLoadError);
-        }
-    });
-
-    it('throws ProfilePermissionError for path traversal outside working directory', async () => {
-        const traversalPath = path.join('..', '..', '..', '..', '..', '..', '..', '..', 'etc', 'passwd');
-        await expect(loadProfile(traversalPath, testCatalog, testRegionMap))
-            .rejects
-            .toThrow(ProfilePermissionError);
-    });
-
-    it('throws ProfilePermissionError for absolute path outside working directory', async () => {
-        const absolutePath = '/etc/passwd';
-        // Depending on environment, /etc/passwd might be outside cwd, assuming process.cwd() is not / or /etc
-        if (!path.resolve(absolutePath).startsWith(process.cwd() + path.sep)) {
-            await expect(loadProfile(absolutePath, testCatalog, testRegionMap))
-                .rejects
-                .toThrow(ProfilePermissionError);
         }
     });
 });

@@ -1,0 +1,10 @@
+--- tests/core/profile/loader.test.js
++++ tests/core/profile/loader.test.js
+@@ -10,6 +10,7 @@
+     loadProfile,
+     ProfileLoadError,
+     ProfileFileNotFoundError,
++    ProfilePermissionError,
+     ProfileJSONParseError,
+     ProfileSchemaValidationError,
+     ProfileCrossValidationError,
