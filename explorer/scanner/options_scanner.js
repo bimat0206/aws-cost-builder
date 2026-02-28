@@ -12,6 +12,7 @@
 
 import { DraftDimension } from '../models.js';
 import { UNKNOWN } from '../constants.js';
+import { logEvent as sharedLogEvent } from '../../core/index.js';
 
 // ─── Logging helpers ──────────────────────────────────────────────────────────
 
@@ -29,10 +30,7 @@ const LOG_LEVELS = {
  * @param {string} message
  */
 function log(level, module, event, message) {
-  const timestamp = new Date().toISOString().replace('T', ' ').slice(0, 19);
-  const levelPadded = level.padEnd(8);
-  const modulePadded = module.padEnd(24);
-  console.error(`${timestamp} | ${levelPadded} | ${modulePadded} | ${event} ${message}`);
+  sharedLogEvent(level, module, event, message ? { message } : {});
 }
 
 /**

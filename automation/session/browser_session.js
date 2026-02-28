@@ -10,6 +10,7 @@
  */
 
 import { chromium } from 'playwright';
+import { logEvent as sharedLogEvent } from '../../core/index.js';
 
 // ─── Logging helpers ──────────────────────────────────────────────────────────
 
@@ -31,13 +32,7 @@ const MODULE = 'automation/session/browser_session';
  * @param {Record<string, unknown>} [fields]
  */
 function logEvent(level, eventId, eventType, fields = {}) {
-  const timestamp = new Date().toISOString().replace('T', ' ').slice(0, 19);
-  const fieldStr = Object.entries({ event_id: eventId, event_type: eventType, ...fields })
-    .map(([k, v]) => `${k}=${JSON.stringify(v)}`)
-    .join(' ');
-  process.stderr.write(
-    `${timestamp} | ${level.padEnd(8)} | ${MODULE.padEnd(34)} | ${fieldStr}\n`,
-  );
+  sharedLogEvent(level, MODULE, eventType, { event_id: eventId, ...fields });
 }
 
 // ─── Error types ──────────────────────────────────────────────────────────────

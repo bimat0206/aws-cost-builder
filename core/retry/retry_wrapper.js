@@ -7,6 +7,8 @@
  * Emits EVT-RTY-01 (retry_attempt) and EVT-RTY-02 (retry_exhausted) log events.
  */
 
+import { logEvent as sharedLogEvent } from '../logger/logger.js';
+
 export const MAX_RETRIES = 2;
 export const RETRY_DELAY_MS = 1500;
 
@@ -87,11 +89,7 @@ export function isRetriable(err) {
 // ─── Structured logger ────────────────────────────────────────────────────────
 
 function logEvent(level, eventType, fields) {
-  const ts = new Date().toISOString().replace('T', ' ').slice(0, 19);
-  const fieldStr = Object.entries({ event_type: eventType, ...fields })
-    .map(([k, v]) => `${k}=${v}`)
-    .join(' ');
-  process.stderr.write(`${ts} | ${level.padEnd(8)} | ${MODULE.padEnd(30)} | ${fieldStr}\n`);
+  sharedLogEvent(level, MODULE, eventType, fields);
 }
 
 // ─── Default sleep ────────────────────────────────────────────────────────────
