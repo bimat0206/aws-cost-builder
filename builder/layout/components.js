@@ -166,9 +166,9 @@ export function DiamondHeader(title) {
   const innerWidth = Math.max(24, Math.min(74, visibleLength(heading) + 2));
   const border = (s) => fg(s, COL_SECTION);
 
-  const top = bg(border('╭') + border('─'.repeat(innerWidth)) + border('╮'), COL_BG_ROW);
-  const mid = bg(border('│') + padEnd(` ${heading}`, innerWidth) + border('│'), COL_BG_ROW);
-  const bot = bg(border('╰') + border('─'.repeat(innerWidth)) + border('╯'), COL_BG_ROW);
+  const top = border('╭' + '─'.repeat(innerWidth) + '╮');
+  const mid = border('│') + bg(padEnd(` ${heading}`, innerWidth), COL_BG_ROW) + border('│');
+  const bot = border('╰' + '─'.repeat(innerWidth) + '╯');
 
   return [top, mid, bot].join('\n');
 }
