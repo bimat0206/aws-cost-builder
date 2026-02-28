@@ -388,10 +388,13 @@ export async function runSectionFlow(opts) {
 
     // Fix #4/#18: Increment completedCount once per user-visible prompt, not per sub-key
     completedCount += 1;
-    
-    // Fix #4: Consolidate handledKeys bookkeeping - add keys after the loop
+
+    // Fix #4: Consolidate handledKeys bookkeeping
+    // Fix Finding K: Add nextDim.key for non-compound path
     if (isCompound && nextDim.unit_sibling) {
       handledKeys.add(nextDim.unit_sibling);
+    } else {
+      handledKeys.add(nextDim.key);  // Fix Finding K: Ensure non-compound keys are tracked
     }
   }
 

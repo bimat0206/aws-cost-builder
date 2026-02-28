@@ -1,6 +1,6 @@
 /**
  * Service prompt policy registry.
- * Full implementation in task 12.1.
+ * Policy registry — add per-service entries via `registerPromptPolicy()`.
  */
 
 /** @type {Map<string, { shouldPrompt: (dimKey: string, dimensions: object) => boolean }>} */

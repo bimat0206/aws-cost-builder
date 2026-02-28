@@ -232,18 +232,18 @@ export async function compoundInputPrompt(opts) {
     while (true) {                                   // eslint-disable-line no-constant-condition
       const raw = (await ask()).trim();
 
-      if (raw === '') {
-        process.stdout.write(
-          fg('  \u2717 Please enter a value (e.g. "500 GB").\n', COL_ORANGE),
-        );
-        continue;
-      }
-
       try {
         return parseCompoundInput(raw, acceptedUnits, defaultUnit);
       } catch (err) {
         if (err instanceof CompoundInputError) {
-          process.stdout.write(fg(`  \u2717 ${err.message}\n`, COL_ORANGE));
+          // Handle MISSING_VALUE with friendly hint
+          if (err.code === 'MISSING_VALUE') {
+            process.stdout.write(
+              fg('  \u2717 Please enter a value (e.g. "500 GB").\n', COL_ORANGE),
+            );
+          } else {
+            process.stdout.write(fg(`  \u2717 ${err.message}\n`, COL_ORANGE));
+          }
           const unitHint = `  Accepted units: ${fg(acceptedUnits.join(', '), COL_YELLOW)}\n`;
           process.stdout.write(dim(unitHint));
         } else {

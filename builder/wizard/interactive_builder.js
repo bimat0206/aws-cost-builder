@@ -365,7 +365,7 @@ export async function runInteractiveBuilder(opts = {}) {
       note: 'A descriptive name for your cost estimate project',
     }));
     if (cancelled) throw new WizardCancelledError();
-    profileState.project_name = projectName;
+    profileState = { ...profileState, project_name: projectName };
 
     updateWizardPanels(layoutEngine, {
       profileState,
@@ -385,7 +385,7 @@ export async function runInteractiveBuilder(opts = {}) {
       note: 'Brief description of what this estimate covers',
     }));
     if (cancelled) throw new WizardCancelledError();
-    profileState.description = description || null;
+    profileState = { ...profileState, description: description || null };
 
     let addMoreGroups = true;
     while (addMoreGroups) {
@@ -573,8 +573,18 @@ export async function runInteractiveBuilder(opts = {}) {
     });
     const finalAction = await runPrompt(layoutEngine, () => runFinalReview({ profileState }));
     if (cancelled) throw new WizardCancelledError();
+    if (finalAction === 'restart') {
+      // Full restart: clear state and re-run from top — pending implementation.
+      // For now, fall through to save so the user doesn't lose their work.
+      if (layoutEngine) {
+        layoutEngine.printAbove(EventMessage('warning', '"Start over" is not yet implemented — saving current profile.'));
+      }
+    }
     if (finalAction === 'edit') {
-      // Edit flow can be introduced in a later task; continue save for now.
+      // Field-level edit — pending implementation.
+      if (layoutEngine) {
+        layoutEngine.printAbove(EventMessage('warning', '"Edit a field" is not yet implemented — saving current profile.'));
+      }
     }
 
     validateProfile(profileState, catalogs, regionMap);

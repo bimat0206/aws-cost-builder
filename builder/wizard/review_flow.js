@@ -244,11 +244,11 @@ export async function runServiceReview(opts) {
 
   for (const sec of sections) {
     let firstInGroup = true;
-    for (const dim of sec.dimensions) {
-      if (!Object.prototype.hasOwnProperty.call(serviceValues, dim.key)) continue;
-      const value = serviceValues[dim.key];
+    for (const dimDef of sec.dimensions) {  // Fix Finding B: Rename to avoid shadowing dim() function
+      if (!Object.prototype.hasOwnProperty.call(serviceValues, dimDef.key)) continue;
+      const value = serviceValues[dimDef.key];
       const source = (value === null || value === undefined)
-        ? dim('skipped')
+        ? dim('skipped')  // Now correctly calls imported dim() function
         : fg('user', COL_GREEN);
 
       // Section label — shown only on first row of each group (sparse)
@@ -258,8 +258,8 @@ export async function runServiceReview(opts) {
 
       rows.push([
         secLabel,
-        fg(dim.display_name ?? dim.key, COL_MUTED),
-        formatValueForReview(value, dim.unit ?? null),
+        fg(dimDef.display_name ?? dimDef.key, COL_MUTED),
+        formatValueForReview(value, dimDef.unit ?? null),
         source,
       ]);
       firstInGroup = false;
@@ -309,9 +309,10 @@ export async function runServiceReview(opts) {
 export async function runFinalReview(opts) {
   const { profileState } = opts;
 
-  // Build table data
+  // Build table data and track filled count
   const headers = ['Group', 'Service', 'Dimension', 'Value', 'Unit'];
   const rows = [];
+  let filledCount = 0;  // Fix Finding G: Track filled count from raw values
 
   const groups = profileState.groups || [];
   for (const group of groups) {
@@ -320,6 +321,10 @@ export async function runFinalReview(opts) {
       const dimensions = service.dimensions || {};
       for (const [dimKey, dimObj] of Object.entries(dimensions)) {
         const value = dimObj?.user_value ?? dimObj?.default_value ?? null;
+        // Count as filled if value is not null/undefined
+        if (value !== null && value !== undefined) {
+          filledCount++;
+        }
         rows.push([
           fg(group.group_name, COL_MUTED),
           fg(service.service_name, COL_MUTED),
@@ -348,13 +353,9 @@ export async function runFinalReview(opts) {
   process.stdout.write(table);
   process.stdout.write('\n\n');
 
-  // Summary stats
+  // Summary stats - Fix Finding G: Use raw filledCount instead of ANSI-strip regex
   const totalDimensions = rows.length;
-  const filledDimensions = rows.filter(r => {
-    const plain = String(r[3]).replace(/\x1b\[[0-9;]*m/g, '');
-    return plain.trim() !== '─';
-  }).length;
-  process.stdout.write(dim(`Total dimensions: ${filledDimensions}/${totalDimensions} filled\n\n`));
+  process.stdout.write(dim(`Total dimensions: ${filledCount}/${totalDimensions} filled\n\n`));
 
   // Prompt for action
   const action = await selectPrompt({

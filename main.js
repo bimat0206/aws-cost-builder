@@ -37,7 +37,7 @@ import { promoteDraft } from './explorer/draft/draft_promoter.js';
 import { selectPrompt } from './builder/prompts/select_prompt.js';
 import {
   COL_CYAN, COL_ORANGE, COL_YELLOW, COL_GREEN, COL_MUTED,
-  COL_DIM, COL_BASE, COL_BORDER,
+  COL_DIM, COL_BASE, COL_BORDER, COL_MAGENTA,
 } from './builder/layout/colors.js';
 import { fg, bg, bold, dim, padEnd, visibleLength } from './builder/layout/components.js';
 
@@ -128,7 +128,7 @@ const MODE_OPTIONS = [
     label: 'Explorer',
     badge: 'Mode D',
     description: 'Discover service dimensions from a live AWS Calculator page',
-    color: '\x1b[38;2;198;120;221m', // COL_MAGENTA
+    color: COL_MAGENTA,
   },
   {
     id: 'promote',

@@ -7,6 +7,7 @@ import { registerPromptPolicy } from './service_prompt_policies.js';
 
 /**
  * EC2 dimensions that are conditionally shown based on user choices.
+ * Exported for test validation and external tooling; not used internally by shouldPrompt.
  */
 const EC2_GATED_DIMS = new Set([
   'Minimum number of instances',

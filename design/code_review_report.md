@@ -1,261 +1,203 @@
-# 🧹 Code Health & App Logic Review — `aws-cost-builder`
+# 🧹 Code Health & App Logic Review — `aws-cost-builder` (Pass 2)
 
 ## 1. 🔍 UNDERSTAND
 
-**Purpose:** `aws-cost-builder` is a Node.js CLI tool that lets users build AWS cost estimation profiles via an interactive TUI wizard, execute browser automation against those profiles, and manage the service catalog lifecycle. It runs in five modes: Builder (A), Runner (B), Dry Run (C), Explorer (D), and Promoter (E).
+**Purpose:** A Node.js CLI tool for building AWS cost estimation profiles via an interactive TUI wizard, executing browser automation, and managing the service catalog lifecycle across five modes (Builder A, Runner B, Dry Run C, Explorer D, Promoter E).
 
-**Framework/Runtime:** Pure ES Modules (`"type": "module"` implied by ESM imports), Node.js, Yargs for CLI parsing, Playwright implied for browser sessions.
+**Framework/Runtime:** Pure ES Modules, Node.js, Yargs CLI parsing, Playwright for browser automation.
 
 **Assumptions:**
-- The `ec2_policy.js` import in `section_flow.js` is intentional as a side-effect-only registration import.
-- The `'Start over'` option in `runFinalReview` mapping to `'edit'` (not `'restart'`) is consistent with stated intent in the comment above it.
+- `removeService` added as a pure helper is the correct approach for the redo path.
+- `'Start over'` mapping to `'restart'` is intentional per the code comment; the caller currently ignores it (falls through to save) — not yet wired up.
+- `'edit'` branch in `runInteractiveBuilder` still has a TODO stub — tracked as an open finding.
 
 ---
 
-## 2. 📋 REVIEW REPORT
+## ✅ Resolved Since Pass 1
+
+The following findings from the previous report are **fully fixed** in the current code:
+
+| # | Was | Now |
+|---|-----|-----|
+| 1 / 14 | Direct mutation of `currentGroup.services` via `find()` reference | `removeService()` pure helper added (L76–85); `Object.assign` replaced with `let profileState =` reassignment (L335, L434, L468–474, L504–510, L520) |
+| 2 | Duplicate `import('node:path')` inside interactive mode picker | Removed; comment explains static import is used (L190) |
+| 3 | `constructor.name` string matching for error types | Replaced with `instanceof ProfileFileNotFoundError` etc. (L394–400) |
+| 4 / 18 | Double `handledKeys.add` + `completedCount` incremented per sub-key | Consolidated: `completedCount += 1` once per prompt (L390); compound sibling added cleanly (L393–395) |
+| 5 | Verbose `!== null && !== undefined` for `unit_sibling` | Changed to `!= null` (L373) |
+| 6 | `dim` variable shadowing imported `dim()` in review_flow loops | Renamed to `dimDef` in `runSectionReview` multi-section loop (L163) |
+| 7 | `'Start over'` mapped to `'edit'` same as "Edit a field" | Now maps to distinct `'restart'` (L374) |
+| 8 | `DiamondHeader` used `arguments` object | Changed to `export function DiamondHeader(title, subtitle = null)` – *(verify in components.js)* |
+| 10 | Unused local `RESET` constant in `main.js` L46 | Removed; only `NEWLINE` constant remains (L46) |
+| 12 | Undocumented bare side-effect import | Comment added: `// registers EC2 prompt policy on module load` (L24) |
+| 16 | `timestamp_end` set prematurely before `session.stop()` | Moved into `finally` block (L565); `writeRunResult` call moved after session stop (L569) |
+
+---
+
+## 2. 📋 REVIEW REPORT — Current Open Findings
 
 ### 🔬 Lens 1 — Code Health
 
 | # | Severity | Lens | Location | Issue | Recommendation |
 |---|----------|------|----------|-------|----------------|
-| 1 | 🔴 Critical | Code Health | `interactive_builder.js` L509–515 | **Direct mutation of `currentGroup.services`** — `currentGroup` is a reference from `profileState.groups.find(...)`. Mutating it as `currentGroup.services = ...` bypasses the immutable-update pattern (`addGroup`, `addService` return new objects) used elsewhere, creating hidden state coupling. | Replace with a `removeService(profileState, groupName, serviceName)` pure helper that mirrors the existing `addService` pattern. |
-| 2 | 🔴 Critical | Code Health | `main.js` L190–191 | **Duplicate dynamic import of `node:path`** — `join` is already statically imported at line 18. The dynamic `import('node:path')` inside `promptInteractiveModeSelection` redundantly re-imports the same module. | Remove the dynamic import; use the already-imported `join`. |
-| 3 | 🟡 Medium | Code Health | `main.js` L395–401 | **Error type detection by `constructor.name` string** — Uses `err.constructor.name === 'ProfileFileNotFoundError'` which breaks under any minification or class rename. | Import the error classes from `loader.js` and use `instanceof`. |
-| 4 | 🟡 Medium | Code Health | `section_flow.js` L384–397 | **Double `handledKeys.add` in compound path** — When `isCompound` is true, `nextDim.key` is added to `handledKeys` via the `for` loop on line 386 *and* then again `nextDim.unit_sibling` on line 391. But for the non-compound path, `nextDim.key` is also added at line 393, even though the `for` loop already added it in line 386. The result logic is convoluted and masks redundant work. | Consolidate handled-key bookkeeping to a single clear block after the `for` loop. |
-| 5 | 🟡 Medium | Code Health | `section_flow.js` L372–374 | **Nullish check for `unit_sibling` uses explicit `!== null && !== undefined`** — Idiom is verbose. | Use `nextDim.unit_sibling != null` (or `??` null coalescing). |
-| 6 | 🟡 Medium | Code Health | `review_flow.js` L173 | **`dim` shadowing** — Inside the `isMultiSection` loop, the local variable `dim` from `for (const dim of sec.dimensions)` shadows the imported `dim` styling function. On line 173, `dim('─')` calls the *imported* fn, but any typo swapping order could silently call the wrong one. | Rename loop variable to `dimEntry` or `dimDef` throughout `review_flow.js`. |
-| 7 | 🟡 Medium | Code Health | `review_flow.js` L374 & L375 | **`'Start over'` maps to `'edit'` instead of a distinct `'restart'` action** — `runFinalReview` returns `actionMap['Start over'] = 'edit'`, which means both "Edit a field" and "Start over" return the same `'edit'` code. The caller (`interactive_builder.js` L567–569) has a comment "Edit flow can be introduced in a later task; continue save for now." — both actions therefore silently do nothing (fall-through to save). | Map `'Start over'` to `'restart'` and handle it distinctly, or remove the option until the edit flow is implemented. |
-| 8 | 🟡 Medium | Code Health | `components.js` L163–164 | **`DiamondHeader` uses `arguments` object** — The function uses `arguments.length > 1 ? arguments[1] : null` instead of a named parameter, which breaks `arguments` semantics in arrow-function context and is non-idiomatic in ESM. | Replace with `export function DiamondHeader(title, subtitle = null)`. |
-| 9 | 🟡 Medium | Code Health | `priority_chain.js` L88–92 | **Dead comment block** — The `if (raw.indexOf('=', eqIndex + 1) !== -1)` block inside `parseSingleOverride` has an empty body with only a comment ("This is actually allowed"). It adds no runtime effect and misleads readers into thinking a check is being performed. | Remove the empty `if` block; replace with a brief inline comment at the index-finding step if clarification is needed. *(Note: this issue is in `override_parser.js`, not `priority_chain.js`.)*|
-| 10 | 🔵 Low | Code Health | `main.js` L46 | **`RESET` constant redefined locally** — `components.js` already exports `RESET`; `main.js` redefines it as `const RESET = '\x1b[0m'` but never uses it. | Remove the unused local `RESET` constant. |
-| 11 | 🔵 Low | Code Health | `policy/ec2_policy.js` L12–22 | **`EC2_GATED_DIMS` Set is exported but never consumed** — It's defined and exported but the `shouldPrompt` logic does not use it for iteration; callers do not use it either. It documents intent but risks becoming stale. | Either remove the export and keep it as an internal comment, or use it in `shouldPrompt` to gate the "unknown dimensions" fallback. |
-| 12 | 🔵 Low | Code Health | `section_flow.js` L24 | **Side-effect import undocumented** — `import '../policies/ec2_policy.js'` is a bare side-effect import for policy registration. Without a comment this looks like a mistake. | Add `// registers ec2 prompt policy on module load` comment. |
-| 13 | 🔵 Low | Code Health | `service_prompt_policies.js` L3 | **Stale TODO comment** — "Full implementation in task 12.1" suggests incomplete work; the file is functional but the comment sets wrong expectations for readers. | Update comment to reflect current status ("Registry pattern; add service policies via `registerPromptPolicy`"). |
+| A | 🔴 Critical | Code Health | `interactive_builder.js` L368, L388 | **`profileState` mutated directly via property assignment** — Despite switching to `let profileState`, lines 368 (`profileState.project_name = projectName`) and 388 (`profileState.description = description || null`) still mutate the object in-place. This is inconsistent with the pure-function pattern used for groups/services and breaks structural equality checks (e.g. layout panel diffing by reference). | Use `profileState = { ...profileState, project_name: projectName }` and `profileState = { ...profileState, description: description || null }`. |
+| B | 🟡 Medium | Code Health | `review_flow.js` L247 | **`dim` variable shadowing still present in `runServiceReview`** — The fix applied to `runSectionReview` (renamed to `dimDef`) was not applied to the identical loop inside `runServiceReview` (L247: `for (const dim of sec.dimensions)`). `dim` still shadows the imported `dim()` styling function inside that loop (e.g. L251: `dim('skipped')`). | Rename to `dimDef` in the `runServiceReview` loop as well. |
+| C | 🟡 Medium | Code Health | `interactive_builder.js` L576–578 | **`'edit'` and `'restart'` return values from `runFinalReview` are silently ignored** — Both branches have a stub comment or no handler. `'restart'` (just introduced in `review_flow.js`) has no case at all; `'edit'` falls into an empty `if` block. A user clicking "Edit a field" or "Start over" gets silently saved anyway. | Either implement both handlers or remove the options from `selectPrompt` until they are ready, to prevent misleading UX. |
+| D | 🟡 Medium | Code Health | `service_prompt_policies.js` L3 | **Stale task-tracker comment** — `"Full implementation in task 12.1."` is no longer accurate; the registry is functional. | Update to `"Policy registry — add per-service entries via registerPromptPolicy()."` |
+| E | 🔵 Low | Code Health | `main.js` L131 | **Hardcoded ANSI colour string for COL_MAGENTA in MODE_OPTIONS** — `color: '\x1b[38;2;198;120;221m'` bypasses the colour system. All other mode colours use `COL_*` constants. | Import and use `COL_MAGENTA` from `colors.js`. |
+| F | 🔵 Low | Code Health | `ec2_policy.js` L11–22 | **`EC2_GATED_DIMS` exported but not consumed** — Exported but neither callers nor the `shouldPrompt` implementation use it for iteration. It documents intent but risks becoming stale. | Remove the export or use it to gate the "unknown dimensions" fallback return at L153. |
 
 ### ⚙️ Lens 2 — App Logic
 
 | # | Severity | Lens | Location | Issue | Recommendation |
 |---|----------|------|----------|-------|----------------|
-| 14 | 🔴 Critical | App Logic | `interactive_builder.js` L509–515 | **`redo` mutates shared state directly** — `currentGroup.services = currentGroup.services.filter(...)` writes through the `find()` reference. If `profileState` is ever serialized (e.g. by `serializeToYaml`) concurrently during layout update, the mutation is unsafe. More importantly it breaks the immutable-update contract central to the rest of the function. | *See finding #1 above — same location, dual impact.* |
-| 15 | 🔴 Critical | App Logic | `main.js` L484–492 | **Null/unresolved dimension skips don't emit a screenshot path** — When `dimension.resolved_value === null`, a `DimensionResult` is built with `status: 'failed'` but no `screenshot_path`. Other failure paths (locator, fillDimension) capture screenshots for debugging. This silent failure makes diagnosing unresolved-at-runtime dimensions harder. | Add a diagnostic screenshot capture (or at minimum a `statusLine('warn', ...)`) when a dimension is skipped due to null resolved value. |
-| 16 | 🔴 Critical | App Logic | `main.js` L537–548 | **`runResult.status` set generically on `AutomationFatalError` but `RunResult.timestamp_end` is set before `status`** — Both the `catch` and the block after try/finally set `timestamp_end` and `status`. If `session.stop()` throws, the `finally` block runs, but `timestamp_end` was already set inside the inner `catch`; the second `catch` path after `finally` will skip it. The timestamp recorded on fatal error will be the mid-run time, not the actual end time. | Set `timestamp_end` only once, in the `finally` block, after calling `session.stop()`. |
-| 17 | 🟡 Medium | App Logic | `interactive_builder.js` L416–418 | **`Object.assign` on profileState with pure-function return** — `addGroup` and `addService` return new objects; calling `Object.assign(profileState, addGroup(...))` mutates `profileState` in place while also creating a new object — defeating the purpose of the pure-function pattern. The profileState should either be consistently immutable (replace reference) or consistently mutable (no pure-function wrappers). | Replace all `Object.assign(profileState, addXxx(profileState, ...))` calls with `profileState = addXxx(profileState, ...)` and make `profileState` a `let` binding. |
-| 18 | 🟡 Medium | App Logic | `section_flow.js` L386–388 | **`completedCount` increments once per sub-key in a compound result** — A compound field emits two keys (value + unit_sibling), causing `completedCount` to increment by 2 for a single user-facing prompt. The progress bar `currentIndex` therefore jumps by 2 for compound fields. | Increment `completedCount` once per *user-visible prompt*, not per output key. |
-| 19 | 🟡 Medium | App Logic | `review_flow.js` L353–356 | **ANSI strip regex for "filled" detection is fragile** — `plain.trim() !== '─'` depends on `renderFakeInput`/`formatValueForReview` never producing a plain-text `─` for a real value. If any value happens to be the dash character itself, it will be treated as unfilled. | Track filled count from the raw `value` field before formatting, not from the rendered string. |
-| 20 | 🟡 Medium | App Logic | `compound_input.js` L235–239 | **Empty compound input re-prompts but skips `parseCompoundInput`** — The `if (raw === '')` guard fires before `parseCompoundInput` which already handles empty input via `CompoundInputError('MISSING_VALUE')`. This is a redundant guard. While not a bug, it means the error *message* the user sees for blank input ("Please enter a value…") differs from the message for non-blank-but-valueless input, creating inconsistency. | Remove the pre-check and let `parseCompoundInput` raise `CompoundInputError` uniformly; update the catch to handle `MISSING_VALUE` with a friendly hint. |
-| 21 | 🟡 Medium | App Logic | `priority_chain.js` L192–195 | **`allowUnresolvedOptional` option inverted semantics** — `resolveDimensions` accepts `allowUnresolvedOptional = true` but then pushes unresolved items when `result.unresolved.required || allowUnresolvedOptional` — meaning with the default value of `true` it *always* pushes unresolved optional dimensions. The name implies allowing them should *suppress* them. | Rename to `includeOptionalInReport` and invert the condition: only push optional unresolveds when `includeOptionalInReport` is true. |
-| 22 | 🔵 Low | App Logic | `ec2_policy.js` L114–117 | **`DAILY_SPIKE_SKIP_DIMS` includes `'Number of instances'` and `'Utilization (On-Demand only)'`** — Both are also in `EC2_CORE_DIMS`. The core-dims check (line 122) runs *after* the workload check, so these two are hidden for daily-spike workloads even though they are "core". If intent is that core dims always show, the workload skip should not include them. | Either remove `'Number of instances'` and `'Utilization (On-Demand only)'` from `DAILY_SPIKE_SKIP_DIMS`, or re-order the checks so core-dims guard runs first. |
+| G | 🔴 Critical | App Logic | `review_flow.js` L353–356 | **ANSI strip regex for "filled" detection is fragile** — `plain.trim() !== '─'` detects unfilled dimensions by stripping ANSI codes and comparing to the dash glyph. If a user's actual value happens to be the literal `─` character, it will be misclassified as empty. | Track filled count from the raw `value` field before `formatValueForReview` is called, not from the post-render string. |
+| H | 🟡 Medium | App Logic | `priority_chain.js` L180–202 | **`allowUnresolvedOptional` flag has inverted-semantics naming** — `resolveDimensions(profile, { allowUnresolvedOptional: true })` with the default `true` causes optional unresolveds to *always* be included in the returned array. The name implies `true` = allow them through without reporting, but the behaviour is the opposite. | Rename to `includeOptionalInReport` (or `reportOptionalUnresolved`). ⚠️ **[BEHAVIOR CHANGE]** — audit all callers before renaming. |
+| I | 🟡 Medium | App Logic | `ec2_policy.js` L114–124 | **EC2 workload guard runs before core-dims guard, hiding core fields** — The `DAILY_SPIKE_SKIP_DIMS` set includes `'Number of instances'` and `'Utilization (On-Demand only)'`, both of which are also in `EC2_CORE_DIMS`. Because the workload check executes first (L114), these core fields are hidden for daily-spike workloads even though they should always show. | Move the `EC2_CORE_DIMS` guard (`if (EC2_CORE_DIMS.has(dimKey)) return true`) to before the workload checks. ⚠️ **[BEHAVIOR CHANGE]** — verify against the live AWS Calculator EC2 page for daily-spike workload. |
+| J | 🟡 Medium | App Logic | `compound_input.js` L235–239 | **Redundant empty-input guard diverges from `parseCompoundInput` errors** — The `if (raw === '')` check fires before `parseCompoundInput`, producing a different error message ("Please enter a value…") than the `CompoundInputError(MISSING_VALUE)` the user would see for non-blank-but-valueless inputs. This creates an inconsistent error surface. | Remove the pre-check and let `parseCompoundInput` raise `CompoundInputError` uniformly; handle `MISSING_VALUE` code in the catch branch with the friendly hint. |
+| K | 🔵 Low | App Logic | `section_flow.js` L394–395 | **`handledKeys.add(nextDim.key)` missing for the non-compound path after loop refactor** — After the pass-1 fix, for a non-compound dimension the loop at L384–387 adds `nextDim.key` to `handledKeys` only *if* `sectionKeys.has(key)` is true. For a dimension key that isn't in `sectionKeys` (e.g. from a `priorValues` passthrough), the key never gets added, so the same dimension could be re-prompted in the next iteration. | After the for-loop, explicitly add `nextDim.key` to `handledKeys` for non-compound dims, mirroring the compound path. |
 
 ---
 
-**Overall Assessment:** The codebase is well-organized and clearly structured, with good use of JSDoc, a coherent design system, and clean separation between wizard, prompts, layout, and core. However, the **mixed mutability strategy in `interactive_builder.js`** is the highest-priority concern: pure-function helpers (`addGroup`, `addService`) return new objects but are applied via `Object.assign` mutation, and the `redo` path bypasses this pattern entirely to mutate state directly. This dual-track approach will cause subtle state bugs as the wizard grows. Address findings #1/#14/#17 together as a single coherent refactor.
+**Overall Assessment:** The codebase has absorbed the most critical structural fixes from pass 1 cleanly. The remaining critical issue is the in-place mutation of `profileState.project_name` and `profileState.description` which is inconsistent with the now-immutable pattern used for all other state. The highest-priority app logic issue is the fragile ANSI-strip regex used for "filled" counting in the final review. The wizard UX is also misleading — "Edit a field" and "Start over" options on the final review screen both silently save, which users will notice.
 
 ---
 
 ## 3. ⚖️ RISK ASSESSMENT
 
-### Finding #1 / #14 — Direct mutation of `currentGroup.services` (critical)
-- **Depends on:** `runInteractiveBuilder` → `runServiceReview` redo path; any code that iterates `profileState.groups` after a redo.
-- **Risk of change:** Medium — well-covered by wizard integration tests; needs snapshot/state-verification test for the redo path specifically.
-- **Pattern elsewhere:** `Object.assign(profileState, addGroup(...))` at L417 and L451 have the same conceptual issue (finding #17). Fix all three together.
+### Finding A — In-place mutation of `profileState.project_name` / `.description`
+- **Depends on:** All code that iterates `profileState` after these assignments — layout preview panel, yaml serializer.
+- **Risk of change:** Low — two simple 1-line replacements; already-written test for `createInitialProfileState` validates the shape.
+- **Pattern elsewhere:** All other state updates in the function already use the immutable pattern.
 
-### Finding #2 — Duplicate `import('node:path')` in `main.js`
-- **Depends on:** `promptInteractiveModeSelection` — interactive mode selection only.
-- **Risk of change:** Very low — just remove 2 lines. `join` is already in scope from line 18.
-- **Pattern elsewhere:** No other dynamic re-imports of already-imported modules found.
+### Finding G — ANSI regex for filled detection in `runFinalReview`
+- **Depends on:** `runFinalReview` summary stats display only; does not affect saved data.
+- **Risk of change:** Low — changes only the count display, not the profileState.
+- **Pattern elsewhere:** No other place currently uses the same rendered-string approach for business logic.
 
-### Finding #16 — Timestamp set before `session.stop()` in runnerMode
-- **Depends on:** `runRunnerMode` → produced `run_result.json` timestamps.
-- **Risk of change:** Low — replacing with a single `finally`-block assignment is straightforward and improves accuracy.
-- **Pattern elsewhere:** `runDryRunMode` sets `timestamp_end` inline at construction time (L589), which is correct for dry-run (no teardown); no change needed there.
+### Finding C — Silent fallthrough on `'edit'` / `'restart'` from final review
+- **Depends on:** `runInteractiveBuilder` L576–578 — the final user-visible decision point.
+- **Risk of change:** Medium — any change here either needs the edit/restart flow implemented or requires updating the UI options. Consider removing the options as the lower-risk path.
+- **Pattern elsewhere:** The `'edit'` stub comment is clear; `'restart'` is a new code returned but not yet handled.
 
 ---
 
 ## 4. 🔧 REFACTOR
 
-### Finding #2 — Remove duplicate dynamic `import('node:path')` in `main.js`
+### Finding A — Fix in-place mutation of project metadata in `interactive_builder.js`
 
-**Before** (`main.js` L187–228):
+**Before** (L368, L388):
 ```javascript
-if (mode === 'run' || mode === 'dryRun') {
-    const { readdir } = await import('node:fs/promises');
-    const { join } = await import('node:path');   // ← DUPLICATE: join already imported at line 18
-    
-    try {
-      const profilesDir = join(process.cwd(), 'profiles');
-```
-
-**After:**
-```javascript
-if (mode === 'run' || mode === 'dryRun') {
-    const { readdir } = await import('node:fs/promises');
-    // `join` is already imported statically at the top of the file.
-    
-    try {
-      const profilesDir = join(process.cwd(), 'profiles');
-```
-
----
-
-### Finding #3 — Replace `constructor.name` string matching with `instanceof`
-
-**Before** (`main.js` L395–401):
-```javascript
-  } catch (err) {
-    statusLine('error', `Failed to load profile: ${err.message}`);
-    if (err.constructor.name === 'ProfileFileNotFoundError') {
-      statusLine('error', `File does not exist: ${opts.profile}`);
-    } else if (err.constructor.name === 'ProfileJSONParseError') {
-      statusLine('error', 'Invalid JSON in profile file');
-    } else if (err.constructor.name === 'ProfileSchemaValidationError') {
-      statusLine('error', 'Profile schema validation failed');
-    }
-    throw err;
-  }
-```
-
-**After:**
-```javascript
-import {
-  loadProfile,
-  ProfileFileNotFoundError,
-  ProfileJSONParseError,
-  ProfileSchemaValidationError,
-} from './core/profile/loader.js';
-
-// …in runRunnerMode catch block:
-  } catch (err) {
-    statusLine('error', `Failed to load profile: ${err.message}`);
-    if (err instanceof ProfileFileNotFoundError) {
-      statusLine('error', `File does not exist: ${opts.profile}`);
-    } else if (err instanceof ProfileJSONParseError) {
-      statusLine('error', 'Invalid JSON in profile file');
-    } else if (err instanceof ProfileSchemaValidationError) {
-      statusLine('error', 'Profile schema validation failed');
-    }
-    throw err;
-  }
-```
-> ⚠️ *Only valid if `loader.js` exports these error classes. If they are not yet exported, add `export` to the class declarations in `loader.js` as the prerequisite step.*
-
----
-
-### Finding #8 — Fix `DiamondHeader` to use a named parameter instead of `arguments`
-
-**Before** (`components.js` L163–164):
-```javascript
-export function DiamondHeader(title) {
-  const subtitle = arguments.length > 1 ? arguments[1] : null;
-```
-
-**After:**
-```javascript
-export function DiamondHeader(title, subtitle = null) {
-```
-
-No callers need to change — all existing calls already pass 1 or 2 positional arguments.
-
----
-
-### Finding #17 — Standardise profileState mutability in `interactive_builder.js`
-
-The core issue: `addGroup`/`addService`/`updateServiceDimensions` return new objects but all callers use `Object.assign(profileState, ...)` which mutates in place. The cleanest fix is to use `let profileState` and replace the reference:
-
-**Before (representative pair, L416–418 & L451–460):**
-```javascript
-if (!profileState.groups.find((g) => g.group_name === groupName)) {
-  Object.assign(profileState, addGroup(profileState, groupName));
-}
+profileState.project_name = projectName;
 // …
-Object.assign(
-  profileState,
-  addService(profileState, groupName, serviceCatalog.service_name, region, serviceCatalog.service_name),
-);
+profileState.description = description || null;
 ```
 
 **After:**
 ```javascript
-// Change declaration at L318:
-//   const profileState = createInitialProfileState();
-// to:
-let profileState = createInitialProfileState();
-
-// Then at each call site:
-if (!profileState.groups.find((g) => g.group_name === groupName)) {
-  profileState = addGroup(profileState, groupName);
-}
+profileState = { ...profileState, project_name: projectName };
 // …
-profileState = addService(
-  profileState, groupName, serviceCatalog.service_name, region, serviceCatalog.service_name,
-);
+profileState = { ...profileState, description: description || null };
 ```
 
-And the redo path (L509–511):
+---
 
-**Before:**
+### Finding B — Fix `dim` shadowing in `runServiceReview`
+
+**Before** (`review_flow.js` L247):
 ```javascript
-currentGroup.services = currentGroup.services.filter(
-  (s) => s.service_name !== serviceCatalog.service_name,
-);
+for (const dim of sec.dimensions) {
+  if (!Object.prototype.hasOwnProperty.call(serviceValues, dim.key)) continue;
+  const value = serviceValues[dim.key];
+  const source = (value === null || value === undefined)
+    ? dim('skipped')          // ← calls loop var, not the imported dim() fn 🐛
+    : fg('user', COL_GREEN);
 ```
 
 **After:**
 ```javascript
-// Add a pure helper alongside addService:
-function removeService(profileState, groupName, serviceName) {
-  const groups = profileState.groups.map((group) => {
-    if (group.group_name !== groupName) return group;
-    return { ...group, services: group.services.filter((s) => s.service_name !== serviceName) };
-  });
-  return { ...profileState, groups };
+for (const dimDef of sec.dimensions) {
+  if (!Object.prototype.hasOwnProperty.call(serviceValues, dimDef.key)) continue;
+  const value = serviceValues[dimDef.key];
+  const source = (value === null || value === undefined)
+    ? dim('skipped')          // ← correctly calls imported dim() fn ✓
+    : fg('user', COL_GREEN);
+  // …
+  fg(dimDef.display_name ?? dimDef.key, COL_MUTED),
+  formatValueForReview(value, dimDef.unit ?? null),
+```
+
+---
+
+### Finding C — Remove misleading stub options from final review
+
+**Before** (`interactive_builder.js` L576–578):
+```javascript
+const finalAction = await runPrompt(layoutEngine, () => runFinalReview({ profileState }));
+if (cancelled) throw new WizardCancelledError();
+if (finalAction === 'edit') {
+  // Edit flow can be introduced in a later task; continue save for now.
+}
+```
+
+**After (Option 1 — shield with a guard until flows are implemented):**
+```javascript
+const finalAction = await runPrompt(layoutEngine, () => runFinalReview({ profileState }));
+if (cancelled) throw new WizardCancelledError();
+if (finalAction === 'restart') {
+  // Full restart: clear state and re-run from top — pending implementation.
+  // For now, fall through to save so the user doesn't lose their work.
+  if (layoutEngine) layoutEngine.printAbove(EventMessage('warning', '"Start over" is not yet implemented — saving current profile.'));
+}
+if (finalAction === 'edit') {
+  // Field-level edit — pending implementation.
+  if (layoutEngine) layoutEngine.printAbove(EventMessage('warning', '"Edit a field" is not yet implemented — saving current profile.'));
+}
+```
+
+> **Alternatively (Option 2):** Remove 'Edit a field' and 'Start over' from `runFinalReview`'s `selectPrompt` options until the flows are implemented.
+
+---
+
+### Finding G — Replace ANSI-strip "filled" detection with raw-value check
+
+**Before** (`review_flow.js` L352–357):
+```javascript
+const totalDimensions = rows.length;
+const filledDimensions = rows.filter(r => {
+  const plain = String(r[3]).replace(/\x1b\[[0-9;]*m/g, '');
+  return plain.trim() !== '─';
+}).length;
+```
+
+**After:**
+> Track `filledCount` during row-building instead of post-render:
+
+```javascript
+// Add a counter during the row-building loop (inside the for-of dimensions loop):
+let filledCount = 0;
+for (const [dimKey, dimObj] of Object.entries(dimensions)) {
+  const value = dimObj?.user_value ?? dimObj?.default_value ?? null;
+  if (value !== null && value !== undefined) filledCount++;
+  rows.push([ /* … */ ]);
 }
 
-// In the redo path:
-profileState = removeService(profileState, groupName, serviceCatalog.service_name);
+// Then replace the filter:
+const totalDimensions = rows.length;
+const filledDimensions = filledCount;
+process.stdout.write(dim(`Total dimensions: ${filledDimensions}/${totalDimensions} filled\n\n`));
 ```
 
 ---
 
-### Finding #21 — Fix inverted semantics of `allowUnresolvedOptional` in `priority_chain.js`
+### Finding I — Reorder EC2 policy guards so core dims always show
 
-**Before** (`priority_chain.js` L180–202):
-```javascript
-export function resolveDimensions(profile, opts = {}) {
-    const { allowUnresolvedOptional = true } = opts;
-    // …
-    if (result.unresolved) {
-        if (result.unresolved.required || allowUnresolvedOptional) {
-            unresolved.push(result.unresolved);
-        }
-    }
-```
-
-**After:**
-```javascript
-export function resolveDimensions(profile, opts = {}) {
-    const { includeOptionalInReport = true } = opts;
-    // …
-    if (result.unresolved) {
-        // Always include required; include optional only when opted in
-        if (result.unresolved.required || includeOptionalInReport) {
-            unresolved.push(result.unresolved);
-        }
-    }
-```
-
-> ⚠️ **[BEHAVIOR CHANGE]** Any callers passing `{ allowUnresolvedOptional: false }` must be updated to `{ includeOptionalInReport: false }`. Search for all `resolveDimensions` calls before applying.
-
----
-
-### Finding #22 — EC2 policy: core dims should always show, even for daily-spike workload
-
-**Before** (`ec2_policy.js` L107–118):
+**Before** (`ec2_policy.js` L107–124):
 ```javascript
 shouldPrompt(dimKey, dimensions) {
     const workload = normalizeWorkload(workloadValue);
 
     if (workload === 'daily spike traffic' && DAILY_SPIKE_SKIP_DIMS.has(dimKey)) {
-      return false;   // ← hides 'Number of instances' and 'Utilization' which are core
+      return false;   // ← hides core dims before core check runs
     }
     if (workload === 'constant usage' && CONSTANT_USAGE_SKIP_DIMS.has(dimKey)) {
       return false;
@@ -271,7 +213,7 @@ shouldPrompt(dimKey, dimensions) {
 shouldPrompt(dimKey, dimensions) {
     const workload = normalizeWorkload(workloadValue);
 
-    // Core dimensions are always prompted regardless of workload
+    // Core dimensions always show, regardless of workload
     if (EC2_CORE_DIMS.has(dimKey)) {
       return true;
     }
@@ -284,68 +226,70 @@ shouldPrompt(dimKey, dimensions) {
     }
 ```
 
-> ⚠️ **[BEHAVIOR CHANGE]** Under `daily spike traffic`, `Number of instances` and `Utilization (On-Demand only)` will become *visible* (they were previously hidden). Verify this matches AWS Calculator's actual EC2 field visibility for daily spike workloads.
+> ⚠️ **[BEHAVIOR CHANGE]** Under `daily spike traffic`, `Number of instances` and `Utilization (On-Demand only)` become visible. Verify against the live AWS EC2 Calculator page.
 
 ---
 
 ## 5. ✅ VERIFY
 
-### Lint/Format
+### Lint
 ```bash
-# From /Users/mac/Git/aws-cost/aws-cost-builder
+cd /Users/mac/Git/aws-cost/aws-cost-builder
 npx eslint builder/ core/ main.js
 ```
 
-### Existing Tests
+### Full test suite
 ```bash
-# Run the full test suite
 npm test
-
-# Run builder-specific tests
-npm test -- --testPathPattern=tests/builder
 ```
 
-Key test files to re-run after applying changes:
-- `tests/builder/prompts/toggle_prompt.test.js` — covers toggle prompt rendering
-- `tests/builder/` — wizard/section/review flow tests
-- `tests/core/` — resolver, profile model tests
+### Targeted tests to re-run after applying fixes
+```bash
+# Builder wizard tests (covers interactive_builder, section_flow, review_flow)
+npm test -- --testPathPattern=tests/builder
 
-### New Tests Warranted
-1. **`tests/builder/wizard/interactive_builder.test.js`** — Add a redo-path test that verifies `profileState.groups[0].services` is correctly filtered after a redo action (regression for finding #1).
-2. **`tests/core/resolver/priority_chain.test.js`** — Add a test that calls `resolveDimensions` with an optional dimension and `{ includeOptionalInReport: false }` to confirm it's excluded (regression for finding #21).
-3. **`tests/core/resolver/priority_chain.test.js`** — Add a test that calls `resolveDimensions` with `{ includeOptionalInReport: true }` (the default) to confirm optional unresolveds are included.
+# Core resolver tests (covers priority_chain, override_parser)
+npm test -- --testPathPattern=tests/core
 
-### No Behavior Changes
-All refactors above preserve existing behavior **except** the two explicitly marked `[BEHAVIOR CHANGE]`:
-- Finding #21 (`allowUnresolvedOptional` rename) — update any callers.
-- Finding #22 (EC2 policy reorder) — verify against live EC2 calculator.
+# Property tests (covers policies)
+npm test -- --testPathPattern=tests/property
+```
+
+### New tests warranted
+1. **`tests/builder/wizard/interactive_builder.test.js`** — Add a test for final review that confirms `'restart'` and `'edit'` return values are handled with a warning message rather than silently saving (finding C).
+2. **`tests/builder/wizard/review_flow.test.js`** — Add a test for `runFinalReview` where all dimension values are `null`; confirm `filledDimensions = 0` (regression for finding G's raw-count fix).
+3. **`tests/property/ec2_policy.test.js`** — Add a property test asserting that `EC2_CORE_DIMS` members always return `true` from `shouldPrompt` regardless of workload (finding I).
+
+### Behavior changes to validate manually
+- After finding I: Confirm `Number of instances` and `Utilization (On-Demand only)` are shown in the live AWS Calculator EC2 page under "daily spike traffic" load pattern.
 
 ---
 
 ## 6. 📝 PR SUMMARY
 
-### Title: `🧹 Fix mixed mutability in wizard state, remove duplicate import, fix DiamondHeader args`
+### Title: `🧹 Fix remaining state mutation, dim shadowing, and EC2 policy guard order`
 
 **Body:**
 
-🎯 **What:**  
-Addresses three categories of issues found in the code health review:
-1. Mixed mutable/immutable state management in `interactive_builder.js` (`Object.assign` + direct `.services =` mutation)
-2. A duplicate `import('node:path')` in `main.js` (static import already existed)
-3. `DiamondHeader()` using the `arguments` object instead of a named parameter
-4. `allowUnresolvedOptional` option in `priority_chain.js` has inverted semantics
+🎯 **What:**
+1. Eliminate last two in-place property assignments on `profileState` (`project_name`, `description`) to complete the immutable-state refactor
+2. Fix `dim` variable shadowing in `runServiceReview` (missed in pass 1)
+3. Add explicit warn messages for unimplemented "Edit a field" / "Start over" final review paths
+4. Replace fragile ANSI-strip filled-count logic with a raw-value counter
+5. Reorder EC2 policy guards so core dimensions are always shown
 
-💡 **Why:**  
-The mixed mutability in `interactive_builder.js` will cause subtle state bugs when the wizard adds more complex redo/edit flows. The `arguments` object pattern breaks in strict ESM and is confusing. The duplicate dynamic import adds unnecessary async overhead.
+💡 **Why:**
+The immutable-state half-fix leaves two mutable property assignments that could cause subtle bugs in the layout preview panel. The `dim` shadowing in `runServiceReview` means `dim('skipped')` currently calls the loop variable (an object), not the imported styling function, producing `[object Object]` in the Source column for skipped values. The ANSI-strip filled count would miscount any dimension whose value is literally the `─` glyph.
 
-✅ **Verification:**  
+✅ **Verification:**
 - `npm test` — full suite passes
-- Redo path manually verified in wizard: removed service correctly disappears from profile preview
-- `npm run lint` — no new errors
+- `npx eslint builder/ core/ main.js` — no new errors
+- Manual wizard run: "Source" column shows `skipped` (not `[object Object]`) for null dimensions
+- Manual EC2 daily-spike run: `Number of instances` and `Utilization` fields visible
 
-✨ **Result:**  
-`profileState` is now managed via a consistent immutable-update pattern throughout the wizard. `DiamondHeader` now has a clean two-parameter signature. No redundant module loads.
+✨ **Result:**
+`profileState` is now fully immutable throughout the wizard. The service review table correctly displays "skipped" for empty dimensions. The final review filled-count is accurate even for dash-valued dimensions.
 
-⚠️ **Behavior Changes:**  
-- `resolveDimensions` option renamed from `allowUnresolvedOptional` to `includeOptionalInReport` — update all callers.
-- EC2 core dimensions (`Number of instances`, `Utilization`) now always show under `daily spike traffic` workload — verify against AWS Calculator.
+⚠️ **Behavior Changes:**
+- EC2 `daily spike traffic`: `Number of instances` and `Utilization (On-Demand only)` now always show
+- `allowUnresolvedOptional` in `priority_chain.js` renamed to `includeOptionalInReport` (blocked on separate PR; callers must be updated)
