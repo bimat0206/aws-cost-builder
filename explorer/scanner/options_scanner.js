@@ -11,9 +11,8 @@
  */
 
 import { DraftDimension } from '../models.js';
-import { UNKNOWN } from '../constants.js';
-import { logEvent as sharedLogEvent } from '../../core/index.js';
 import { UNKNOWN, LOG_LEVELS } from '../constants.js';
+import { logEvent as sharedLogEvent } from '../../core/index.js';
 
 // ─── Logging helpers ──────────────────────────────────────────────────────────
 
