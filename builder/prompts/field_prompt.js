@@ -167,9 +167,9 @@ export function renderFakeInput(buffer = '', errorMsg = '', active = true, width
 
   const bgColor = active ? COL_BG_ACTIVE : COL_BG_PANEL;
 
-  const top  = bg(b('╭') + b('─'.repeat(inner)) + b('╮'), bgColor);
-  const mid  = bg(b('│') + padded + b('│'), bgColor);
-  const bot  = bg(b('╰') + b('─'.repeat(inner)) + b('╯'), bgColor);
+  const top  = b('╭' + '─'.repeat(inner) + '╮');
+  const mid  = b('│') + bg(padded, bgColor) + b('│');
+  const bot  = b('╰' + '─'.repeat(inner) + '╯');
   const hint = dim(' Enter to confirm · ? for help');
 
   const lines = [top, mid, bot, hint];
@@ -193,9 +193,9 @@ export function renderSubmittedInput(value, width = 50) {
 
   const bgColor = COL_BG_ROW;
 
-  const top     = bg(b('╭') + b('─'.repeat(inner)) + b('╮'), bgColor);
-  const mid     = bg(b('│') + padded + b('│'), bgColor);
-  const bot     = bg(b('╰') + b('─'.repeat(inner)) + b('╯'), bgColor);
+  const top     = b('╭' + '─'.repeat(inner) + '╮');
+  const mid     = b('│') + bg(padded, bgColor) + b('│');
+  const bot     = b('╰' + '─'.repeat(inner) + '╯');
   return [top, mid, bot].join('\n');
 }
 
