@@ -5,6 +5,23 @@ All notable changes to the AWS Cost Profile Builder project are documented in th
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.12.0] - 2026-02-28
+
+### Fixed
+- **Automation Node.js Parity Complete** — Fixed all 13 gaps between Python and Node.js implementation:
+  - (P0) Added `clickSave` support in `main.js` so configured dimensions are properly added to the estimate.
+  - (P0) Ensured `clickConfigure` runs reliably before dimension lookup.
+  - (P0) Passed catalog variables (`css_selector`, `fallback_label`, `disambiguation_index`) to locator pipeline.
+  - (P0) Ported the 5-strategy fallback logic for optional section expansion (EBS, Data Transfer, Monitoring).
+  - (P1) Consolidated duplicate locator pipelines into a unified 5-tier fallback matcher.
+  - (P1) Fixed `aria-label` tier to use explicit CSS attributes instead of `getByLabel`.
+  - (P2) Ported robust Cloudscape `SELECT` and `COMBOBOX` handlers with drop-down discovery.
+  - (P2) Improved `TOGGLE` handler to read `aria-checked` and `aria-pressed` states before clicking.
+  - (P2) Added skipping logic for EC2 quick-start workloads modal.
+  - (P2) Added `INSTANCE_SEARCH` handler for EC2 instance table pickers.
+  - (P3) Added O/0 masking for numeric text inputs.
+  - (P3) Used catalog-aware `ui_mapping` variables for location type and region picker labels.
+
 ## [1.11.0] - 2026-02-27
 
 ### Fixed

@@ -305,9 +305,11 @@ function escapeCssString(value) {
  * @returns {Promise<LocatorResult & { status: 'success'|'failed'|'skipped' }>}
  */
 export async function findElement(page, dimensionKey, opts = {}) {
-  const { primaryCss = null, maxRetries = 2, context = {}, required = true } = opts;
+  const { primaryCss = null, fallbackLabel = null, maxRetries = 2, context = {}, required = true } = opts;
+  // Disambiguation currently hardcoded to 0 for Playwright .nth()
+  const disambiguationIndex = opts.disambiguationIndex || 0;
 
-  logEvent('INFO', 'EVT-FND-01', { label: dimensionKey, step: 'locating' });
+  logEvent('INFO', 'EVT-FND-01', { label: dimensionKey, step: 'locating_with_fallbacks' });
 
   // Helper for capturing screenshots on failure
   const captureFail = async () => {
@@ -333,50 +335,48 @@ export async function findElement(page, dimensionKey, opts = {}) {
   try {
     const result = await withRetry(
       async () => {
-        let element = null;
-        let strategy = 'unknown';
+        // Collect labels to try
+        const labels = [fallbackLabel, dimensionKey].filter(Boolean);
 
         // Tier 1: Primary CSS selector (if provided from catalog)
         if (primaryCss) {
-          element = await page.$(primaryCss);
-          if (element) {
-            strategy = 'css';
+          const cssResult = await tryCssStrategy(page, primaryCss, disambiguationIndex);
+          if (cssResult) {
+            logEvent('INFO', 'EVT-FND-01', { label: dimensionKey, strategy: 'css' });
+            return {
+              ...cssResult,
+              fieldType: await getFieldType(cssResult.element),
+              status: 'success',
+              matchTop: 0
+            };
           }
         }
 
-        // Tier 2: aria-label match
-        if (!element) {
-          const ariaLabelLocator = page.getByLabel(dimensionKey, { exact: false }).first();
-          try {
-            await ariaLabelLocator.waitFor({ state: 'visible', timeout: 3000 });
-            element = await ariaLabelLocator.elementHandle();
-            if (element) strategy = 'aria-label';
-          } catch {
-            // Continue to next tier
-          }
-        }
+        // Tiers 2-4: Iterate over labels and strategies
+        const strategies = [
+          tryAriaLabelStrategy,
+          tryLabelForStrategy,
+          tryRoleStrategy
+        ];
 
-        // Tier 3: role + name match
-        if (!element) {
-          const roles = ['spinbutton', 'combobox', 'textbox', 'switch', 'checkbox', 'radio'];
-          for (const role of roles) {
-            const roleLocator = page.getByRole(role, { name: dimensionKey, exact: false }).first();
-            try {
-              await roleLocator.waitFor({ state: 'visible', timeout: 2000 });
-              element = await roleLocator.elementHandle();
-              if (element) {
-                strategy = `role-${role}`;
-                break;
-              }
-            } catch {
-              // Continue to next role
+        for (const label of labels) {
+          for (const strategyFn of strategies) {
+            const result = await strategyFn(page, label, disambiguationIndex);
+            if (result) {
+              logEvent('INFO', 'EVT-FND-01', { label: dimensionKey, strategy: result.strategy });
+              return {
+                ...result,
+                fieldType: await getFieldType(result.element),
+                status: 'success',
+                matchTop: 0
+              };
             }
           }
         }
 
-        // Tier 4: Visible text content match (find input near text)
-        if (!element) {
-          const textLocator = page.getByText(dimensionKey, { exact: false }).first();
+        // Tier 5: Visible text content mapping to nearby input fields
+        for (const label of labels) {
+          const textLocator = page.getByText(label, { exact: false }).first();
           try {
             await textLocator.waitFor({ state: 'visible', timeout: 3000 });
             // Find nearest input control
@@ -388,10 +388,16 @@ export async function findElement(page, dimensionKey, opts = {}) {
                 const box = await input.boundingBox();
                 const textBox = await textLocator.boundingBox();
                 if (box && textBox && Math.abs(box.y - textBox.y) < 100) {
-                  element = await input.elementHandle();
+                  const element = await input.elementHandle();
                   if (element) {
-                    strategy = 'text-proximity';
-                    break;
+                    logEvent('INFO', 'EVT-FND-01', { label: dimensionKey, strategy: 'text-proximity' });
+                    return {
+                      element,
+                      strategy: 'text-proximity',
+                      fieldType: await getFieldType(element),
+                      status: 'success',
+                      matchTop: 0
+                    };
                   }
                 }
               } catch {
@@ -399,24 +405,11 @@ export async function findElement(page, dimensionKey, opts = {}) {
               }
             }
           } catch {
-            // Continue to fail
+            // Continue failure
           }
         }
 
-        if (!element) {
-          throw new LocatorNotFoundError(dimensionKey, strategy);
-        }
-
-        // Get field type
-        const fieldType = await getFieldType(element);
-
-        return {
-          element,
-          fieldType,
-          strategy,
-          matchTop: 0,
-          status: 'success'
-        };
+        throw new LocatorNotFoundError(dimensionKey, 'all_tiers_failed');
       },
       {
         stepName: `find-element-${dimensionKey}`,
@@ -445,122 +438,6 @@ export async function findElement(page, dimensionKey, opts = {}) {
       screenshotPath
     };
   }
-}
-
-/**
- * Find element with fallback strategies.
- *
- * Tries Find-in-Page first, then falls back to direct DOM queries.
- * Matches Python's tiered approach:
- * 1. CSS selector (if provided in dimension)
- * 2. aria-label
- * 3. label[for]
- * 4. role + name
- * 5. Visible text
- * 6. Find-in-Page (last resort)
- *
- * @param {import('playwright').Page} page
- * @param {string} dimensionKey
- * @param {object} [opts]
- * @param {string} [opts.cssSelector] - Optional CSS selector from catalog
- * @returns {Promise<LocatorResult>}
- */
-export async function findElementWithFallback(page, dimensionKey, opts = {}) {
-  const { required = true, cssSelector = null } = opts;
-  const disambiguationIndex = 0;
-
-  logEvent('INFO', 'EVT-FND-01', { label: dimensionKey, step: 'locating_with_fallbacks' });
-
-  // Tier 1: CSS selector (if provided)
-  if (cssSelector) {
-    try {
-      const cssResult = await tryCssStrategy(page, cssSelector, disambiguationIndex);
-      if (cssResult) {
-        const fieldType = await getFieldType(cssResult.element);
-        logEvent('INFO', 'EVT-FND-01', { label: dimensionKey, strategy: 'css' });
-        return {
-          element: cssResult.element,
-          fieldType,
-          strategy: 'css',
-          matchTop: 0,
-          status: 'success'
-        };
-      }
-    } catch {
-      // Continue to next tier
-    }
-  }
-
-  // Tier 2: aria-label
-  try {
-    const ariaResult = await tryAriaLabelStrategy(page, dimensionKey, disambiguationIndex);
-    if (ariaResult) {
-      const fieldType = await getFieldType(ariaResult.element);
-      logEvent('INFO', 'EVT-FND-01', { label: dimensionKey, strategy: 'aria-label' });
-      return {
-        element: ariaResult.element,
-        fieldType,
-        strategy: 'aria-label',
-        matchTop: 0,
-        status: 'success'
-      };
-    }
-  } catch {
-    // Continue to next tier
-  }
-
-  // Tier 3: label[for]
-  try {
-    const labelResult = await tryLabelForStrategy(page, dimensionKey, disambiguationIndex);
-    if (labelResult) {
-      const fieldType = await getFieldType(labelResult.element);
-      logEvent('INFO', 'EVT-FND-01', { label: dimensionKey, strategy: 'label-for' });
-      return {
-        element: labelResult.element,
-        fieldType,
-        strategy: 'label-for',
-        matchTop: 0,
-        status: 'success'
-      };
-    }
-  } catch {
-    // Continue to next tier
-  }
-
-  // Tier 4: role + name
-  try {
-    const roleResult = await tryRoleStrategy(page, dimensionKey, disambiguationIndex);
-    if (roleResult) {
-      const fieldType = await getFieldType(roleResult.element);
-      logEvent('INFO', 'EVT-FND-01', { label: dimensionKey, strategy: 'role' });
-      return {
-        element: roleResult.element,
-        fieldType,
-        strategy: 'role',
-        matchTop: 0,
-        status: 'success'
-      };
-    }
-  } catch {
-    // Continue to next tier
-  }
-
-  // Tier 5: Visible text (Find-in-Page)
-  const findResult = await findElement(page, dimensionKey, opts);
-  if (findResult.status === 'success') {
-    logEvent('INFO', 'EVT-FND-01', { label: dimensionKey, strategy: 'find-in-page' });
-    return findResult;
-  }
-
-  // All strategies failed
-  logEvent('ERROR', 'EVT-FND-02', { label: dimensionKey, error: 'all_strategies_failed' });
-  return {
-    element: null,
-    fieldType: 'TEXT',
-    strategy: 'direct-query',
-    matchTop: 0,
-    status: required ? 'failed' : 'skipped'
-  };
 }
 
 /**

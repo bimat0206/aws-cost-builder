@@ -12,6 +12,7 @@ import { withRetry } from '../../core/retry/retry_wrapper.js';
 import { fillNumberText } from './field_strategies/number_text.js';
 import { fillSelect, fillCombobox } from './field_strategies/select_combobox.js';
 import { fillToggle, fillRadio } from './field_strategies/toggle_radio.js';
+import { fillInstanceSearch } from './field_strategies/instance_search.js';
 
 /**
  * @typedef {Object} DimensionFillResult
@@ -147,30 +148,39 @@ export async function fillDimension(element, fieldType, value, opts = {}) {
     switch (normalizedType) {
       case 'NUMBER':
       case 'TEXT':
-        await fillNumberText(element, value);
+        await fillNumberText(element, value, normalizedType);
         break;
       case 'SELECT':
-        await fillSelect(element, value);
+        if (!page) throw new Error('SELECT interaction requires page in opts');
+        await fillSelect(page, element, value);
         break;
       case 'COMBOBOX':
-        await fillCombobox(element, value);
+        if (!page) throw new Error('COMBOBOX interaction requires page in opts');
+        await fillCombobox(page, element, value);
         break;
       case 'TOGGLE':
-        await fillToggle(element, value);
+        if (!page) throw new Error('TOGGLE interaction requires page in opts');
+        await fillToggle(page, element, dimensionKey, value);
         break;
       case 'RADIO':
         if (!page) throw new Error('RADIO interaction requires page in opts');
-        await fillRadio(page, value);
+        await fillRadio(page, dimensionKey, value);
+        break;
+      case 'INSTANCE_SEARCH':
+        if (!page) throw new Error('INSTANCE_SEARCH interaction requires page in opts');
+        await fillInstanceSearch(page, element, value);
         break;
       default:
         // Graceful fallback for unknown types.
-        await fillNumberText(element, value);
+        await fillNumberText(element, value, normalizedType);
     }
     
-    // Verify value was accepted
-    const verified = await verifyFieldValue(element, fieldType, value);
-    if (!verified) {
-      throw new Error(`Value verification failed for ${dimensionKey}: expected "${value}"`);
+    // Skip verification for INSTANCE_SEARCH since it's a complex table select
+    if (normalizedType !== 'INSTANCE_SEARCH') {
+      const verified = await verifyFieldValue(element, fieldType, value);
+      if (!verified) {
+        throw new Error(`Value verification failed for ${dimensionKey}: expected "${value}"`);
+      }
     }
   };
 

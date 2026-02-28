@@ -22,14 +22,9 @@ import { runInteractiveBuilder } from './builder/wizard/interactive_builder.js';
 import { parseOverrides } from './core/resolver/override_parser.js';
 import { loadAllCatalogs } from './config/loader/index.js';
 import { ensureOutputDirs, buildRunId, writeRunResult } from './core/emitter/artifact_writer.js';
-import {
-  DimensionResult,
-  GroupResult,
-  RunResult,
-  ServiceResult,
-} from './core/models/run_result.js';
+import { DimensionResult, GroupResult, RunResult, ServiceResult } from './core/models/run_result.js';
 import { BrowserSession, AutomationFatalError } from './automation/session/browser_session.js';
-import { navigateToService } from './automation/navigation/navigator.js';
+import { navigateToService, clickSave } from './automation/navigation/navigator.js';
 import { findElement } from './automation/locator/find_in_page_locator.js';
 import { fillDimension } from './automation/interactor/field_interactor.js';
 import { runInteractiveExplorer } from './explorer/wizard/interactive_explorer.js';
@@ -459,6 +454,7 @@ export async function runRunnerMode(opts) {
             searchTerms,
             region: service.region,
             context,
+            catalogEntry: catalog,
           });
         } catch (navError) {
           serviceResult.failed_step = 'navigation';
@@ -508,7 +504,12 @@ export async function runRunnerMode(opts) {
             continue;
           }
 
+          const catalogDim = catalog?.dimensions?.find((d) => d.key === dimension.key);
+
           const located = await findElement(session.page, dimension.key, {
+            primaryCss: catalogDim?.css_selector ?? null,
+            fallbackLabel: catalogDim?.fallback_label ?? null,
+            disambiguationIndex: catalogDim?.disambiguation_index ?? 0,
             required: dimension.required,
             maxRetries: 2,
             context,
@@ -542,6 +543,19 @@ export async function runRunnerMode(opts) {
               : (filled.status === 'skipped' ? 'skipped' : 'failed'),
             error_detail: filled.status === 'failed' ? filled.message : null,
             screenshot_path: filled.screenshot ?? null,
+          }));
+        }
+
+        // Save service to estimate
+        try {
+          // If the profile sets `save_to_summary` we could conditionally pass the label, but we default to 'Save and add service'
+          await clickSave(session.page, 'Save and add service');
+        } catch (saveError) {
+          serviceResult.failed_step = 'save';
+          serviceResult.addDimension(new DimensionResult({
+            key: '__save__',
+            status: 'failed',
+            error_detail: saveError.message,
           }));
         }
 

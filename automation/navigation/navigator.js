@@ -10,6 +10,7 @@
  */
 
 import { ensureGroup } from './group_manager.js';
+import { expandAllSections, SectionStrategyHintStore } from './section_strategy.js';
 import { withRetry } from '../../core/retry/retry_wrapper.js';
 import { buildScreenshotPath } from '../../core/emitter/screenshot_manager.js';
 import { logEvent as sharedLogEvent } from '../../core/index.js';
@@ -218,23 +219,75 @@ async function searchAndSelectService(page, searchTerms, expectedTitles) {
     await page.waitForTimeout(900); // Allow filtered results to render
 
     if (await clickBestMatchingResult(page, expectedTitles, term)) {
-      // Service card selected - now click "Configure" button
-      logEvent('INFO', 'EVT-SVC-03', { step: 'clicking_configure' });
-      try {
-        const configureButton = page.getByRole('button', { name: /Configure/i }).first();
-        await configureButton.waitFor({ state: 'visible', timeout: 5000 });
-        await configureButton.click();
-        await page.waitForLoadState('domcontentloaded', { timeout: 10000 });
-        logEvent('INFO', 'EVT-SVC-03', { step: 'configure_clicked' });
-        return;
-      } catch (error) {
-        logEvent('ERROR', 'EVT-SVC-03', { error: 'Could not click Configure button' });
-        throw new Error(`Could not click Configure button: ${error.message}`);
-      }
+      return;
     }
   }
 
   throw new Error(`No search results for keywords: ${terms.join(', ')}`);
+}
+
+/**
+ * Click the "Configure" button to open the service form.
+ * Matches Python's click_configure().
+ * @param {import('playwright').Page} page
+ * @returns {Promise<void>}
+ */
+export async function clickConfigure(page) {
+  logEvent('INFO', 'EVT-SVC-03', { step: 'clicking_configure' });
+  try {
+    const configureButton = page.getByRole('button', { name: /Configure/i }).first();
+    await configureButton.waitFor({ state: 'visible', timeout: 5000 });
+    await configureButton.click();
+    await page.waitForLoadState('domcontentloaded', { timeout: 10000 });
+    logEvent('INFO', 'EVT-SVC-03', { step: 'configure_clicked' });
+    
+    // Gap 9: EC2 specific workload quick-start modal evasion
+    await handleOptionalWorkloadsModal(page);
+  } catch (error) {
+    logEvent('ERROR', 'EVT-SVC-03', { error: 'Could not click Configure button' });
+    throw new Error(`Could not click Configure button: ${error.message}`);
+  }
+}
+
+/**
+ * Handle optional Quick Start Workloads modal (e.g., EC2).
+ * Matches Python's skip_workloads() logic.
+ * @param {import('playwright').Page} page
+ * @returns {Promise<void>}
+ */
+async function handleOptionalWorkloadsModal(page) {
+  try {
+    // If a modal pops up asking to "Choose a workload", find the Skip button
+    const skipButton = page.getByRole('button', { name: /Skip/i }).first();
+    // Short timeout because it usually doesn't appear for most services
+    await skipButton.waitFor({ state: 'visible', timeout: 2000 });
+    await skipButton.click();
+    await page.waitForTimeout(500); // Allow modal to fade
+    logEvent('INFO', 'EVT-SVC-03', { step: 'workload_skipped' });
+  } catch {
+    // Modal did not appear, safe to ignore
+  }
+}
+
+/**
+ * Click the "Save and add service" button after filling dimensions.
+ * Matches Python's click_save().
+ * @param {import('playwright').Page} page
+ * @param {string} label
+ * @returns {Promise<void>}
+ */
+export async function clickSave(page, label = 'Save and add service') {
+  logEvent('INFO', 'EVT-SVC-04', { step: 'clicking_save' });
+  try {
+    const saveButton = page.getByRole('button', { name: new RegExp(label, 'i') }).first();
+    await saveButton.waitFor({ state: 'visible', timeout: 5000 });
+    await saveButton.click();
+    await page.waitForLoadState('domcontentloaded', { timeout: 15000 });
+    logEvent('INFO', 'EVT-SVC-04', { step: 'save_clicked' });
+  } catch (error) {
+    logEvent('ERROR', 'EVT-SVC-04', { error: `Could not click '${label}' button` });
+    throw new Error(`Could not click '${label}' button: ${error.message}`);
+  }
 }
 
 // ─── Region selection ─────────────────────────────────────────────────────────
@@ -244,9 +297,10 @@ async function searchAndSelectService(page, searchTerms, expectedTitles) {
  * Matches Python's select_region().
  * @param {import('playwright').Page} page
  * @param {string} regionCode
+ * @param {object} [catalogEntry]
  * @returns {Promise<void>}
  */
-async function selectRegion(page, regionCode) {
+async function selectRegion(page, regionCode, catalogEntry = null) {
   // Skip if global
   if (!regionCode || regionCode.toLowerCase() === 'global') {
     logEvent('INFO', 'EVT-REG-01', { region: 'global', status: 'skipping' });
@@ -256,8 +310,11 @@ async function selectRegion(page, regionCode) {
   logEvent('INFO', 'EVT-REG-01', { region: regionCode, status: 'selecting' });
 
   try {
+    const locLabel = catalogEntry?.ui_mapping?.location_type_label || 'Choose a location type';
+    const regLabel = catalogEntry?.ui_mapping?.region_picker_label || 'Choose a Region';
+
     // Step 1: Ensure location type is set to "Region"
-    const locationType = page.getByLabel(/Choose a location type/i).first();
+    const locationType = page.getByLabel(new RegExp(locLabel, 'i')).first();
     await locationType.waitFor({ state: 'visible', timeout: 8000 });
 
     const locationTypeText = await locationType.textContent();
@@ -269,7 +326,7 @@ async function selectRegion(page, regionCode) {
     }
 
     // Step 2: Select region by code (not display name)
-    const regionPicker = page.getByLabel(/Choose a Region/i).first();
+    const regionPicker = page.getByLabel(new RegExp(regLabel, 'i')).first();
     await regionPicker.waitFor({ state: 'visible', timeout: 8000 });
     await regionPicker.click();
 
@@ -378,7 +435,7 @@ export async function navigateToService(page, opts) {
       await withRetry(
         async () => {
           try {
-            await selectRegion(page, region);
+            await selectRegion(page, region, opts.catalogEntry);
           } catch (err) {
             await captureFail('region-selection');
             throw err;
@@ -408,6 +465,39 @@ export async function navigateToService(page, opts) {
         delayMs: 1500,
       }
     );
+
+    // Step 5: Click Configure to open service dimension form
+    await withRetry(
+      async () => {
+        try {
+          await clickConfigure(page);
+        } catch (err) {
+          await captureFail('configure-click');
+          throw err;
+        }
+      },
+      {
+        stepName: 'configure-click',
+        maxRetries: 2,
+        delayMs: 1500,
+      }
+    );
+
+    // Step 6: Expand optional sections (EBS, Monitoring, Data Transfer)
+    try {
+      if (opts.catalogEntry) {
+        // Expand optional sections if catalog entry provided
+        const hintStore = new SectionStrategyHintStore(serviceName);
+        await expandAllSections(page, hintStore, { catalogTriggers: opts.catalogEntry.section_triggers || [] });
+      } else {
+        // Safe fallback if catalog not available: attempt generic discovery
+        const hintStore = new SectionStrategyHintStore(serviceName);
+        await expandAllSections(page, hintStore);
+      }
+    } catch (err) {
+      // Non-fatal, just log and continue
+      logEvent('WARN', 'EVT-SEC-04', { error: err.message, step: 'expand-sections' });
+    }
 
     logEvent('INFO', 'EVT-NAV-02', { service: serviceName, group: groupName, status: 'complete' });
   } catch (error) {

@@ -6,10 +6,15 @@
  * Clear and fill a NUMBER or TEXT input.
  * @param {import('playwright').ElementHandle} element
  * @param {string} value
+ * @param {string} [fieldType='TEXT']
  * @returns {Promise<void>}
  */
-export async function fillNumberText(element, value) {
-  const text = String(value ?? '');
+export async function fillNumberText(element, value, fieldType = 'TEXT') {
+  let text = String(value ?? '');
+  
+  if (fieldType === 'NUMBER') {
+    text = text.replace(/[Oo]/g, '0');
+  }
 
   // Primary path for native input/textarea controls.
   try {
