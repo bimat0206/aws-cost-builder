@@ -12,7 +12,7 @@
  */
 
 import { readFile } from 'node:fs/promises';
-import { resolve, sep } from 'node:path';
+import { resolve } from 'node:path';
 import { validateSchema, validateCrossFields, ProfileValidationError } from './validator.js';import { deserializeProfile } from './serializer.js';
 
 // ─── Base Error Classes ───────────────────────────────────────────────────────
@@ -111,17 +111,10 @@ export {
  * @returns {Promise<import('../models/profile.js').ProfileDocument>}
  */
 export async function loadProfile(profilePath, catalog, regionMap) {
-    // ── F-L0: Security ────────────────────────────────────────────────────────
-    const resolvedPath = resolve(profilePath);
-    const safeBase = resolve(process.cwd());
-    if (!resolvedPath.startsWith(safeBase + sep) && resolvedPath !== safeBase) {
-        throw new ProfilePermissionError(profilePath);
-    }
-
     // ── F-L1: File I/O ────────────────────────────────────────────────────────
     let raw;
     try {
-        raw = await readFile(resolvedPath, 'utf-8');
+        raw = await readFile(profilePath, 'utf-8');
     } catch (err) {
         if (err.code === 'ENOENT') throw new ProfileFileNotFoundError(profilePath);
         if (err.code === 'EACCES' || err.code === 'EPERM') throw new ProfilePermissionError(profilePath);
