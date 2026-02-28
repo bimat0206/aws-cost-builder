@@ -283,17 +283,18 @@ function escapeCssString(value) {
  * @typedef {Object} LocatorResult
  * @property {import('playwright').ElementHandle} element
  * @property {string} fieldType - NUMBER|TEXT|SELECT|COMBOBOX|TOGGLE|RADIO
- * @property {string} strategy - 'find-in-page' | 'direct-query'
+ * @property {string} strategy - Strategy used to locate element
  * @property {number} matchTop - Vertical position of the match
  */
 
 /**
- * Find the DOM element for a dimension using Find-in-Page + CDP proximity search.
+ * Find the DOM element for a dimension using Playwright's native locator API.
+ * Matches Python's find_element() tiered strategy.
  *
  * @param {import('playwright').Page} page
  * @param {string} dimensionKey - The dimension label to search for
  * @param {object} [opts]
- * @param {number} [opts.bandPx=150] - Vertical band size for proximity search
+ * @param {string} [opts.primaryCss] - Optional primary CSS selector from catalog
  * @param {number} [opts.maxRetries=2] - Number of retry attempts
  * @param {object} [opts.context] - Run context for artifact paths
  * @param {string} [opts.context.runId]
@@ -304,7 +305,7 @@ function escapeCssString(value) {
  * @returns {Promise<LocatorResult & { status: 'success'|'failed'|'skipped' }>}
  */
 export async function findElement(page, dimensionKey, opts = {}) {
-  const { bandPx = 150, maxRetries = 2, context = {}, required = true } = opts;
+  const { primaryCss = null, maxRetries = 2, context = {}, required = true } = opts;
 
   logEvent('INFO', 'EVT-FND-01', { label: dimensionKey, step: 'locating' });
 
@@ -332,64 +333,88 @@ export async function findElement(page, dimensionKey, opts = {}) {
   try {
     const result = await withRetry(
       async () => {
-        // Step 1: Scroll to top for consistent starting point
-        await scrollToPosition(page, 0);
-        await page.waitForTimeout(200);
+        let element = null;
+        let strategy = 'unknown';
 
-        // Step 2: Open Find-in-Page
-        await triggerFindInPage(page);
-
-        // Step 3: Type the dimension key
-        await page.keyboard.type(dimensionKey, { delay: 50 });
-        await page.waitForTimeout(400);
-
-        // Step 4: Get bounding rect of the selection
-        const rect = await getSelectionBoundingRect(page);
-        if (!rect) {
-          throw new LocatorNotFoundError(dimensionKey, 'find-in-page');
+        // Tier 1: Primary CSS selector (if provided from catalog)
+        if (primaryCss) {
+          element = await page.$(primaryCss);
+          if (element) {
+            strategy = 'css';
+          }
         }
 
-        // Step 5: Close Find bar
-        await closeFindInPage(page);
-
-        // Step 6: Query controls in the vertical band
-        const controls = await queryControlsInBand(page, rect.top, bandPx);
-
-        if (controls.length === 0) {
-          throw new LocatorNotFoundError(dimensionKey, 'find-in-page');
+        // Tier 2: aria-label match
+        if (!element) {
+          const ariaLabelLocator = page.getByLabel(dimensionKey, { exact: false }).first();
+          try {
+            await ariaLabelLocator.waitFor({ state: 'visible', timeout: 3000 });
+            element = await ariaLabelLocator.elementHandle();
+            if (element) strategy = 'aria-label';
+          } catch {
+            // Continue to next tier
+          }
         }
 
-        // Step 7: Get the nearest control
-        const nearestControl = controls[0];
-
-        // Build selector and find element
-        let element;
-        if (nearestControl.selector.includes('#')) {
-          element = await page.$(nearestControl.selector);
-        } else {
-          // Fallback: find by position
-          const allControls = await page.$$('input, select, textarea, [role="combobox"], [role="spinbutton"], [role="switch"], [role="radio"]');
-          for (const ctrl of allControls) {
-            const box = await ctrl.boundingBox();
-            if (box && Math.abs(box.y - nearestControl.top) < 20) {
-              element = ctrl;
-              break;
+        // Tier 3: role + name match
+        if (!element) {
+          const roles = ['spinbutton', 'combobox', 'textbox', 'switch', 'checkbox', 'radio'];
+          for (const role of roles) {
+            const roleLocator = page.getByRole(role, { name: dimensionKey, exact: false }).first();
+            try {
+              await roleLocator.waitFor({ state: 'visible', timeout: 2000 });
+              element = await roleLocator.elementHandle();
+              if (element) {
+                strategy = `role-${role}`;
+                break;
+              }
+            } catch {
+              // Continue to next role
             }
           }
         }
 
+        // Tier 4: Visible text content match (find input near text)
         if (!element) {
-          throw new LocatorNotFoundError(dimensionKey, 'find-in-page');
+          const textLocator = page.getByText(dimensionKey, { exact: false }).first();
+          try {
+            await textLocator.waitFor({ state: 'visible', timeout: 3000 });
+            // Find nearest input control
+            const nearbyInputs = page.locator('input, select, textarea, [role="combobox"], [role="spinbutton"]');
+            const count = await nearbyInputs.count();
+            for (let i = 0; i < count; i++) {
+              const input = nearbyInputs.nth(i);
+              try {
+                const box = await input.boundingBox();
+                const textBox = await textLocator.boundingBox();
+                if (box && textBox && Math.abs(box.y - textBox.y) < 100) {
+                  element = await input.elementHandle();
+                  if (element) {
+                    strategy = 'text-proximity';
+                    break;
+                  }
+                }
+              } catch {
+                continue;
+              }
+            }
+          } catch {
+            // Continue to fail
+          }
         }
 
-        // Step 8: Get field type
+        if (!element) {
+          throw new LocatorNotFoundError(dimensionKey, strategy);
+        }
+
+        // Get field type
         const fieldType = await getFieldType(element);
 
         return {
           element,
           fieldType,
-          strategy: 'find-in-page',
-          matchTop: rect.top,
+          strategy,
+          matchTop: 0,
           status: 'success'
         };
       },
@@ -404,7 +429,7 @@ export async function findElement(page, dimensionKey, opts = {}) {
   } catch (error) {
     const screenshotPath = await captureFail();
     const status = required ? 'failed' : 'skipped';
-    
+
     if (error instanceof LocatorNotFoundError) {
       logEvent('WARNING', 'EVT-FND-02', { label: dimensionKey, error: 'not_found', status });
     } else {
@@ -414,7 +439,7 @@ export async function findElement(page, dimensionKey, opts = {}) {
     return {
       element: null,
       fieldType: 'TEXT',
-      strategy: 'find-in-page',
+      strategy: 'direct-query',
       matchTop: 0,
       status,
       screenshotPath
