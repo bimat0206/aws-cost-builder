@@ -144,3 +144,11 @@ export const DRAFT_STATUS = {
   REVIEWED: 'reviewed',
   PROMOTED: 'promoted',
 };
+
+/** Log levels for structured logging */
+export const LOG_LEVELS = {
+  INFO: 'INFO',
+  WARNING: 'WARNING',
+  ERROR: 'ERROR',
+  CRITICAL: 'CRITICAL',
+};
