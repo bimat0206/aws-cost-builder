@@ -31,7 +31,7 @@ import { fillToggle, fillRadio } from './field_strategies/toggle_radio.js';
  * @param {string} expectedValue
  * @returns {Promise<boolean>}
  */
-async function verifyFieldValue(element, fieldType, expectedValue) {
+export async function verifyFieldValue(element, fieldType, expectedValue) {
   try {
     const normalizedType = String(fieldType ?? 'TEXT').toUpperCase();
     
