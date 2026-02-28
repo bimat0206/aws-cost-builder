@@ -221,7 +221,19 @@ async function searchAndSelectService(page, searchTerms, expectedTitles) {
     await page.waitForTimeout(900); // Allow filtered results to render
 
     if (await clickBestMatchingResult(page, expectedTitles, term)) {
-      return;
+      // Service card selected - now click "Configure" button
+      logEvent('INFO', 'EVT-SVC-03', { step: 'clicking_configure' });
+      try {
+        const configureButton = page.getByRole('button', { name: /Configure/i }).first();
+        await configureButton.waitFor({ state: 'visible', timeout: 5000 });
+        await configureButton.click();
+        await page.waitForLoadState('domcontentloaded', { timeout: 10000 });
+        logEvent('INFO', 'EVT-SVC-03', { step: 'configure_clicked' });
+        return;
+      } catch (error) {
+        logEvent('ERROR', 'EVT-SVC-03', { error: 'Could not click Configure button' });
+        throw new Error(`Could not click Configure button: ${error.message}`);
+      }
     }
   }
 
