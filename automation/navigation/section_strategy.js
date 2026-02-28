@@ -13,8 +13,8 @@
  * @module automation/section_strategy
  */
 
-import { withRetry } from '../core/retry/retry_wrapper.js';
-import { logEvent as sharedLogEvent } from '../core/index.js';
+import { withRetry } from '../../core/retry/retry_wrapper.js';
+import { logEvent as sharedLogEvent } from '../../core/logger/logger.js';
 
 // ─── Logging helpers ──────────────────────────────────────────────────────────
 
