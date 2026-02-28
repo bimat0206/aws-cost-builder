@@ -11,15 +11,9 @@
  */
 
 import { DraftDimension } from '../models.js';
-import { UNKNOWN } from '../constants.js';
+import { UNKNOWN, LOG_LEVELS } from '../constants.js';
 
 // ─── Logging helpers ──────────────────────────────────────────────────────────
-
-const LOG_LEVELS = {
-  INFO: 'INFO',
-  WARNING: 'WARNING',
-  ERROR: 'ERROR',
-};
 
 /**
  * Format and print a log line.
