@@ -300,11 +300,11 @@ export async function captureOptionsForDimensions(page, dimensions) {
     }
 
     const key = dim.key || dim.fallback_label || UNKNOWN;
-    console.log(`\nCapturing options for: ${key}...`);
+    logInfo('explorer/scanner/options_scanner', 'EVT-OPT-CAPTURE', `Capturing options for: ${key}...`);
 
     const selector = dim.css_selector;
     if (!selector || selector === UNKNOWN) {
-      console.log(`  [!] Cannot capture options: missing CSS selector.`);
+      logError('explorer/scanner/options_scanner', 'EVT-OPT-FAIL', `Cannot capture options for ${key}: missing CSS selector.`);
       continue;
     }
 
@@ -319,21 +319,21 @@ export async function captureOptionsForDimensions(page, dimensions) {
         options = await captureRadioOptions(page, selector);
       }
     } catch (error) {
-      console.log(`  [✗] Error capturing options: ${error.message}`);
+      logError('explorer/scanner/options_scanner', 'EVT-OPT-FAIL', `Error capturing options for ${key}: ${error.message}`);
       continue;
     }
 
     if (options.length === 0) {
-      console.log(`  [!] No options found for: ${key}`);
+      logInfo('explorer/scanner/options_scanner', 'EVT-OPT-EMPTY', `No options found for: ${key}`);
       continue;
     }
 
     // Truncate if too many
     if (options.length > 50) {
-      console.log(`  [opts] ${key}: ${options.length} options → truncated to 50`);
+      logInfo('explorer/scanner/options_scanner', 'EVT-OPT-TRUNC', `${key}: ${options.length} options → truncated to 50`);
       dim.options = options.slice(0, 50).concat(['TRUNCATED']);
     } else {
-      console.log(`  [opts] ${key}: ${options.length} options → ${options.slice(0, 5).join(', ')}${options.length > 5 ? ' ...' : ''}`);
+      logInfo('explorer/scanner/options_scanner', 'EVT-OPT-SUCCESS', `${key}: ${options.length} options → ${options.slice(0, 5).join(', ')}${options.length > 5 ? ' ...' : ''}`);
       dim.options = options;
     }
   }
