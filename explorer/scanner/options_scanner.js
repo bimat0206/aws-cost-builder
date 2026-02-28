@@ -304,6 +304,7 @@ export async function captureOptionsForDimensions(page, dimensions) {
 
     const selector = dim.css_selector;
     if (!selector || selector === UNKNOWN) {
+      logError('explorer/scanner/options_scanner', 'EVT-OPT-NOSEL', `Cannot capture options: missing CSS selector.`);
       logError('explorer/scanner/options_scanner', 'EVT-OPT-FAIL', `Cannot capture options for ${key}: missing CSS selector.`);
       continue;
     }
@@ -319,6 +320,7 @@ export async function captureOptionsForDimensions(page, dimensions) {
         options = await captureRadioOptions(page, selector);
       }
     } catch (error) {
+      logError('explorer/scanner/options_scanner', 'EVT-OPT-FAIL', `Error capturing options: ${error.message}`);
       logError('explorer/scanner/options_scanner', 'EVT-OPT-FAIL', `Error capturing options for ${key}: ${error.message}`);
       continue;
     }
