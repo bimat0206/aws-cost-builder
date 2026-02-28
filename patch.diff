@@ -1,0 +1,24 @@
+--- core/profile/loader.js
++++ core/profile/loader.js
+@@ -10,7 +10,7 @@
+  */
+
+ import { readFile } from 'node:fs/promises';
+-import { resolve } from 'node:path';
++import { resolve, sep } from 'node:path';
+ import { validateSchema, validateCrossFields, ProfileValidationError } from './validator.js';import { deserializeProfile } from './serializer.js';
+
+ // ─── Base Error Classes ───────────────────────────────────────────────────────
+@@ -112,6 +112,12 @@
+  * @returns {Promise<import('../models/profile.js').ProfileDocument>}
+  */
+ export async function loadProfile(profilePath, catalog, regionMap) {
++    // ── F-L0: Security ────────────────────────────────────────────────────────
++    const resolvedPath = resolve(profilePath);
++    const safeBase = resolve(process.cwd());
++    if (!resolvedPath.startsWith(safeBase + sep) && resolvedPath !== safeBase) {
++        throw new ProfilePermissionError(profilePath);
++    }
++
+     // ── F-L1: File I/O ────────────────────────────────────────────────────────
+     let raw;

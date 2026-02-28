@@ -18,17 +18,12 @@ import {
   NOISE_LABEL_RE,
   NOISE_EXACT,
   PAGE_TITLE_RE,
+  LOG_LEVELS,
 } from '../constants.js';
 import { normalizeText, isSectionNoise, sleep } from '../utils.js';
 import { logEvent as sharedLogEvent } from '../../core/index.js';
 
 // ─── Logging helpers ──────────────────────────────────────────────────────────
-
-const LOG_LEVELS = {
-  INFO: 'INFO',
-  WARNING: 'WARNING',
-  ERROR: 'ERROR',
-};
 
 /**
  * Format and print a log line.

@@ -1,0 +1,26 @@
+--- tests/core/profile/loader.test.js
++++ tests/core/profile/loader.test.js
+@@ -131,6 +131,23 @@
+             expect(err.layer).toBe('F-L1');
+         }
+     });
++
++    it('throws ProfilePermissionError for path traversal outside working directory', async () => {
++        const traversalPath = path.join('..', '..', '..', '..', '..', '..', '..', '..', 'etc', 'passwd');
++        await expect(loadProfile(traversalPath, testCatalog, testRegionMap))
++            .rejects
++            .toThrow(ProfilePermissionError);
++    });
++
++    it('throws ProfilePermissionError for absolute path outside working directory', async () => {
++        const absolutePath = '/etc/passwd';
++        // Depending on environment, /etc/passwd might be outside cwd, assuming process.cwd() is not / or /etc
++        if (!path.resolve(absolutePath).startsWith(process.cwd() + path.sep)) {
++            await expect(loadProfile(absolutePath, testCatalog, testRegionMap))
++                .rejects
++                .toThrow(ProfilePermissionError);
++        }
++    });
+ });
+
+ // ─── F-L2: JSON Parse Error Tests ────────────────────────────────────────────

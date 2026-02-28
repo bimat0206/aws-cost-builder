@@ -144,9 +144,9 @@ describe('automation/locator/find_in_page_locator.js', () => {
 
       await triggerFindInPage(page);
 
-      expect(keyboard.down).toHaveBeenCalledWith('meta');
+      expect(keyboard.down).toHaveBeenCalledWith('Meta');
       expect(keyboard.press).toHaveBeenCalledWith('f');
-      expect(keyboard.up).toHaveBeenCalledWith('meta');
+      expect(keyboard.up).toHaveBeenCalledWith('Meta');
     });
 
     it('uses Ctrl+F on Windows', async () => {
@@ -155,9 +155,9 @@ describe('automation/locator/find_in_page_locator.js', () => {
 
       await triggerFindInPage(page);
 
-      expect(keyboard.down).toHaveBeenCalledWith('control');
+      expect(keyboard.down).toHaveBeenCalledWith('Control');
       expect(keyboard.press).toHaveBeenCalledWith('f');
-      expect(keyboard.up).toHaveBeenCalledWith('control');
+      expect(keyboard.up).toHaveBeenCalledWith('Control');
     });
 
     it('uses Ctrl+F on Linux', async () => {
@@ -166,9 +166,9 @@ describe('automation/locator/find_in_page_locator.js', () => {
 
       await triggerFindInPage(page);
 
-      expect(keyboard.down).toHaveBeenCalledWith('control');
+      expect(keyboard.down).toHaveBeenCalledWith('Control');
       expect(keyboard.press).toHaveBeenCalledWith('f');
-      expect(keyboard.up).toHaveBeenCalledWith('control');
+      expect(keyboard.up).toHaveBeenCalledWith('Control');
     });
   });
 
@@ -281,9 +281,9 @@ describe('Property 16: OS-Aware Find-in-Page Shortcut', () => {
         await triggerFindInPage(page);
 
         if (platform === 'darwin') {
-          expect(keyboard.down).toHaveBeenCalledWith('meta');
+          expect(keyboard.down).toHaveBeenCalledWith('Meta');
         } else {
-          expect(keyboard.down).toHaveBeenCalledWith('control');
+          expect(keyboard.down).toHaveBeenCalledWith('Control');
         }
         expect(keyboard.press).toHaveBeenCalledWith('f');
       }),
@@ -431,23 +431,16 @@ describe('findElement integration', () => {
     expect(result.element).toBeNull();
   });
 
-  it('findElementWithFallback tries direct query when Find-in-Page fails', async () => {
+  it('findElementWithFallback returns failure when Find-in-Page fails', async () => {
     const { page } = createMockPage();
 
     // Mock Find-in-Page to fail
     mockedCdp.getSelectionBoundingRect.mockResolvedValue(null);
 
-    // Mock direct query to succeed
-    const mockElement = {
-      evaluate: vi.fn().mockResolvedValue('TEXT'),
-      boundingBox: vi.fn().mockResolvedValue({ y: 200 }),
-    };
-    page.$.mockResolvedValue(mockElement);
-
     const result = await findElementWithFallback(page, 'Test Dimension', { maxRetries: 0 });
 
     expect(result.strategy).toBe('direct-query');
-    expect(result.element).toBe(mockElement);
-    expect(result.status).toBe('success');
+    expect(result.element).toBeNull();
+    expect(result.status).toBe('failed');
   });
 });

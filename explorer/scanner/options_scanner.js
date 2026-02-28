@@ -13,14 +13,9 @@
 import { DraftDimension } from '../models.js';
 import { UNKNOWN } from '../constants.js';
 import { logEvent as sharedLogEvent } from '../../core/index.js';
+import { UNKNOWN, LOG_LEVELS } from '../constants.js';
 
 // ─── Logging helpers ──────────────────────────────────────────────────────────
-
-const LOG_LEVELS = {
-  INFO: 'INFO',
-  WARNING: 'WARNING',
-  ERROR: 'ERROR',
-};
 
 /**
  * Format and print a log line.
@@ -69,23 +64,48 @@ function sleep(ms) {
 // ─── Options capture functions ────────────────────────────────────────────────
 
 /**
- * Capture options for a SELECT element.
+ * Reusable wrapper for options capture logic that handles visibility checks
+ * and common error handling.
  * 
  * @param {import('playwright').Page} page
  * @param {string} selector
+ * @param {string} fieldType
+ * @param {function(import('playwright').Locator, string[]): Promise<void>} captureFn
  * @returns {Promise<string[]>}
  */
-async function captureSelectOptions(page, selector) {
+async function withOptionsCapture(page, selector, fieldType, captureFn) {
   const options = [];
 
   try {
     const loc = page.locator(selector).first();
     const isVisible = await loc.isVisible({ timeout: 2000 }).catch(() => false);
     if (!isVisible) {
-      logInfo('explorer/scanner/options_scanner', 'EVT-OPT-HIDDEN', 'Field not currently visible');
+      const msg = fieldType === 'RADIO' ? 'Container not currently visible' : 'Field not currently visible';
+      logInfo('explorer/scanner/options_scanner', 'EVT-OPT-HIDDEN', msg);
       return [];
     }
 
+    await captureFn(loc, options);
+  } catch (error) {
+    logError('explorer/scanner/options_scanner', 'EVT-OPT-FAIL', `${fieldType} capture failed: ${error.message}`);
+    if (fieldType === 'COMBOBOX') {
+      // Try to close dropdown on error
+      await page.keyboard.press('Escape').catch(() => {});
+    }
+  }
+
+  return options;
+}
+
+/**
+ * Capture options for a SELECT element.
+ *
+ * @param {import('playwright').Page} page
+ * @param {string} selector
+ * @returns {Promise<string[]>}
+ */
+async function captureSelectOptions(page, selector) {
+  return withOptionsCapture(page, selector, 'SELECT', async (loc, options) => {
     // Try native select options first
     const optionsLoc = loc.locator('option');
     const count = await optionsLoc.count();
@@ -98,11 +118,7 @@ async function captureSelectOptions(page, selector) {
         }
       }
     }
-  } catch (error) {
-    logError('explorer/scanner/options_scanner', 'EVT-OPT-FAIL', `SELECT capture failed: ${error.message}`);
-  }
-
-  return options;
+  });
 }
 
 /**
@@ -113,16 +129,7 @@ async function captureSelectOptions(page, selector) {
  * @returns {Promise<string[]>}
  */
 async function captureComboboxOptions(page, selector) {
-  const options = [];
-
-  try {
-    const loc = page.locator(selector).first();
-    const isVisible = await loc.isVisible({ timeout: 2000 }).catch(() => false);
-    if (!isVisible) {
-      logInfo('explorer/scanner/options_scanner', 'EVT-OPT-HIDDEN', 'Field not currently visible');
-      return [];
-    }
-
+  return withOptionsCapture(page, selector, 'COMBOBOX', async (loc, options) => {
     // Click to open dropdown
     await loc.click({ timeout: 2000 });
     await sleep(500);
@@ -154,7 +161,7 @@ async function captureComboboxOptions(page, selector) {
           options.push(text.trim());
         }
       }
-      return options;
+      return;
     }
 
     // Scroll to exhaust options
@@ -191,13 +198,7 @@ async function captureComboboxOptions(page, selector) {
 
     // Close dropdown
     await page.keyboard.press('Escape');
-  } catch (error) {
-    logError('explorer/scanner/options_scanner', 'EVT-OPT-FAIL', `COMBOBOX capture failed: ${error.message}`);
-    // Try to close dropdown on error
-    await page.keyboard.press('Escape').catch(() => {});
-  }
-
-  return options;
+  });
 }
 
 /**
@@ -208,16 +209,7 @@ async function captureComboboxOptions(page, selector) {
  * @returns {Promise<string[]>}
  */
 async function captureRadioOptions(page, selector) {
-  const options = [];
-
-  try {
-    const container = page.locator(selector).first();
-    const isVisible = await container.isVisible({ timeout: 2000 }).catch(() => false);
-    if (!isVisible) {
-      logInfo('explorer/scanner/options_scanner', 'EVT-OPT-HIDDEN', 'Container not currently visible');
-      return [];
-    }
-
+  return withOptionsCapture(page, selector, 'RADIO', async (container, options) => {
     // Find radio buttons within container
     const radios = container.locator('input[type="radio"]');
     const count = await radios.count();
@@ -275,11 +267,7 @@ async function captureRadioOptions(page, selector) {
         // Skip failed radios
       }
     }
-  } catch (error) {
-    logError('explorer/scanner/options_scanner', 'EVT-OPT-FAIL', `RADIO capture failed: ${error.message}`);
-  }
-
-  return options;
+  });
 }
 
 /**
@@ -304,11 +292,12 @@ export async function captureOptionsForDimensions(page, dimensions) {
     }
 
     const key = dim.key || dim.fallback_label || UNKNOWN;
-    console.log(`\nCapturing options for: ${key}...`);
+    logInfo('explorer/scanner/options_scanner', 'EVT-OPT-CAPTURE', `Capturing options for: ${key}...`);
 
     const selector = dim.css_selector;
     if (!selector || selector === UNKNOWN) {
-      console.log(`  [!] Cannot capture options: missing CSS selector.`);
+      logError('explorer/scanner/options_scanner', 'EVT-OPT-NOSEL', `Cannot capture options: missing CSS selector.`);
+      logError('explorer/scanner/options_scanner', 'EVT-OPT-FAIL', `Cannot capture options for ${key}: missing CSS selector.`);
       continue;
     }
 
@@ -323,21 +312,22 @@ export async function captureOptionsForDimensions(page, dimensions) {
         options = await captureRadioOptions(page, selector);
       }
     } catch (error) {
-      console.log(`  [✗] Error capturing options: ${error.message}`);
+      logError('explorer/scanner/options_scanner', 'EVT-OPT-FAIL', `Error capturing options: ${error.message}`);
+      logError('explorer/scanner/options_scanner', 'EVT-OPT-FAIL', `Error capturing options for ${key}: ${error.message}`);
       continue;
     }
 
     if (options.length === 0) {
-      console.log(`  [!] No options found for: ${key}`);
+      logInfo('explorer/scanner/options_scanner', 'EVT-OPT-EMPTY', `No options found for: ${key}`);
       continue;
     }
 
     // Truncate if too many
     if (options.length > 50) {
-      console.log(`  [opts] ${key}: ${options.length} options → truncated to 50`);
+      logInfo('explorer/scanner/options_scanner', 'EVT-OPT-TRUNC', `${key}: ${options.length} options → truncated to 50`);
       dim.options = options.slice(0, 50).concat(['TRUNCATED']);
     } else {
-      console.log(`  [opts] ${key}: ${options.length} options → ${options.slice(0, 5).join(', ')}${options.length > 5 ? ' ...' : ''}`);
+      logInfo('explorer/scanner/options_scanner', 'EVT-OPT-SUCCESS', `${key}: ${options.length} options → ${options.slice(0, 5).join(', ')}${options.length > 5 ? ' ...' : ''}`);
       dim.options = options;
     }
   }
