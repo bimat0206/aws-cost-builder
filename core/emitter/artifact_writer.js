@@ -19,6 +19,7 @@ import fs from 'fs';
 import fsPromises from 'fs/promises';
 import path from 'path';
 import { buildScreenshotPath } from './screenshot_manager.js';
+import { logEvent as sharedLogEvent } from '../logger/logger.js';
 
 // ─── Re-export buildScreenshotPath so callers need only one import ────────────
 export { buildScreenshotPath };
@@ -54,14 +55,7 @@ export class ArtifactWriteError extends Error {
  * @param {Record<string, string>} fields
  */
 function log(level, eventType, fields) {
-  const now = new Date();
-  const ts = now.toISOString().replace('T', ' ').substring(0, 19);
-  const levelPadded = level.padEnd(8);
-  const module = 'core/emitter/artifact_writer';
-  const fieldStr = Object.entries({ event_type: eventType, ...fields })
-    .map(([k, v]) => `${k}=${v}`)
-    .join(' ');
-  process.stderr.write(`${ts} | ${levelPadded} | ${module.padEnd(30)} | ${fieldStr}\n`);
+  sharedLogEvent(level, 'core/emitter/artifact_writer', eventType, fields);
 }
 
 // ─── Directory management ─────────────────────────────────────────────────────

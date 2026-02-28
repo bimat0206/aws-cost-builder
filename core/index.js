@@ -4,3 +4,4 @@ export * from './profile/index.js';
 export * from './resolver/index.js';
 export * from './retry/index.js';
 export * from './emitter/index.js';
+export * from './logger/index.js';

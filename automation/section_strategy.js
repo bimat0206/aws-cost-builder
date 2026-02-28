@@ -14,6 +14,7 @@
  */
 
 import { withRetry } from '../core/retry/retry_wrapper.js';
+import { logEvent as sharedLogEvent } from '../core/index.js';
 
 // ─── Logging helpers ──────────────────────────────────────────────────────────
 
@@ -26,11 +27,7 @@ const MODULE = 'automation/section_strategy';
  * @param {Object} fields
  */
 function logEvent(level, eventType, fields = {}) {
-  const ts = new Date().toISOString().replace('T', ' ').slice(0, 19);
-  const fieldStr = Object.entries({ event_type: eventType, ...fields })
-    .map(([k, v]) => `${k}=${v}`)
-    .join(' ');
-  process.stderr.write(`${ts} | ${level.padEnd(8)} | ${MODULE.padEnd(30)} | ${fieldStr}\n`);
+  sharedLogEvent(level, MODULE, eventType, fields);
 }
 
 // ─── Strategy types ───────────────────────────────────────────────────────────
