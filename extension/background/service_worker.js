@@ -242,6 +242,80 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
 
+  // ── addServiceFromTab (manual "Capture Now" button) ──────────────────────────
+  // Force-captures the current calculator tab and adds the result to the session.
+  if (message.action === 'addServiceFromTab') {
+    (async () => {
+      const session = await getSession();
+      if (!session || !session.isCapturing) {
+        sendResponse({ success: false, error: 'No active capture session.' });
+        return;
+      }
+
+      const tab = await getActiveCalculatorTab();
+      if (!tab) {
+        sendResponse({ success: false, error: 'No AWS Calculator tab found. Open calculator.aws first.' });
+        return;
+      }
+
+      let result;
+      try {
+        await ensureContentScript(tab.id);
+        result = await chrome.tabs.sendMessage(tab.id, { action: 'capture' });
+      } catch (err) {
+        sendResponse({ success: false, error: 'Could not reach calculator tab: ' + err.message });
+        return;
+      }
+
+      if (!result || !result.success) {
+        sendResponse({ success: false, error: result?.error || 'Capture returned no data.' });
+        return;
+      }
+
+      const { service_name, region, dimensions } = result.data;
+      const dimCount = Object.keys(dimensions || {}).length;
+
+      if (dimCount === 0) {
+        sendResponse({ success: false, error: 'No form fields found on this page. Navigate to a specific service config page.' });
+        return;
+      }
+
+      const now = Date.now();
+      const isDuplicate = session.capturedServices.some(
+        s => s.service_name === service_name && s.region === region
+      );
+
+      if (isDuplicate) {
+        // Update the existing entry with fresh dimension data
+        const existing = session.capturedServices.find(
+          s => s.service_name === service_name && s.region === region
+        );
+        if (existing) {
+          existing.dimensions = dimensions;
+          existing.capturedAt = now;
+        }
+        session.captureLog.push({ timestamp: now, event: 'updated', service_name, dim_count: dimCount });
+      } else {
+        session.capturedServices.push({
+          id: `svc_${now}_${Math.random().toString(36).slice(2, 7)}`,
+          service_name,
+          region,
+          dimensions,
+          capturedAt: now,
+          groupPath: null,
+        });
+        session.captureLog.push({ timestamp: now, event: 'captured', service_name, dim_count: dimCount });
+      }
+
+      session.captureStatus = { state: 'captured', serviceName: service_name, updatedAt: now };
+      if (session.captureLog.length > 50) session.captureLog = session.captureLog.slice(-50);
+      await setSession(session);
+
+      sendResponse({ success: true, service_name, dim_count: dimCount });
+    })();
+    return true;
+  }
+
   // ── captureTab (legacy single-page capture) ──────────────────────────────────
   if (message.action === 'captureTab') {
     (async () => {

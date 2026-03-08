@@ -33,9 +33,12 @@ function readFieldValue(el) {
 
 function findLabel(el) {
   if (!el) return '';
+
+  // 1. aria-label directly on the element
   const ariaLabel = el.getAttribute('aria-label');
   if (ariaLabel) return ariaLabel.trim();
 
+  // 2. aria-labelledby pointing to another element
   const labelledBy = el.getAttribute('aria-labelledby');
   if (labelledBy) {
     const parts = labelledBy.trim().split(/\s+/);
@@ -43,23 +46,54 @@ function findLabel(el) {
     if (text) return text;
   }
 
+  // 3. Standard <label for="id">
   if (el.id) {
     const labelEl = document.querySelector(`label[for="${CSS.escape(el.id)}"]`);
-    if (labelEl) return labelEl.textContent.trim();
+    if (labelEl) return labelEl.textContent.trim().replace(/\s*\*\s*$/, '');
   }
 
+  // 4. Wrapped inside <label>
   const closestLabel = el.closest('label');
   if (closestLabel) {
     const clone = closestLabel.cloneNode(true);
     clone.querySelectorAll('input, select, textarea, button').forEach(c => c.remove());
-    const text = clone.textContent.trim();
+    const text = clone.textContent.trim().replace(/\s*\*\s*$/, '');
     if (text) return text;
   }
 
-  const container = el.closest('[class*="field"], [class*="input"], [class*="form-group"], [class*="control"]');
-  if (container) {
-    const heading = container.querySelector('label, legend, [class*="label"]');
-    if (heading && heading !== el) return heading.textContent.trim();
+  // 5. CloudScape / awsui: climb up to a form-field container and read its label slot
+  const awsuiField = el.closest(
+    '[class*="awsui-form-field"], [class*="form-field__control"], [class*="formField"]'
+  );
+  if (awsuiField) {
+    // awsui renders label as the first child div / a sibling before the control
+    const labelEl = awsuiField.querySelector(
+      '[class*="awsui-form-field-label"] label, ' +
+      '[class*="form-field__label"] label, ' +
+      '[class*="awsui-form-field-label"], ' +
+      '[class*="form-field__label"]'
+    );
+    if (labelEl) {
+      const text = labelEl.textContent.trim().replace(/\s*\*\s*$/, '').replace(/\s+/g, ' ');
+      if (text && text.length >= 2) return text;
+    }
+  }
+
+  // 6. Generic upward traversal — look for label/legend text near the element
+  let parent = el.parentElement;
+  for (let depth = 0; depth < 6 && parent; depth++, parent = parent.parentElement) {
+    // Direct label/legend children or siblings of the parent
+    for (const candidate of parent.querySelectorAll('label, legend')) {
+      if (candidate.contains(el)) continue; // skip if it wraps the element (covered by #4)
+      const text = candidate.textContent.trim().replace(/\s*\*\s*$/, '').replace(/\s+/g, ' ');
+      if (text && text.length >= 2 && text.length < 100) return text;
+    }
+    // Also check for [class*="label"] that looks like a label
+    for (const candidate of parent.querySelectorAll('[class*="label"]:not(input):not(select):not(textarea):not(button)')) {
+      if (candidate.contains(el)) continue;
+      const text = candidate.textContent.trim().replace(/\s*\*\s*$/, '').replace(/\s+/g, ' ');
+      if (text && text.length >= 2 && text.length < 100) return text;
+    }
   }
 
   return '';
@@ -107,44 +141,94 @@ function detectRegion() {
   return 'us-east-1';
 }
 
+function isVisible(el) {
+  const style = window.getComputedStyle(el);
+  if (style.display === 'none' || style.visibility === 'hidden' || parseFloat(style.opacity) < 0.1) return false;
+  if (el.closest('[hidden], [aria-hidden="true"]')) return false;
+  return true;
+}
+
+function classifyField(el) {
+  const tag = el.tagName.toLowerCase();
+  const role = (el.getAttribute('role') || '').toLowerCase();
+  const type = (el.type || '').toLowerCase();
+  if (tag === 'select') return 'SELECT';
+  if (role === 'combobox') return 'COMBOBOX';
+  if (type === 'number' || role === 'spinbutton') return 'NUMBER';
+  if (type === 'radio') return 'RADIO';
+  if (type === 'checkbox' || role === 'switch') return 'TOGGLE';
+  if (role === 'slider') return 'SLIDER';
+  return 'TEXT';
+}
+
 function scanFields() {
   const dimensions = [];
   const seen = new Set();
 
+  // ── Pass 1: standard field selectors (all frameworks) ──────────────────────
   const fieldSelectors = [
     'input:not([type="hidden"]):not([type="submit"]):not([type="button"]):not([type="search"]):not([type="reset"])',
     'select',
     'textarea',
     '[role="combobox"]',
     '[role="spinbutton"]',
+    '[role="slider"]',
     '[role="radio"][aria-checked]',
     '[role="switch"][aria-checked]',
   ];
 
   for (const sel of fieldSelectors) {
     for (const el of document.querySelectorAll(sel)) {
-      const style = window.getComputedStyle(el);
-      if (style.display === 'none' || style.visibility === 'hidden' || parseFloat(style.opacity) < 0.1) continue;
-      if (el.closest('[hidden], [aria-hidden="true"]')) continue;
+      if (!isVisible(el)) continue;
 
       const label = findLabel(el);
       if (!label || label.length < 2 || seen.has(label)) continue;
 
       const value = readFieldValue(el);
-      if (!value && el.tagName.toLowerCase() !== 'select') continue;
+      const fieldType = classifyField(el);
+      // Allow empty value only for select, number, spinbutton, slider (0 is valid)
+      if (!value && !['SELECT', 'NUMBER', 'SLIDER'].includes(fieldType)) continue;
 
       seen.add(label);
-
-      let fieldType = 'TEXT';
-      const tag = el.tagName.toLowerCase();
-      if (tag === 'select') fieldType = 'SELECT';
-      else if ((el.getAttribute('role') || '') === 'combobox') fieldType = 'COMBOBOX';
-      else if ((el.type || '') === 'number' || (el.getAttribute('role') || '') === 'spinbutton') fieldType = 'NUMBER';
-      else if ((el.type || '') === 'radio') fieldType = 'RADIO';
-      else if ((el.type || '') === 'checkbox' || (el.getAttribute('role') || '') === 'switch') fieldType = 'TOGGLE';
-
       dimensions.push({ key: label, value, fieldType });
     }
+  }
+
+  // ── Pass 2: CloudScape (awsui) form-field containers ──────────────────────
+  // awsui wraps each field in a container that has the label as a sibling of
+  // the control, so standard label-lookup often misses it. We scan the
+  // containers directly and extract label + control value.
+  const awsuiContainers = document.querySelectorAll(
+    '[class*="awsui-form-field"]:not([class*="awsui-form-field-label"]):not([class*="awsui-form-field-description"])'
+  );
+  for (const container of awsuiContainers) {
+    if (!isVisible(container)) continue;
+
+    // Find the label text
+    const labelEl = container.querySelector(
+      '[class*="awsui-form-field-label"] label, ' +
+      '[class*="form-field__label"] label, ' +
+      '[class*="awsui-form-field-label"], ' +
+      '[class*="form-field__label"], ' +
+      'label'
+    );
+    if (!labelEl) continue;
+    const label = labelEl.textContent.trim().replace(/\s*\*\s*$/, '').replace(/\s+/g, ' ');
+    if (!label || label.length < 2 || seen.has(label)) continue;
+
+    // Find the control inside this container
+    const control = container.querySelector(
+      'input:not([type="hidden"]):not([type="submit"]):not([type="button"]):not([type="search"]), ' +
+      'select, textarea, [role="combobox"], [role="spinbutton"], [role="slider"]'
+    );
+    if (!control || !isVisible(control)) continue;
+
+    const value = readFieldValue(control);
+    const fieldType = classifyField(control);
+    if (!value && !['SELECT', 'NUMBER', 'SLIDER'].includes(fieldType)) continue;
+
+    seen.add(label);
+    dimensions.push({ key: label, value, fieldType });
   }
 
   return dimensions;
@@ -249,6 +333,7 @@ function captureEstimateTree() {
 
 let autoObserver = null;
 let captureDebounceTimer = null;
+let captureScheduled = false;   // true while debounce timer is pending
 let lastCapturedServiceName = null;
 
 function sendProgress(status, serviceName = null) {
@@ -259,16 +344,40 @@ function sendProgress(status, serviceName = null) {
   }).catch(() => {});
 }
 
-function triggerAutoCapture() {
-  clearTimeout(captureDebounceTimer);
+// Form-related tag names and ARIA roles that indicate a real UI change worth capturing
+const FORM_TAGS = new Set(['input', 'select', 'textarea', 'form', 'fieldset']);
+const FORM_ROLES = new Set(['combobox', 'spinbutton', 'radio', 'checkbox', 'switch', 'listbox', 'slider', 'option']);
 
-  // Phase 1 — observer fired, debounce started
+function hasMeaningfulMutation(mutations) {
+  for (const m of mutations) {
+    for (const node of [...m.addedNodes, ...m.removedNodes]) {
+      if (node.nodeType !== Node.ELEMENT_NODE) continue;
+      const tag = node.tagName?.toLowerCase();
+      const role = node.getAttribute?.('role')?.toLowerCase();
+      if (FORM_TAGS.has(tag) || FORM_ROLES.has(role)) return true;
+      // Check descendants
+      if (node.querySelector?.('input, select, textarea, [role="combobox"], [role="spinbutton"], [role="slider"]')) return true;
+    }
+  }
+  return false;
+}
+
+function triggerAutoCapture() {
+  // Leading debounce: only schedule if one isn't already pending.
+  // This prevents the AWS SPA's constant re-renders from perpetually resetting
+  // the timer — the capture fires 2s after the FIRST mutation in a burst.
+  if (captureScheduled) return;
+  captureScheduled = true;
+
   sendProgress('detecting', detectServiceName());
 
   captureDebounceTimer = setTimeout(() => {
+    captureScheduled = false;
+
     // Only capture if there are visible form fields (service config is open)
     const hasFields = document.querySelectorAll(
-      'input:not([type="hidden"]):not([type="submit"]):not([type="button"]):not([type="search"]), select, [role="combobox"]'
+      'input:not([type="hidden"]):not([type="submit"]):not([type="button"]):not([type="search"]), ' +
+      'select, [role="combobox"], [role="spinbutton"]'
     ).length > 0;
 
     if (!hasFields) {
@@ -302,25 +411,26 @@ function triggerAutoCapture() {
       data,
     }).catch(() => {});
 
-    // Phase 3 — sent; background will flip to 'captured', we go idle
+    // Phase 3 — sent; background will flip to 'captured', then back to idle
     sendProgress('idle');
-  }, 1500);
+  }, 2000);
 }
 
 function startAutoCapture() {
   if (autoObserver) return;
 
   lastCapturedServiceName = null;
+  captureScheduled = false;
 
   // Trigger an initial capture of the current view
   triggerAutoCapture();
 
-  // Watch for DOM changes indicating a new service config has loaded
+  // Watch for DOM changes that indicate a new service config has loaded.
+  // We filter mutations to only react to form-element changes to avoid
+  // being swamped by the SPA's constant reactive re-renders.
   const target = document.body;
   autoObserver = new MutationObserver((mutations) => {
-    // Only react to meaningful DOM changes (node additions, not just attribute updates)
-    const hasMeaningfulChange = mutations.some(m => m.addedNodes.length > 0 || m.removedNodes.length > 0);
-    if (hasMeaningfulChange) triggerAutoCapture();
+    if (hasMeaningfulMutation(mutations)) triggerAutoCapture();
   });
 
   autoObserver.observe(target, {
@@ -335,6 +445,7 @@ function stopAutoCapture() {
     autoObserver = null;
   }
   clearTimeout(captureDebounceTimer);
+  captureScheduled = false;
   lastCapturedServiceName = null;
 }
 
