@@ -5,6 +5,46 @@ All notable changes to the AWS Cost Profile Builder project are documented in th
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.0] - 2026-03-08
+
+### Added
+- **Chrome Extension (Manifest V3)** (`extension/`) — full profile builder UI for `https://calculator.aws/#/estimate`
+  - Content script (`extension/content/content.js`) scrapes the open service page and returns structured `{ service_name, region, dimensions }` via `window.__awsCostCapture()`
+  - Popup UI (`extension/popup/`) — nested group tree, "Capture Current Page" button, manual dimension entry, group management (add / rename / delete / nest), service management (move, rename, edit dimensions)
+  - "Export .hcl" button — serializes the current profile and triggers a browser download
+  - "Export Archive" button — packages multiple profiles into a `.tar.gz` download via the browser `CompressionStream` API
+  - State persisted across popup opens via `chrome.storage.local`
+  - Service worker (`extension/background/service_worker.js`) — routes messages between popup and content script
+- **HCL DSL module** (`hcl/`) — declarative, readable profile format
+  - `hcl/parser.js` — hand-written recursive descent parser; converts HCL text → `ProfileDocument`-compatible plain object; no external dependencies
+  - `hcl/serializer.js` — converts `ProfileDocument` → HCL string with proper recursive indentation for nested groups
+  - `hcl/index.js` — exports `{ parseHCL, serializeHCL }`
+  - HCL syntax: `schema_version`, `project_name`, `description` top-level scalars; `group "name" { … }` blocks (nestable); `service "type" "slug" { … }` blocks; `dimension "Key" = value` assignments
+- **Archive writer** (`core/emitter/archive_writer.js`) — gzip-compressed tar export using Node.js built-ins only (`node:zlib`, `node:fs`, `node:path`, `node:stream`)
+  - `writeProfileArchive(profilesDir, outputPath)` — collects all `.hcl` files and writes a `.tar.gz` archive
+  - `extractProfileArchive(archivePath, outputDir)` — extracts `.tar.gz` back to `.hcl` files
+- **Mode F — Export Archive** (`main.js`) — `--export-archive [path]` CLI flag; defaults output to `profiles.tar.gz`
+- **Nested group support** (`core/models/profile.js`) — `Group` now accepts an optional `groups` array for child groups; recursion supported to arbitrary depth
+- **Recursive group traversal** — `core/profile/validator.js` and `core/resolver/priority_chain.js` both traverse nested groups recursively
+
+### Changed
+- **Profile schema bumped to v3.0** (`config/schemas/json-schema.json`) — `Group` definition gains a `"groups"` property with a `$ref` back to itself; `schema_version` default is now `"3.0"`; v2.0 profiles remain fully supported (backwards-compatible loader)
+- **Profile loader** (`core/profile/loader.js`) — auto-detects format by file extension: `.hcl` → HCL parser, `.json` → existing JSON path; accepts both schema v2.0 and v3.0
+- **Profile serializer** (`core/profile/serializer.js`) — added `serializeToHCL()` method alongside the existing JSON serializer
+- **Mode selection menu** (`main.js`) — updated to show 5 modes (B–F); Mode A entry removed
+
+### Removed
+- **Mode A — Interactive TUI Builder** — `--build` CLI flag and `runBuildMode()` removed from `main.js`
+- **`builder/wizard/`** — `interactive_builder.js`, `review_flow.js`, `section_flow.js`, `index.js` deleted
+- **`builder/policies/`** — `ec2_policy.js`, `service_prompt_policies.js`, `index.js` deleted
+- **`builder/preview/`** — `yaml_preview.js`, `highlighter.js`, `index.js` deleted
+- **`builder/prompts/`** — `field_prompt.js`, `toggle_prompt.js`, `compound_input.js` deleted (kept: `select_prompt.js`)
+- **Associated tests** — `tests/builder/policies/`, `tests/builder/prompts/compound_input.test.js`, `tests/builder/prompts/field_prompt.test.js`, `tests/builder/prompts/toggle_prompt.test.js` removed
+
+### Fixed
+- `StatusIcon('info')` test now asserts the correct `ℹ` character (was incorrectly asserting `?`)
+- `ProfileDocument` default schema version test updated to expect `"3.0"`
+
 ## [1.12.0] - 2026-02-28
 
 ### Fixed
