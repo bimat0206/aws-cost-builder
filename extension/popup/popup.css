@@ -552,6 +552,151 @@ body {
 #status-toast.error { background: color-mix(in srgb, var(--red)   20%, var(--bg2)); border: 1px solid var(--red);    color: var(--red); }
 #status-toast.info  { background: color-mix(in srgb, var(--cyan)  20%, var(--bg2)); border: 1px solid var(--cyan);   color: var(--cyan); }
 
+/* ─── Detector state row ──────────────────────────────────────────────────── */
+.detector-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  min-height: 24px;
+}
+
+.detector-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 500;
+  border: 1px solid;
+  transition: background 0.2s, color 0.2s, border-color 0.2s;
+  white-space: nowrap;
+}
+
+.detector-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* idle */
+.detector-chip.idle {
+  background: color-mix(in srgb, var(--text-dim) 12%, transparent);
+  border-color: color-mix(in srgb, var(--text-dim) 30%, transparent);
+  color: var(--text-dim);
+}
+.detector-chip.idle .detector-dot { background: var(--text-dim); }
+
+/* detecting */
+.detector-chip.detecting {
+  background: color-mix(in srgb, var(--yellow) 12%, transparent);
+  border-color: color-mix(in srgb, var(--yellow) 40%, transparent);
+  color: var(--yellow);
+}
+.detector-chip.detecting .detector-dot {
+  background: var(--yellow);
+  animation: pulse 0.9s ease-in-out infinite;
+}
+
+/* stabilizing */
+.detector-chip.stabilizing {
+  background: color-mix(in srgb, var(--orange) 12%, transparent);
+  border-color: color-mix(in srgb, var(--orange) 40%, transparent);
+  color: var(--orange);
+}
+.detector-chip.stabilizing .detector-dot {
+  background: var(--orange);
+  animation: pulse 0.7s ease-in-out infinite;
+}
+
+/* captured */
+.detector-chip.captured {
+  background: color-mix(in srgb, var(--green) 14%, transparent);
+  border-color: color-mix(in srgb, var(--green) 40%, transparent);
+  color: var(--green);
+}
+.detector-chip.captured .detector-dot { background: var(--green); }
+
+.currently-viewing {
+  flex: 1;
+  font-size: 11px;
+  color: var(--cyan);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 240px;
+}
+
+/* ─── Activity log ────────────────────────────────────────────────────────── */
+.capture-log {
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  overflow-y: auto;
+  max-height: 150px;
+  font-family: 'Fira Code', 'Consolas', monospace;
+  font-size: 11px;
+}
+
+.log-entry {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+.log-entry:last-child { border-bottom: none; }
+.log-entry:nth-child(even) { background: color-mix(in srgb, var(--bg3) 50%, transparent); }
+
+.log-time {
+  color: var(--text-dim);
+  min-width: 56px;
+  flex-shrink: 0;
+}
+
+.log-icon {
+  width: 14px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.log-icon.captured   { color: var(--green); }
+.log-icon.duplicate  { color: var(--text-dim); }
+.log-icon.detecting  { color: var(--yellow); }
+
+.log-name {
+  flex: 1;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.log-dims {
+  color: var(--text-dim);
+  flex-shrink: 0;
+  font-size: 10px;
+}
+
+/* ─── New service card animation ──────────────────────────────────────────── */
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.service-card--new {
+  animation: slideIn 0.35s ease-out forwards;
+  border-left: 2px solid var(--green);
+}
+
 /* ─── Scrollbars ──────────────────────────────────────────────────────────── */
 ::-webkit-scrollbar { width: 5px; }
 ::-webkit-scrollbar-track { background: var(--bg2); }

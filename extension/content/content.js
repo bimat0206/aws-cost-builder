@@ -251,31 +251,59 @@ let autoObserver = null;
 let captureDebounceTimer = null;
 let lastCapturedServiceName = null;
 
+function sendProgress(status, serviceName = null) {
+  chrome.runtime.sendMessage({
+    action: 'captureProgress',
+    status,
+    serviceName,
+  }).catch(() => {});
+}
+
 function triggerAutoCapture() {
   clearTimeout(captureDebounceTimer);
+
+  // Phase 1 — observer fired, debounce started
+  sendProgress('detecting', detectServiceName());
+
   captureDebounceTimer = setTimeout(() => {
     // Only capture if there are visible form fields (service config is open)
     const hasFields = document.querySelectorAll(
       'input:not([type="hidden"]):not([type="submit"]):not([type="button"]):not([type="search"]), select, [role="combobox"]'
     ).length > 0;
 
-    if (!hasFields) return;
+    if (!hasFields) {
+      sendProgress('idle');
+      return;
+    }
+
+    // Phase 2 — fields found, running capture
+    const currentName = detectServiceName();
+    sendProgress('stabilizing', currentName);
 
     const data = captureCurrentPage();
 
     // Skip if no meaningful dimensions were captured
     const dimCount = Object.keys(data.dimensions).length;
-    if (dimCount === 0) return;
+    if (dimCount === 0) {
+      sendProgress('idle');
+      return;
+    }
 
     // Skip if this is the same service+region we just captured
     const key = `${data.service_name}|${data.region}`;
-    if (key === lastCapturedServiceName) return;
+    if (key === lastCapturedServiceName) {
+      sendProgress('idle');
+      return;
+    }
     lastCapturedServiceName = key;
 
     chrome.runtime.sendMessage({
       action: 'serviceAutoCaptured',
       data,
     }).catch(() => {});
+
+    // Phase 3 — sent; background will flip to 'captured', we go idle
+    sendProgress('idle');
   }, 1500);
 }
 

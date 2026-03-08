@@ -79,6 +79,15 @@
     <span class="capture-status-text">Auto-capturing — navigate your estimate and open each service</span>
   </div>
 
+  <!-- Detector state chip + currently-viewing -->
+  <div class="detector-row">
+    <span id="detector-chip" class="detector-chip idle">
+      <span class="detector-dot"></span>
+      <span id="detector-label">Idle</span>
+    </span>
+    <span id="currently-viewing" class="currently-viewing" style="display:none"></span>
+  </div>
+
   <div class="capture-meta-row">
     <div class="capture-meta-item">
       <span class="meta-label">Profile</span>
@@ -102,9 +111,16 @@
     </div>
   </div>
 
-  <div class="hint-box">
-    <strong>How it works:</strong> Every time you click on a service in your estimate,
-    the extension reads its configuration automatically. You do not need to do anything extra.
+  <!-- Activity log (collapsed by default) -->
+  <div class="section-header" style="margin-top:10px">
+    <span class="section-label">Activity Log</span>
+    <button id="btn-toggle-log" class="btn-xs">▸ Show</button>
+  </div>
+  <div id="capture-log" class="capture-log" style="display:none"></div>
+
+  <div class="hint-box" style="margin-top:10px">
+    <strong>How it works:</strong> Every time you open a service in your estimate,
+    the extension reads its configuration automatically.
   </div>
 
   <div class="btn-row" style="margin-top:12px">

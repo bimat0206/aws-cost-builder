@@ -61,6 +61,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         },
         capturedServices: [],
         estimateTree: null,
+        captureStatus: { state: 'idle', serviceName: null, updatedAt: 0 },
+        captureLog: [],
       };
       await setSession(session);
 
@@ -98,6 +100,21 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
 
+  // ── captureProgress (from content script) ───────────────────────────────────
+  if (message.action === 'captureProgress') {
+    (async () => {
+      const session = await getSession();
+      if (!session || !session.isCapturing) return;
+      session.captureStatus = {
+        state: message.status,
+        serviceName: message.serviceName || null,
+        updatedAt: Date.now(),
+      };
+      await setSession(session);
+    })();
+    return false;
+  }
+
   // ── serviceAutoCaptured (from content script) ────────────────────────────────
   if (message.action === 'serviceAutoCaptured') {
     (async () => {
@@ -105,22 +122,33 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       if (!session || !session.isCapturing) return;
 
       const { service_name, region, dimensions } = message.data;
+      const dim_count = Object.keys(dimensions || {}).length;
+      const now = Date.now();
 
       // Deduplicate by service_name+region
       const isDuplicate = session.capturedServices.some(
         s => s.service_name === service_name && s.region === region
       );
+
       if (!isDuplicate) {
         session.capturedServices.push({
-          id: `svc_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+          id: `svc_${now}_${Math.random().toString(36).slice(2, 7)}`,
           service_name,
           region,
           dimensions,
-          capturedAt: Date.now(),
+          capturedAt: now,
           groupPath: null,
         });
-        await setSession(session);
+        session.captureLog.push({ timestamp: now, event: 'captured', service_name, dim_count });
+        session.captureStatus = { state: 'captured', serviceName: service_name, updatedAt: now };
+      } else {
+        session.captureLog.push({ timestamp: now, event: 'duplicate', service_name, dim_count });
       }
+
+      // Keep log to last 50 entries
+      if (session.captureLog.length > 50) session.captureLog = session.captureLog.slice(-50);
+
+      await setSession(session);
     })();
     return false;
   }

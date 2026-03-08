@@ -286,13 +286,98 @@ function renderCapturedServicesList(containerId, services, removable) {
   }
 }
 
+// ─── Progress render helpers ──────────────────────────────────────────────────
+
+const CHIP_LABELS = {
+  idle:        'Idle',
+  detecting:   'Activity detected',
+  stabilizing: 'Stabilizing…',
+  captured:    '✓ Captured!',
+};
+
+function renderDetectorChip(captureStatus) {
+  const cs = captureStatus || { state: 'idle', serviceName: null };
+  const chip = document.getElementById('detector-chip');
+  const label = document.getElementById('detector-label');
+  const viewing = document.getElementById('currently-viewing');
+  if (!chip || !label || !viewing) return;
+
+  chip.className = `detector-chip ${cs.state}`;
+  label.textContent = CHIP_LABELS[cs.state] || cs.state;
+
+  if (cs.serviceName && cs.state !== 'idle') {
+    viewing.textContent = `↳ ${cs.serviceName}`;
+    viewing.style.display = 'inline';
+  } else {
+    viewing.style.display = 'none';
+  }
+}
+
+function renderCaptureLog(captureLog) {
+  const container = document.getElementById('capture-log');
+  if (!container) return;
+  const entries = captureLog || [];
+
+  if (entries.length === 0) {
+    container.innerHTML = '<div class="empty-state" style="padding:10px">No events yet.</div>';
+    return;
+  }
+
+  container.innerHTML = '';
+  for (const entry of entries) {
+    const d = new Date(entry.timestamp);
+    const ts = d.toTimeString().slice(0, 8);
+
+    let iconClass = 'detecting';
+    let iconChar = '●';
+    if (entry.event === 'captured')  { iconClass = 'captured';  iconChar = '✓'; }
+    if (entry.event === 'duplicate') { iconClass = 'duplicate'; iconChar = '='; }
+
+    const dimLabel = entry.event === 'captured'
+      ? `<span class="log-dims">${entry.dim_count} dim</span>`
+      : '';
+
+    const row = document.createElement('div');
+    row.className = 'log-entry';
+    row.innerHTML =
+      `<span class="log-time">${ts}</span>` +
+      `<span class="log-icon ${iconClass}">${iconChar}</span>` +
+      `<span class="log-name">${entry.service_name || '—'}</span>` +
+      dimLabel;
+    container.appendChild(row);
+  }
+
+  // Auto-scroll to latest entry
+  container.scrollTop = container.scrollHeight;
+}
+
 // ─── View populators ──────────────────────────────────────────────────────────
+
+let _prevServiceCount = 0;
 
 function populateCapturingView(session) {
   document.getElementById('cap-profile-name').textContent = session.profile.project_name || '—';
-  const count = (session.capturedServices || []).length;
-  document.getElementById('cap-service-count').textContent = count;
-  renderCapturedServicesList('captured-services-list', session.capturedServices, true);
+  const services = session.capturedServices || [];
+  document.getElementById('cap-service-count').textContent = services.length;
+
+  const prevCount = _prevServiceCount;
+  _prevServiceCount = services.length;
+
+  renderCapturedServicesList('captured-services-list', services, true);
+
+  // Animate the newest card if a service was just added
+  if (services.length > prevCount) {
+    const list = document.getElementById('captured-services-list');
+    const cards = list.querySelectorAll('.service-card');
+    const newest = cards[cards.length - 1];
+    if (newest) {
+      newest.classList.add('service-card--new');
+      setTimeout(() => newest.classList.remove('service-card--new'), 1500);
+    }
+  }
+
+  renderDetectorChip(session.captureStatus);
+  renderCaptureLog(session.captureLog);
 }
 
 function populateExportView(session) {
@@ -356,6 +441,7 @@ async function init() {
   }
 
   if (session.isCapturing) {
+    _prevServiceCount = (session.capturedServices || []).length; // no animation on first open
     populateCapturingView(session);
     showView('capturing');
     return;
@@ -380,6 +466,20 @@ chrome.storage.onChanged.addListener((changes) => {
     if (session && session.isCapturing) {
       populateCapturingView(session);
     }
+  }
+});
+
+// ─── Activity log toggle ──────────────────────────────────────────────────────
+
+let logVisible = false;
+document.getElementById('btn-toggle-log').addEventListener('click', () => {
+  logVisible = !logVisible;
+  document.getElementById('capture-log').style.display = logVisible ? 'block' : 'none';
+  document.getElementById('btn-toggle-log').textContent = logVisible ? '▾ Hide' : '▸ Show';
+  if (logVisible) {
+    // Scroll to latest entry on open
+    const log = document.getElementById('capture-log');
+    log.scrollTop = log.scrollHeight;
   }
 });
 
