@@ -20,6 +20,10 @@
  *
  *         dimension "Operating System"    = "Linux"
  *         dimension "Number of instances" = 3
+ *
+ *         section "Advanced" {
+ *           dimension "Extra option" = true
+ *         }
  *       }
  *     }
  *
@@ -94,6 +98,32 @@ function serializeService(service, indentLevel) {
             const padding = ' '.repeat(maxKeyLen - key.length);
             lines.push(`${innerPad}dimension ${hclValue(key)}${padding} = ${hclValue(rawVal)}`);
         }
+    }
+
+    // sections, if any, each with their own dimensions block
+    if (service.sections && service.sections.length > 0) {
+        // leave blank line before sections for readability
+        lines.push('');
+        for (const sec of service.sections) {
+            lines.push(`${innerPad}section ${hclValue(sec.section_name)} {`);
+            const secDimKeys = Object.keys(sec.dimensions || {}).sort();
+            if (secDimKeys.length > 0) {
+                const secInnerPad = innerPad + '  ';
+                const maxSecKeyLen = Math.max(...secDimKeys.map(k => k.length));
+                for (const key of secDimKeys) {
+                    const dim = sec.dimensions[key];
+                    const rawVal = dim.user_value !== null && dim.user_value !== undefined
+                        ? dim.user_value
+                        : dim.default_value;
+                    const padding = ' '.repeat(maxSecKeyLen - key.length);
+                    lines.push(`${secInnerPad}dimension ${hclValue(key)}${padding} = ${hclValue(rawVal)}`);
+                }
+            }
+            lines.push(`${innerPad}}`);
+            lines.push('');
+        }
+        // drop trailing blank line added by loop
+        if (lines[lines.length - 1] === '') lines.pop();
     }
 
     lines.push(`${pad}}`);

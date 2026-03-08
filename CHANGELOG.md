@@ -5,6 +5,11 @@ All notable changes to the AWS Cost Profile Builder project are documented in th
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.1] - 2026-03-08
+
+### Fixed
+- **Syntax error** in `core/models/profile.js` constructor missing closing brace which caused "Unexpected strict mode reserved word" on startup; now static `fromObject` method is correctly placed.
+
 ## [2.2.0] - 2026-03-08
 
 ### Added

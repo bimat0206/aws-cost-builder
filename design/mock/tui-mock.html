@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>AWS Cost Builder — TUI Mock · 22 Screens</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: #0d0f13; font-family: 'JetBrains Mono','Cascadia Code','Fira Code','Menlo',monospace; color: #dcdfe4; height: 100vh; overflow: hidden; display: flex; }
+
+/* sidebar */
+#sidebar { width: 210px; min-width: 210px; background: #161a1f; border-right: 1px solid #3e4451; display: flex; flex-direction: column; overflow: hidden; }
+.sb-hdr { padding: 10px 12px; border-bottom: 1px solid #3e4451; flex-shrink: 0; }
+.sb-title { color: #56b6c2; font-weight: bold; font-size: 12px; letter-spacing: 1px; }
+.sb-sub { color: #5c6370; font-size: 10px; margin-top: 1px; }
+.sb-list { overflow-y: auto; flex: 1; }
+.sb-grp { padding: 7px 12px 2px; color: #5c6370; font-size: 9px; letter-spacing: 2px; text-transform: uppercase; font-weight: bold; }
+.sb-item { padding: 4px 12px 4px 16px; cursor: pointer; border-left: 2px solid transparent; color: #5c6370; font-size: 11px; line-height: 1.5; transition: all .1s; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sb-item:hover { background: #1f2329; color: #abb2bf; }
+.sb-item.active { background: #2c313c; border-left-color: #56b6c2; color: #dcdfe4; }
+
+/* main */
+#main { flex: 1; display: flex; flex-direction: column; overflow: hidden; background: #1e2127; }
+#topbar { height: 34px; min-height: 34px; background: #161a1f; border-bottom: 1px solid #3e4451; display: flex; align-items: center; padding: 0 12px; gap: 8px; flex-shrink: 0; }
+.nbtn { background: transparent; border: 1px solid #3e4451; color: #abb2bf; border-radius: 3px; padding: 1px 10px; font-size: 11px; font-family: inherit; cursor: pointer; transition: all .1s; }
+.nbtn:hover { background: #2c313c; color: #dcdfe4; }
+.nbtn:disabled { border-color: transparent; color: #5c6370; cursor: default; }
+#topbar-lbl { flex: 1; text-align: center; color: #5c6370; font-size: 11px; }
+#topbar-lbl .hl { color: #e5c07b; }
+#topbar-lbl .ct { color: #5c6370; font-size: 10px; margin-left: 8px; }
+#canvas { flex: 1; overflow: hidden; }
+
+/* animations */
+@keyframes fadeIn { from{opacity:0;transform:translateY(3px)} to{opacity:1;transform:translateY(0)} }
+@keyframes blink  { 0%,100%{opacity:1} 50%{opacity:0} }
+@keyframes pulse  { 0%,100%{opacity:1} 50%{opacity:.3} }
+.screen { display: none; height: 100%; width: 100%; }
+.screen.on { display: flex; animation: fadeIn .15s ease; }
+
+/* layout */
+.split { display: flex; height: 100%; width: 100%; }
+.yaml-p { width: 290px; min-width: 290px; border: 1px solid #56b6c2; border-radius: 4px; margin: 6px; display: flex; flex-direction: column; overflow: hidden; background: #21252b; }
+.prompt-p { flex: 1; border: 1px solid #c678dd; border-radius: 4px; margin: 6px 6px 6px 0; display: flex; flex-direction: column; overflow: hidden; background: #21252b; }
+.single-p { flex: 1; border: 1px solid #3e4451; border-radius: 4px; margin: 8px; display: flex; flex-direction: column; overflow: hidden; background: #21252b; }
+.ptitle { padding: 4px 10px; border-bottom: 1px solid #3e4451; font-size: 10px; font-weight: bold; letter-spacing: 1px; text-transform: uppercase; flex-shrink: 0; }
+.ptitle.cy { color: #56b6c2; border-bottom-color: #56b6c2; }
+.ptitle.mg { color: #c678dd; border-bottom-color: #c678dd; }
+.ptitle.bl { color: #61afef; border-bottom-color: #61afef; }
+.ptitle.gn { color: #98c379; border-bottom-color: #98c379; }
+.ptitle.yw { color: #e5c07b; border-bottom-color: #e5c07b; }
+.ptitle.or { color: #e06c75; border-bottom-color: #e06c75; }
+.pbody { flex: 1; padding: 8px 10px; overflow-y: auto; font-size: 12px; line-height: 1.55; }
+.pfoot { padding: 3px 10px; border-top: 1px solid #3e4451; color: #5c6370; font-size: 10px; flex-shrink: 0; }
+
+/* yaml */
+.ylines { font-size: 11px; line-height: 1.7; }
+.yl { display: flex; align-items: center; gap: 3px; padding: 0 2px; border-radius: 2px; }
+.yl.act { background: #2c313c; }
+.yn { color: #5c6370; width: 20px; text-align: right; flex-shrink: 0; font-size: 10px; }
+.yg { width: 14px; flex-shrink: 0; }
+.yl.act .yg { color: #56b6c2; }
+.yk { color: #61afef; }
+.yl.act .yk { color: #56b6c2; font-weight: bold; }
+.yvs { color: #98c379; }
+.yvn { color: #e5c07b; }
+.yvb { color: #c678dd; }
+.yvp { color: #5c6370; }
+.yc { color: #5c6370; }
+
+/* badge */
+.bdg { display: inline-block; border-radius: 3px; font-size: 10px; padding: 1px 5px; font-weight: bold; border: 1px solid; }
+.b-cy { background: #56b6c211; border-color: #56b6c255; color: #56b6c2; }
+.b-yw { background: #e5c07b11; border-color: #e5c07b55; color: #e5c07b; }
+.b-gn { background: #98c37911; border-color: #98c37955; color: #98c379; }
+.b-or { background: #e06c7511; border-color: #e06c7555; color: #e06c75; }
+.b-mg { background: #c678dd11; border-color: #c678dd55; color: #c678dd; }
+.b-dm { background: #5c637011; border-color: #5c637055; color: #5c6370; }
+.b-bl { background: #61afef11; border-color: #61afef55; color: #61afef; }
+
+/* field */
+.flabel { color: #e06c75; font-weight: bold; display: flex; align-items: center; flex-wrap: wrap; gap: 5px; margin-bottom: 4px; }
+.fmeta { color: #5c6370; font-size: 11px; margin-bottom: 2px; }
+.fmeta span { color: #e5c07b; }
+.fmeta .dv { color: #abb2bf; }
+.fnote { color: #5c6370; font-size: 11px; font-style: italic; margin-bottom: 4px; }
+.ibox { border: 1px solid #56b6c2; border-radius: 3px; padding: 5px 10px; background: #2c313c; display: flex; align-items: center; gap: 6px; }
+.ibox .pchar { color: #5c6370; }
+.ibox .ival { color: #dcdfe4; }
+.cursor { display: inline-block; width: 7px; height: 13px; background: #56b6c2; animation: blink 1s step-end infinite; vertical-align: middle; }
+.ihint { color: #5c6370; font-size: 10px; margin-top: 3px; }
+
+/* select list */
+.slabel { color: #e06c75; font-weight: bold; margin-bottom: 6px; }
+.slist { border: 1px solid #3e4451; border-radius: 4px; overflow: hidden; margin-bottom: 6px; }
+.sitem { padding: 5px 10px; cursor: pointer; border-left: 3px solid #3e4451; }
+.sitem.on { background: #2c313c; border-left-color: #98c379; }
+.sitem .radio { margin-right: 6px; font-weight: bold; }
+.sitem.on .radio { color: #98c379; }
+.sitem.off .radio { color: #5c6370; }
+.sitem.on .ot { color: #dcdfe4; }
+.sitem.off .ot { color: #abb2bf; }
+.sdesc { color: #5c6370; font-size: 11px; margin-left: 18px; margin-top: 1px; }
+.shint { color: #5c6370; font-size: 10px; }
+
+/* toggle */
+.titem { padding: 6px 12px; cursor: pointer; border-left: 3px solid #3e4451; display: flex; align-items: flex-start; gap: 8px; }
+.titem.on { background: #2c313c; border-left-color: #98c379; }
+.titem .tg { font-weight: bold; margin-top: 1px; flex-shrink: 0; }
+.titem.on .tg { color: #98c379; }
+.titem.off .tg { color: #5c6370; }
+.titem.on .tn { color: #dcdfe4; }
+.titem.off .tn { color: #abb2bf; }
+.tdesc { color: #5c6370; font-size: 11px; }
+
+/* diamond hdr */
+.dhdr { border: 1px solid #e5c07b; border-radius: 3px; padding: 5px 10px; margin-bottom: 8px; background: #252a33; flex-shrink: 0; }
+.dhdr .d { color: #e5c07b; font-weight: bold; }
+.dhdr .s { color: #5c6370; font-size: 11px; margin-left: 8px; }
+
+/* breadcrumb */
+.bc { color: #5c6370; font-size: 11px; margin-bottom: 6px; flex-shrink: 0; }
+.bc .v { color: #abb2bf; }
+
+/* progress */
+.prog { margin-bottom: 8px; flex-shrink: 0; }
+.prog-m { display: flex; justify-content: space-between; margin-bottom: 3px; }
+.prog-m .ps { color: #5c6370; font-size: 11px; }
+.prog-m .pc { color: #56b6c2; font-size: 11px; }
+.prog-t { background: #3e4451; border-radius: 2px; height: 3px; }
+.prog-f { background: #56b6c2; height: 100%; border-radius: 2px; }
+
+/* event log */
+.evlog { border-bottom: 1px solid #3e4451; margin-bottom: 8px; padding-bottom: 6px; flex-shrink: 0; }
+.ev { font-size: 11px; line-height: 1.8; }
+
+/* data table */
+.dtbl { width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: 10px; }
+.dtbl th { color: #5c6370; text-align: left; padding: 3px 8px; border-bottom: 1px solid #3e4451; font-weight: normal; font-size: 11px; }
+.dtbl td { padding: 3px 8px; }
+.dtbl tr:nth-child(even) td { background: #252a33; }
+
+/* help panel */
+.hpanel { border: 1px solid #e5c07b; border-radius: 3px; padding: 8px 12px; background: #252a33; margin-bottom: 10px; }
+.hrow { color: #5c6370; font-size: 11px; line-height: 1.9; }
+.hrow span { color: #abb2bf; }
+
+/* stat pills */
+.spills { display: flex; gap: 16px; padding: 8px 10px; background: #252a33; border-radius: 4px; margin-bottom: 12px; flex-shrink: 0; }
+.spill .sl { color: #5c6370; font-size: 10px; text-align: center; margin-bottom: 2px; }
+.spill .sv { font-weight: bold; font-size: 13px; text-align: center; }
+
+/* full screen center */
+.fs { width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #1e2127; }
+.sucircle { width: 60px; height: 60px; border-radius: 50%; border: 3px solid #98c379; display: flex; align-items: center; justify-content: center; margin: 0 auto 18px; font-size: 24px; color: #98c379; }
+.irow { display: flex; align-items: center; padding: 5px 12px; border: 1px solid #3e4451; font-size: 12px; }
+.irow .k { color: #5c6370; font-size: 11px; width: 130px; flex-shrink: 0; }
+
+/* scrollback */
+.scrollbk { border-bottom: 1px solid #5c6370; margin-bottom: 10px; padding-bottom: 8px; flex-shrink: 0; }
+.sblbl { color: #5c6370; font-size: 10px; margin-bottom: 4px; font-style: italic; }
+
+/* step log */
+.step-r { display: flex; align-items: center; gap: 8px; padding: 2px 0; font-size: 12px; }
+.step-r .si { width: 14px; flex-shrink: 0; }
+.step-r.done .si { color: #5c6370; } .step-r.done .st { color: #5c6370; }
+.step-r.act .si { color: #56b6c2; } .step-r.act .st { color: #56b6c2; font-weight: bold; }
+
+/* svc bars */
+.sbar { flex: 1; border: 1px solid #3e4451; border-radius: 3px; padding: 6px 10px; }
+.sbar.act { border-color: #56b6c2; background: #2c313c; }
+.sbar.done { border-color: #98c379; }
+.sbar-t { background: #3e4451; border-radius: 2px; height: 3px; margin: 3px 0; }
+
+/* scrollbars */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: #1a1d23; }
+::-webkit-scrollbar-thumb { background: #3e4451; border-radius: 2px; }
+</style>
+</head>
+<body>
+
+<div id="sidebar">
+  <div class="sb-hdr">
+    <div class="sb-title">AWS Cost Builder</div>
+    <div class="sb-sub">TUI Mock · 22 screens</div>
+  </div>
+  <div class="sb-list" id="sb-list"></div>
+</div>
+
+<div id="main">
+  <div id="topbar">
+    <button class="nbtn" id="btn-p">← prev</button>
+    <div id="topbar-lbl"><span class="hl" id="t-label"></span><span class="ct" id="t-count"></span></div>
+    <button class="nbtn" id="btn-n">next →</button>
+  </div>
+  <div id="canvas"></div>
+</div>
+
+<script>
+const SCREENS = [
+  {id:'splash',       label:'01 · Splash / Mode Select',       group:'Startup'},
+  {id:'meta',         label:'02 · Project Metadata',           group:'Builder'},
+  {id:'group_pick',   label:'03 · Group + Service Picker',     group:'Builder'},
+  {id:'region',       label:'04 · Region Selection',           group:'Builder'},
+  {id:'number_field', label:'05 · Number Field',               group:'Builder'},
+  {id:'select_field', label:'06 · Select Field',               group:'Builder'},
+  {id:'compound',     label:'07 · Compound VALUE+UNIT',        group:'Builder'},
+  {id:'toggle_p1',    label:'08 · Toggle Phase 1 (S3)',        group:'Builder'},
+  {id:'toggle_p2',    label:'09 · Toggle Phase 2 (S3)',        group:'Builder'},
+  {id:'inline_help',  label:'10 · Inline Help (?)',            group:'Builder'},
+  {id:'section_rev',  label:'11 · Post-Section Review',        group:'Builder'},
+  {id:'service_rev',  label:'12 · Post-Service Review',        group:'Builder'},
+  {id:'final_rev',    label:'13 · Final Profile Review',       group:'Builder'},
+  {id:'saved',        label:'14 · Profile Saved',              group:'Builder'},
+  {id:'preflight_ok', label:'15 · Preflight Pass',             group:'Runner'},
+  {id:'preflight_fail',label:'16 · Preflight Failure',         group:'Runner'},
+  {id:'running',      label:'17 · Browser Automation Live',    group:'Runner'},
+  {id:'partial_fail', label:'18 · Partial Failure',            group:'Runner'},
+  {id:'run_success',  label:'19 · Run Complete — Success',     group:'Runner'},
+  {id:'artifact',     label:'20 · Artifact Viewer',            group:'Runner'},
+  {id:'dryrun',       label:'21 · Dry-Run Output',             group:'Runner'},
+  {id:'explore',      label:'22 · Explore Mode',               group:'Explorer'},
+];
+
+// helpers
+const bdg = (t,c) => `<span class="bdg b-${c}">${t}</span>`;
+function yl(i,k,v,t,act) {
+  const ind='  '.repeat(i);
+  const vcls = {s:'yvs',n:'yvn',b:'yvb',p:'yvp'}[t]||'';
+  const g = act?'▶':' ';
+  const vhtml = (v!==null&&v!==undefined)?`<span class="yc">: </span><span class="${vcls}">${v}</span>`:`<span class="yc">:</span>`;
+  return `<div class="yl${act?' act':''}"><span class="yn"></span><span class="yg">${g}</span><span class="yc">${ind}</span><span class="yk">${k}</span>${vhtml}</div>`;
+}
+function yn(lines) {
+  // add line numbers
+  return lines.map((l,i) => l.replace('<span class="yn"></span>',`<span class="yn">${i+1}</span>`)).join('');
+}
+function yamlP(ls, foot) {
+  return `<div class="yaml-p"><div class="ptitle cy">◀ YAML Preview</div><div class="pbody" style="padding:4px"><div class="ylines">${yn(ls)}</div></div><div class="pfoot">${foot}</div></div>`;
+}
+function prmP(c) { return `<div class="prompt-p"><div class="ptitle mg">Prompt</div><div class="pbody">${c}</div></div>`; }
+function sngP(tcls, t, c) { return `<div style="display:flex;height:100%;width:100%"><div class="single-p"><div class="ptitle ${tcls}">${t}</div><div class="pbody">${c}</div></div></div>`; }
+function dhdr(l,s) { return `<div class="dhdr"><span class="d">◆ ${l}</span>${s?`<span class="s">${s}</span>`:''}</div>`; }
+function bc(g,sv) { return `<div class="bc"><b>Group:</b> <span class="v">${g}</span> › <b>Service:</b> <span class="v">${sv}</span></div>`; }
+function prog(c,t,s,st) {
+  const p=Math.round(c/t*100);
+  return `<div class="prog"><div class="prog-m"><span class="ps">Section ${s} of ${st}</span><span class="pc">[${c}/${t}]</span></div><div class="prog-t"><div class="prog-f" style="width:${p}%"></div></div></div>`;
+}
+function ibox(v,act=true) { return `<div class="ibox"><span class="pchar">›</span><span class="ival">${v}</span>${act?'<span class="cursor"></span>':''}</div><div class="ihint">Enter to confirm · ? for help</div>`; }
+function fblock({label,type='NUMBER',tc='cy',unit,def,note,req=true,val='',act=true}) {
+  const rb = req?bdg('required','or'):bdg('optional','dm');
+  const ul = unit?`<div class="fmeta">Unit: <span>${unit}</span></div>`:'';
+  const dl = def!==undefined?`<div class="fmeta">Default: <span class="dv">${def}</span></div>`:'';
+  const nl = note?`<div class="fnote">Note: ${note}</div>`:'';
+  return `<div style="margin-bottom:12px"><div class="flabel">${label} ${bdg(type,tc)} ${rb}</div>${ul}${dl}${nl}${ibox(val,act)}</div>`;
+}
+function slist(label, opts, descs={}, sel=0) {
+  const items = opts.map((o,i)=>{
+    const on=i===sel; const d=descs[o]?`<div class="sdesc">${descs[o]}</div>`:'';
+    return `<div class="sitem ${on?'on':'off'}"><span class="radio">${on?'●':'○'}</span><span class="ot">${o}</span>${d}</div>`;
+  }).join('');
+  return `<div>${label?`<div class="slabel">${label}</div>`:''}<div class="slist">${items}</div><div class="shint">↑↓ to move · Enter to select</div></div>`;
+}
+
+const R = {
+
+splash: ()=>`<div class="fs" style="flex-direction:column;position:relative;overflow:hidden">
+  <div style="position:absolute;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 29px,rgba(86,182,194,0.018) 29px,rgba(86,182,194,0.018) 30px);pointer-events:none"></div>
+  <div style="text-align:center;max-width:580px;z-index:1">
+    <div style="color:#5c6370;font-size:10px;letter-spacing:6px;text-transform:uppercase;margin-bottom:6px">aws-cost-builder · v1.0 · local python cli</div>
+    <div style="font-size:26px;font-weight:bold;letter-spacing:3px;margin-bottom:4px"><span style="color:#56b6c2">aws-cost</span><span style="color:#3e4451">-</span><span style="color:#c678dd">builder</span></div>
+    <div style="color:#abb2bf;font-size:12px;margin-bottom:28px;letter-spacing:.5px">Automate AWS Pricing Calculator · Reusable JSON profiles · Git-friendly</div>
+    <div style="border-top:1px solid #3e4451;border-bottom:1px solid #3e4451;padding:16px 0;margin-bottom:18px">
+      <div style="color:#e5c07b;font-size:11px;font-weight:bold;margin-bottom:12px">◆ Select a command to begin:</div>
+      ${[
+        {cmd:'python main.py build',       desc:'Mode A — Interactive builder wizard',    c:'#56b6c2'},
+        {cmd:'python main.py run --profile &lt;path&gt;', desc:'Mode B — Automate browser with profile', c:'#98c379'},
+        {cmd:'python main.py explore',     desc:'Mode C — Scan service &amp; draft catalog', c:'#e5c07b'},
+        {cmd:'python main.py run --dry-run',desc:'Mode D — Validate without launching browser',c:'#c678dd'},
+      ].map(m=>`<div style="border:1px solid ${m.c}33;border-left:3px solid ${m.c};border-radius:4px;padding:7px 14px;margin-bottom:7px;text-align:left;display:flex;align-items:center;gap:14px;background:${m.c}08">
+        <span style="color:${m.c};font-weight:bold;font-size:11px;width:260px;flex-shrink:0">${m.cmd}</span>
+        <span style="color:#5c6370;font-size:11px">${m.desc}</span>
+      </div>`).join('')}
+    </div>
+    <div style="color:#5c6370;font-size:11px;line-height:2">
+      <span style="color:#56b6c2">python main.py</span> (no args) → interactive questionary mode picker
+    </div>
+  </div>
+</div>`,
+
+meta: ()=>{
+  const ls=[yl(0,'schema_version','"2.0"','s'),yl(0,'project_name','"?"','p',true),yl(0,'description','"?"','p'),yl(0,'groups',null,'')];
+  return `<div class="split">${yamlP(ls,'project root · step 1 of 3')}${prmP(`
+    ${dhdr('Project Setup','Step 1 of 3')}
+    <div style="color:#5c6370;font-size:11px;margin-bottom:12px">Give your estimate a name and optional description. These appear in the profile JSON and run artifacts.</div>
+    ${fblock({label:'Project name',type:'TEXT',unit:undefined,def:'',note:"e.g. 'Web Tier — Production Estimate Q3'",req:true,val:'',act:true})}
+    ${fblock({label:'Description',type:'TEXT',note:'Optional. Shown in run artifacts and YAML header.',req:false,act:false})}
+  `)}</div>`;
+},
+
+group_pick: ()=>{
+  const svcs=['Amazon EC2','Amazon S3','Amazon RDS for MySQL','Amazon CloudFront','AWS Lambda','Amazon ECS','Amazon ElastiCache','Amazon Route 53'];
+  const chk=[0,2,4];
+  const items=svcs.map((s,i)=>{const on=chk.includes(i);return `<div style="padding:5px 12px;border-left:3px solid ${on?'#98c379':'#3e4451'};background:${on?'#2c313c':'transparent'};display:flex;align-items:center;gap:8px"><span style="color:${on?'#98c379':'#5c6370'};font-weight:bold;width:14px;flex-shrink:0">${on?'◆':'◇'}</span><span style="color:${on?'#dcdfe4':'#abb2bf'};font-size:12px">${s}</span></div>`;}).join('');
+  return sngP('yw','◆ Group &amp; Service Configuration — Step 2 of 3',`
+    <div style="display:flex;gap:14px;height:100%">
+      <div style="width:195px;flex-shrink:0">
+        <div style="color:#e5c07b;font-weight:bold;font-size:11px;margin-bottom:8px">Group Details</div>
+        <div style="color:#5c6370;font-size:11px;margin-bottom:3px">Group name</div>
+        <div class="ibox" style="margin-bottom:8px"><span class="pchar">›</span><span class="ival">Production</span><span class="cursor"></span></div>
+        <div style="color:#5c6370;font-size:11px;margin-bottom:3px">Parent group <span style="font-size:10px">(optional)</span></div>
+        <div style="border:1px solid #3e4451;border-radius:3px;padding:4px 8px;background:#252a33;color:#5c6370;margin-bottom:16px;font-size:12px">— none —</div>
+        <div style="color:#98c379;font-size:11px;margin-bottom:3px">✓ ${chk.length} services selected</div>
+        <div style="color:#5c6370;font-size:10px">Space to toggle · Enter to confirm</div>
+      </div>
+      <div style="flex:1;min-width:0">
+        <div style="color:#e5c07b;font-weight:bold;font-size:11px;margin-bottom:6px">Select Services</div>
+        <div style="color:#5c6370;font-size:11px;margin-bottom:6px">Type to filter · Space to toggle · Enter to confirm</div>
+        <div style="border:1px solid #3e4451;border-radius:4px;overflow:auto;max-height:360px">${items}</div>
+      </div>
+    </div>
+  `);
+},
+
+region: ()=>{
+  const ls=[yl(0,'schema_version','"2.0"','s'),yl(0,'project_name','"Web Tier Estimate"','s'),yl(0,'groups',null,''),yl(1,'- group_name','"Production"','s'),yl(1,'services',null,''),yl(2,'- service_name','"Amazon EC2"','s'),yl(3,'region','"?"','p',true),yl(2,'- service_name','"Amazon S3"','s'),yl(3,'region','"?"','p'),yl(2,'- service_name','"Amazon RDS"','s'),yl(3,'region','"?"','p')];
+  return `<div class="split">${yamlP(ls,'Service 1 of 3 · region selection')}${prmP(`
+    ${dhdr('Region Selection','Amazon EC2 · Service 1 of 3')}
+    <div style="color:#5c6370;font-size:11px;margin-bottom:10px">Select the AWS region for <span style="color:#56b6c2">Amazon EC2</span>. Only supported regions shown.</div>
+    ${slist('',['US East (N. Virginia)  —  us-east-1','US West (Oregon)  —  us-west-2','EU (Ireland)  —  eu-west-1','EU (Frankfurt)  —  eu-central-1','AP (Tokyo)  —  ap-northeast-1','AP (Singapore)  —  ap-southeast-1'])}
+    <div style="border:1px solid #e5c07b;border-radius:3px;padding:5px 10px;background:#252a33;margin-top:6px">
+      <span style="color:#5c6370;font-size:11px">Tip: Enter <span style="color:#e5c07b">global</span> to skip region for this service.</span>
+    </div>
+  `)}</div>`;
+},
+
+number_field: ()=>{
+  const ls=[yl(0,'schema_version','"2.0"','s'),yl(0,'project_name','"Web Tier Estimate"','s'),yl(0,'groups',null,''),yl(1,'- group_name','"Production"','s'),yl(1,'services',null,''),yl(2,'- service_name','"Amazon EC2"','s'),yl(2,'region','"us-east-1"','s'),yl(2,'dimensions',null,''),yl(3,'Tenancy',null,''),yl(4,'user_value','"Shared Instances"','s'),yl(3,'Operating system',null,''),yl(4,'user_value','"Linux"','s'),yl(3,'Workloads',null,''),yl(4,'user_value','"Constant usage"','s'),yl(3,'Number of instances',null,'',true),yl(4,'user_value','"?"','p'),yl(3,'Instance type',null,''),yl(4,'user_value','"?"','p')];
+  return `<div class="split">${yamlP(ls,'Line 15/18 · amazon_ec2 · us-east-1')}${prmP(`
+    ${bc('Production','Amazon EC2')}
+    ${prog(4,19,1,5)}
+    ${dhdr('Compute','Section 1 of 5 · 8 fields')}
+    ${fblock({label:'Number of instances',type:'NUMBER',unit:'instances',def:1,note:'Total vCPU and memory is computed from instance type × count.',req:true,val:'3',act:true})}
+  `)}</div>`;
+},
+
+select_field: ()=>{
+  const ls=[yl(0,'schema_version','"2.0"','s'),yl(0,'project_name','"Web Tier Estimate"','s'),yl(0,'groups',null,''),yl(1,'- group_name','"Production"','s'),yl(1,'services',null,''),yl(2,'- service_name','"Amazon EC2"','s'),yl(2,'region','"us-east-1"','s'),yl(2,'dimensions',null,''),yl(3,'Tenancy',null,''),yl(4,'user_value','"?"','p'),yl(3,'Operating system',null,'',true),yl(4,'user_value','"?"','p'),yl(3,'Workloads',null,''),yl(4,'user_value','"?"','p')];
+  return `<div class="split">${yamlP(ls,'Line 11/14 · amazon_ec2 · us-east-1')}${prmP(`
+    ${bc('Production','Amazon EC2')}
+    ${prog(2,19,1,5)}
+    ${dhdr('Compute','Section 1 of 5 · 8 fields')}
+    ${slist('Operating system',['Linux','Windows Server','RHEL','Ubuntu Pro','SUSE'],{'Linux':'Standard EC2 pricing. No additional OS license cost.','Windows Server':'Includes Windows Server license in hourly rate.','RHEL':'Includes Red Hat Enterprise Linux license.','Ubuntu Pro':'Includes Ubuntu Pro security subscription.','SUSE':'Includes SUSE Linux Enterprise Server license.'})}
+  `)}</div>`;
+},
+
+compound: ()=>{
+  const ls=[yl(0,'schema_version','"2.0"','s'),yl(0,'groups',null,''),yl(1,'- group_name','"Production"','s'),yl(1,'services',null,''),yl(2,'- service_name','"Amazon EC2"','s'),yl(2,'region','"us-east-1"','s'),yl(2,'dimensions',null,''),yl(3,'Number of instances',null,''),yl(4,'user_value','3','n'),yl(3,'Instance type',null,''),yl(4,'user_value','"t3.medium"','s'),yl(3,'Inbound Data Transfer',null,'',true),yl(4,'user_value','"?"','p'),yl(3,'Inbound Data Transfer Unit',null,''),yl(4,'user_value','"GB per month"','s'),yl(3,'Outbound Data Transfer',null,''),yl(4,'user_value','"?"','p')];
+  return `<div class="split">${yamlP(ls,'Line 12/18 · amazon_ec2 · Data Transfer')}${prmP(`
+    ${bc('Production','Amazon EC2')}
+    ${prog(8,19,3,5)}
+    ${dhdr('Data Transfer','Section 3 of 5 · 4 fields')}
+    <div style="margin-bottom:12px">
+      <div class="flabel">Inbound Data Transfer ${bdg('NUMBER+UNIT','cy')} ${bdg('optional','dm')}</div>
+      <div style="border:1px solid #e5c07b;border-radius:3px;padding:6px 10px;background:#252a33;margin-bottom:6px">
+        <div style="color:#e5c07b;font-size:11px;font-weight:bold;margin-bottom:2px">◆ Compound input</div>
+        <div style="color:#5c6370;font-size:11px">Two catalog fields collapsed into one combined prompt. Type a number + unit.</div>
+      </div>
+      <div class="fmeta">Accepted units: <span>GB per month</span>, <span>TB per month</span></div>
+      <div class="fmeta">Default: <span class="dv">0 GB per month</span></div>
+      <div class="fnote">e.g. <span style="color:#98c379">500 GB</span> · <span style="color:#98c379">2 TB</span> · <span style="color:#98c379">500</span> (default unit applied)</div>
+      ${ibox('500 GB')}
+    </div>
+  `)}</div>`;
+},
+
+toggle_p1: ()=>{
+  const sects=[{n:'S3 Standard',d:'General purpose. Frequently accessed data.',on:true},{n:'S3 Standard-IA',d:'Infrequent access, rapid retrieval.',on:true},{n:'S3 Intelligent-Tiering',d:'Auto cost optimization by access pattern.',on:false},{n:'S3 Glacier Instant',d:'Archive with millisecond retrieval.',on:false},{n:'S3 Glacier Flexible',d:'Low-cost archive, minutes–hours retrieval.',on:false},{n:'S3 Glacier Deep Archive',d:'Lowest cost; 12h retrieval.',on:false},{n:'Management &amp; Analytics',d:'Inventory, analytics, object tagging.',on:false},{n:'Data Transfer',d:'Outbound and inbound transfer costs.',on:true},{n:'Replication',d:'Cross-region and same-region replication.',on:false}];
+  const togls=sects.map(s=>yl(1,s.n,s.on?'true':'false',s.on?'s':'p'));
+  const ls=[yl(0,'service_name','"Amazon S3"','s'),yl(0,'region','"us-east-1"','s'),yl(0,'dimensions',null,''),...togls];
+  const items=sects.map(s=>`<div class="titem ${s.on?'on':'off'}"><span class="tg">${s.on?'◆':'◇'}</span><div><div class="tn">${s.n}</div><div class="tdesc">${s.d}</div></div></div>`).join('');
+  return `<div class="split">${yamlP(ls,'amazon_s3 · toggle_two_step · phase 1')}${prmP(`
+    ${bc('Production','Amazon S3')}
+    ${dhdr('Select Feature Sections','Phase 1 of 2 — 3 enabled')}
+    <div style="color:#5c6370;font-size:11px;margin-bottom:6px">Space/click to toggle · Enter to proceed to Phase 2</div>
+    <div style="border:1px solid #3e4451;border-radius:4px;overflow:auto;max-height:320px">${items}</div>
+    <div style="color:#5c6370;font-size:10px;margin-top:5px">Enter to confirm and begin Phase 2 →</div>
+  `)}</div>`;
+},
+
+toggle_p2: ()=>{
+  const ls=[yl(0,'service_name','"Amazon S3"','s'),yl(0,'region','"us-east-1"','s'),yl(0,'S3 Standard','true','b'),yl(0,'S3 Standard-IA','true','b'),yl(0,'Data Transfer','true','b'),yl(0,'S3 Standard storage',null,'',true),yl(1,'user_value','"?"','p'),yl(0,'S3 Standard PUT requests',null,''),yl(1,'user_value','"?"','p'),yl(0,'S3 Standard GET requests',null,''),yl(1,'user_value','"?"','p')];
+  return `<div class="split">${yamlP(ls,'amazon_s3 · phase 2 · S3 Standard (1/3)')}${prmP(`
+    ${bc('Production','Amazon S3')}
+    <div style="border:1px solid #e5c07b;border-radius:3px;padding:4px 10px;margin-bottom:8px;background:#252a33;font-size:11px;color:#5c6370">
+      Phase 2 of 2 · Enabled: <span style="color:#98c379;margin-left:6px">◆ S3 Standard</span><span style="color:#5c6370;margin-left:4px">◆ S3 Standard-IA</span><span style="color:#5c6370;margin-left:4px">◆ Data Transfer</span>
+    </div>
+    ${prog(1,12,1,3)}
+    ${dhdr('S3 Standard','Enabled section 1 of 3 · 4 fields')}
+    ${fblock({label:'S3 Standard storage',type:'NUMBER',unit:'GB per month',def:0,note:'Total bytes stored per month in this storage class.',req:false,act:true})}
+  `)}</div>`;
+},
+
+inline_help: ()=>{
+  const ls=[yl(0,'schema_version','"2.0"','s'),yl(0,'project_name','"Web Tier Estimate"','s'),yl(0,'groups',null,''),yl(1,'- group_name','"Production"','s'),yl(1,'services',null,''),yl(2,'- service_name','"Amazon EC2"','s'),yl(2,'region','"us-east-1"','s'),yl(2,'dimensions',null,''),yl(3,'Tenancy',null,''),yl(4,'user_value','"Shared Instances"','s'),yl(3,'Operating system',null,''),yl(4,'user_value','"Linux"','s'),yl(3,'Number of instances',null,'',true),yl(4,'user_value','"?"','p')];
+  return `<div class="split">${yamlP(ls,'Line 13/14 · amazon_ec2 · inline help shown')}${prmP(`
+    ${bc('Production','Amazon EC2')}
+    ${prog(4,19,1,5)}
+    <div class="scrollbk">
+      <div class="sblbl">─── scrollback ─── (print_above — visible in terminal history)</div>
+      <div style="color:#e5c07b;font-size:11px;margin-bottom:4px">  [?] Help: Number of instances</div>
+      <div class="hpanel">
+        <div class="hrow">Key:      <span>Number of instances</span></div>
+        <div class="hrow">Type:     <span style="color:#56b6c2">NUMBER</span>  |  Unit: <span>instances</span>  |  Default: <span>1</span></div>
+        <div class="hrow">Required: <span style="color:#e06c75">yes</span></div>
+        <div class="hrow">Note:     <span>Specifies how many EC2 instances of the selected type will run. Total monthly cost is count × per-instance rate. Integers only.</span></div>
+      </div>
+    </div>
+    ${dhdr('Compute','Section 1 of 5 · 8 fields')}
+    ${fblock({label:'Number of instances',type:'NUMBER',unit:'instances',def:1,req:true,act:true})}
+  `)}</div>`;
+},
+
+section_rev: ()=>{
+  const rows=[{f:'Tenancy',v:'Shared Instances',u:''},{f:'Operating system',v:'Linux',u:''},{f:'Workloads',v:'Constant usage',u:''},{f:'Number of instances',v:'3',u:'instances'},{f:'Instance type',v:'t3.medium',u:''},{f:'Storage amount',v:'30',u:'GB/vol'},{f:'Provisioned IOPS',v:'—',u:'skipped'},{f:'Monitoring',v:'false',u:''}];
+  const ls=[yl(0,'schema_version','"2.0"','s'),yl(0,'project_name','"Web Tier Estimate"','s'),yl(0,'groups',null,''),yl(1,'- group_name','"Production"','s'),yl(1,'services',null,''),yl(2,'- service_name','"Amazon EC2"','s'),yl(2,'region','"us-east-1"','s'),yl(2,'dimensions',null,''),yl(3,'Tenancy',null,''),yl(4,'user_value','"Shared Instances"','s'),yl(3,'Operating system',null,''),yl(4,'user_value','"Linux"','s'),yl(3,'Number of instances',null,''),yl(4,'user_value','3','n'),yl(3,'Instance type',null,''),yl(4,'user_value','"t3.medium"','s'),yl(3,'Storage amount',null,''),yl(4,'user_value','30','n')];
+  const tbody=rows.map((r,i)=>{const sk=r.u==='skipped';return`<tr style="background:${i%2===0?'transparent':'#252a33'}"><td style="color:#abb2bf">${r.f}</td><td style="color:${sk?'#5c6370':'#98c379'}">${r.v}</td><td style="color:${sk?'#5c6370':'#e5c07b'};font-size:11px">${r.u||'—'}</td></tr>`;}).join('');
+  return `<div class="split">${yamlP(ls,'amazon_ec2 · section 1 complete')}${prmP(`
+    <div class="evlog"><div class="ev" style="color:#98c379">[✓] Section 'Compute' completed — 8 fields set</div></div>
+    ${dhdr('Section Review','Compute · Section 1 of 5')}
+    <table class="dtbl" style="margin-bottom:12px"><thead><tr><th>Field</th><th>Value</th><th>Unit</th></tr></thead><tbody>${tbody}</tbody></table>
+    ${slist('What would you like to do?',['Continue to next section','Redo this section','Edit a specific field'])}
+  `)}</div>`;
+},
+
+service_rev: ()=>{
+  const rows=[{sec:'Compute',f:'Tenancy',v:'Shared Instances',src:'user'},{sec:'Compute',f:'Operating system',v:'Linux',src:'user'},{sec:'Compute',f:'Number of instances',v:'3',src:'user'},{sec:'Compute',f:'Instance type',v:'t3.medium',src:'user'},{sec:'EBS',f:'Storage amount',v:'30 GB',src:'user'},{sec:'EBS',f:'Volume type',v:'gp3',src:'default'},{sec:'Data Transfer',f:'Inbound transfer',v:'500 GB/mo',src:'user'},{sec:'Data Transfer',f:'Outbound transfer',v:'200 GB/mo',src:'user'},{sec:'Monitoring',f:'Detailed monitoring',v:'false',src:'default'},{sec:'Monitoring',f:'Provisioned IOPS',v:'—',src:'skipped'}];
+  const sc={user:'#98c379',default:'#56b6c2',skipped:'#5c6370'};
+  let ls='';
+  const tbody=rows.map((r,i)=>{const show=i===0||rows[i-1].sec!==r.sec;return`<tr style="background:${i%2===0?'transparent':'#252a33'}"><td style="color:${show?'#e5c07b':'#5c6370'};font-weight:${show?'bold':'normal'};font-size:11px">${show?r.sec:''}</td><td style="color:#abb2bf">${r.f}</td><td style="color:${sc[r.src]}">${r.v}</td><td>${bdg(r.src,r.src==='user'?'gn':r.src==='default'?'cy':'dm')}</td></tr>`;}).join('');
+  return sngP('gn','✓ Service Complete — Amazon EC2',`
+    <div class="evlog"><div class="ev" style="color:#98c379">[✓] All 5 sections complete — Amazon EC2 · us-east-1</div></div>
+    ${dhdr('Service Review','Amazon EC2 · 10 dimensions resolved')}
+    <table class="dtbl"><thead><tr><th>Section</th><th>Field</th><th>Value</th><th>Source</th></tr></thead><tbody>${tbody}</tbody></table>
+    ${slist('What would you like to do?',['Save this service and continue','Edit a specific field','Start this service over'])}
+  `);
+},
+
+final_rev: ()=>{
+  const ls=[yl(0,'schema_version','"2.0"','s'),yl(0,'project_name','"Web Tier Estimate"','s'),yl(0,'description','"Load-balanced 3-tier app"','s'),yl(0,'groups',null,''),yl(1,'- group_name','"Production"','s'),yl(1,'services',null,''),yl(2,'- service_name','"Amazon EC2"','s'),yl(2,'region','"us-east-1"','s'),yl(3,'Tenancy',null,''),yl(4,'user_value','"Shared Instances"','s'),yl(3,'Number of instances',null,''),yl(4,'user_value','3','n'),yl(2,'- service_name','"Amazon S3"','s'),yl(2,'region','"us-east-1"','s'),yl(3,'S3 Standard storage',null,''),yl(4,'user_value','500','n'),yl(2,'- service_name','"Amazon RDS"','s'),yl(2,'region','"us-east-1"','s'),yl(3,'Instance type',null,''),yl(4,'user_value','"db.t3.medium"','s')];
+  const rows=[{n:'Amazon EC2',r:'us-east-1',d:11},{n:'Amazon S3',r:'us-east-1',d:8},{n:'Amazon RDS for MySQL',r:'us-east-1',d:7}];
+  const tbody=rows.map((s,i)=>`<tr style="background:${i%2===0?'transparent':'#252a33'}"><td style="color:#abb2bf">${s.n}</td><td style="color:#61afef;font-size:11px">${s.r}</td><td style="color:#e5c07b">${s.d}</td><td>${bdg('✓ ready','gn')}</td></tr>`).join('');
+  return `<div class="split">${yamlP(ls,'profile complete · 3 services · 26 dims')}${prmP(`
+    ${dhdr('Final Profile Review','Web Tier Estimate · 1 group · 3 services')}
+    <table class="dtbl" style="margin-bottom:12px"><thead><tr><th>Service</th><th>Region</th><th>Dims</th><th>Status</th></tr></thead><tbody>${tbody}</tbody></table>
+    ${slist('Ready to save?',['Save profile to profiles/','Edit a service','Add another group','Start over'])}
+  `)}</div>`;
+},
+
+saved: ()=>`<div class="fs">
+  <div style="text-align:center;max-width:500px">
+    <div class="sucircle">✓</div>
+    <div style="color:#98c379;font-size:17px;font-weight:bold;margin-bottom:6px;letter-spacing:1px">[✓] Profile saved successfully</div>
+    <div style="color:#5c6370;font-size:12px;margin-bottom:22px">Web Tier Estimate · 1 group · 3 services · 26 dimensions</div>
+    <div style="border:1px solid #3e4451;border-radius:4px;padding:10px 14px;background:#21252b;text-align:left;margin-bottom:14px">
+      <div style="color:#5c6370;font-size:11px;margin-bottom:4px">Profile written to:</div>
+      <div style="color:#56b6c2;font-size:12px">profiles/<span style="color:#98c379">web_tier_estimate_20260225.json</span></div>
+    </div>
+    <div style="border:1px solid #e5c07b;border-radius:3px;padding:9px 14px;background:#252a33;text-align:left">
+      <div style="color:#e5c07b;font-weight:bold;font-size:11px;margin-bottom:8px">◆ Next steps</div>
+      <div style="color:#5c6370;font-size:11px;line-height:2.2">
+        <div><span style="color:#98c379">python main.py run</span> --profile profiles/web_tier_estimate_20260225.json</div>
+        <div><span style="color:#e5c07b">python main.py run --dry-run</span> --profile profiles/web_tier_estimate_20260225.json</div>
+        <div><span style="color:#61afef">git add</span> profiles/web_tier_estimate_20260225.json &amp;&amp; git commit -m "add web tier"</div>
+      </div>
+    </div>
+  </div>
+</div>`,
+
+preflight_ok: ()=>{
+  const rows=[{s:'Amazon EC2',r:'us-east-1',d:11,ok:11},{s:'Amazon S3',r:'us-east-1',d:8,ok:8},{s:'Amazon RDS for MySQL',r:'us-east-1',d:7,ok:7}];
+  const tbody=rows.map((r,i)=>`<tr style="background:${i%2===0?'transparent':'#252a33'}"><td style="color:#abb2bf">${r.s}</td><td style="color:#61afef;font-size:11px">${r.r}</td><td style="color:#98c379">${r.ok}/${r.d}</td><td style="color:#5c6370">0</td><td>${bdg('✓ ready','gn')}</td></tr>`).join('');
+  return sngP('cy','Preflight — Value Resolution Report',`
+    <div class="spills">
+      ${[{l:'Profile',v:'web_tier_estimate.json',c:'#61afef'},{l:'Services',v:'3',c:'#e5c07b'},{l:'Dimensions',v:'26',c:'#abb2bf'},{l:'Resolved',v:'26',c:'#98c379'},{l:'Unresolved',v:'0',c:'#98c379'}].map(s=>`<div class="spill"><div class="sl">${s.l}</div><div class="sv" style="color:${s.c}">${s.v}</div></div>`).join('')}
+    </div>
+    <table class="dtbl" style="margin-bottom:12px"><thead><tr><th>Service</th><th>Region</th><th>Resolved</th><th>Skipped</th><th>Status</th></tr></thead><tbody>${tbody}</tbody></table>
+    <div style="border:1px solid #98c37944;border-radius:3px;padding:8px 12px;background:#98c37908;margin-bottom:12px">
+      <span style="color:#98c379;font-weight:bold">✓ All required dimensions resolved</span>
+      <span style="color:#5c6370;font-size:11px;margin-left:10px">Ready to launch browser automation</span>
+    </div>
+    ${slist('Proceed?',['Launch browser automation (python main.py run --profile ...)','Abort run'])}
+  `);
+},
+
+preflight_fail: ()=>{
+  const unres=[{s:'Amazon RDS for MySQL',r:'us-east-1',d:'Instance type',t:'COMBOBOX'},{s:'Amazon RDS for MySQL',r:'us-east-1',d:'Deployment option',t:'SELECT'},{s:'Amazon CloudFront',r:'global',d:'Data transfer out',t:'NUMBER'}];
+  const cards=unres.map(u=>`<div style="border:1px solid #e06c7533;border-left:3px solid #e06c75;border-radius:3px;padding:8px 12px;background:#2a1f1f;margin-bottom:8px">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px"><span style="color:#e06c75">✗</span><span style="color:#dcdfe4;font-weight:bold">${u.d}</span>${bdg(u.t,'yw')}${bdg('required','or')}</div>
+    <div style="color:#5c6370;font-size:11px">Service: <span style="color:#abb2bf">${u.s}</span>  ·  Region: <span style="color:#61afef">${u.r}</span></div>
+    <div style="color:#5c6370;font-size:11px;margin-top:3px">Fix: set <span style="color:#56b6c2">user_value</span> in profile, or <span style="color:#e5c07b">--set "Group/Service/${u.d}=&lt;value&gt;"</span></div>
+  </div>`).join('');
+  return sngP('or','✗ Preflight — Resolution Failure',`
+    <div style="border:1px solid #e06c7544;border-radius:3px;padding:8px 12px;background:#e06c7508;margin-bottom:12px">
+      <span style="color:#e06c75;font-weight:bold">✗ Preflight failed</span>
+      <span style="color:#abb2bf;font-size:11px;margin-left:10px">3 required dimension(s) unresolved · Browser will not launch</span>
+    </div>
+    ${cards}
+    <div style="border:1px solid #3e4451;border-radius:3px;padding:8px 12px;background:#21252b;margin-top:6px">
+      <div style="color:#e5c07b;font-weight:bold;font-size:11px;margin-bottom:6px">◆ Resolution options</div>
+      <div style="color:#5c6370;font-size:11px;line-height:2.1">
+        <div>1. Edit profile JSON: set <span style="color:#56b6c2">user_value</span> on each unresolved dimension</div>
+        <div>2. Use <span style="color:#e5c07b">--set "Group/Service/Dim=Value"</span> flag at runtime</div>
+        <div>3. Re-run <span style="color:#98c379">python main.py build</span> to recreate the profile interactively</div>
+        <div>4. Use <span style="color:#c678dd">prompt_message</span> to mark dimension for interactive entry at run start</div>
+      </div>
+    </div>
+  `);
+},
+
+running: ()=>{
+  const svcs=[{n:'Amazon EC2',st:'done',d:11,f:11},{n:'Amazon S3',st:'active',d:8,f:3},{n:'Amazon RDS',st:'queued',d:7,f:0}];
+  const steps=[{done:true,t:'Navigate to https://calculator.aws/#/estimate'},{done:true,t:'Create group: Production'},{done:true,t:'Add service: Amazon EC2'},{done:true,t:'Set region: US East (N. Virginia) — us-east-1'},{done:true,t:'Fill 11 dimensions — Amazon EC2'},{done:true,t:'Add service: Amazon S3'},{done:true,t:'Set region: US East (N. Virginia) — us-east-1'},{done:false,t:'Fill dimension: S3 Standard storage ···',act:true}];
+  const bars=svcs.map(s=>{
+    const ic=s.st==='done'?'<span style="color:#98c379">✓</span>':s.st==='active'?'<span style="color:#56b6c2">⟳</span>':'<span style="color:#5c6370">○</span>';
+    const bar=s.st!=='queued'?`<div class="sbar-t"><div style="width:${Math.round(s.f/s.d*100)}%;height:100%;border-radius:2px;background:${s.st==='done'?'#98c379':'#56b6c2'}"></div></div>`:'';
+    return `<div class="sbar ${s.st}"><div style="display:flex;align-items:center;gap:6px;margin-bottom:3px">${ic}<span style="color:${s.st==='queued'?'#5c6370':'#abb2bf'};font-size:11px">${s.n}</span></div>${bar}<div style="color:#5c6370;font-size:10px;margin-top:2px">${s.st==='queued'?'queued':`${s.f}/${s.d} dims`}</div></div>`;
+  }).join('');
+  const log=steps.map(s=>`<div class="step-r ${s.act?'act':s.done?'done':''}"><span class="si">${s.act?'▶':s.done?'✓':' '}</span><span class="st">${s.t}</span></div>`).join('');
+  return sngP('cy','▶ Browser Automation — Live',`
+    <div style="display:flex;gap:8px;margin-bottom:12px;flex-shrink:0">${bars}</div>
+    <div style="border-top:1px solid #3e4451;padding-top:8px;flex:1;overflow:auto">${log}</div>
+    <div style="border-top:1px solid #3e4451;padding-top:6px;margin-top:6px;display:flex;align-items:center;gap:8px;flex-shrink:0">
+      <span style="width:10px;height:10px;border-radius:50%;background:#56b6c2;display:inline-block;animation:pulse 1s ease-in-out infinite"></span>
+      <span style="color:#56b6c2;font-size:11px">Browser running — do not close terminal ···</span>
+      <span style="color:#5c6370;font-size:11px;margin-left:auto">Ctrl+C to abort</span>
+    </div>
+  `);
+},
+
+partial_fail: ()=>{
+  const svcs=[{n:'Amazon EC2',st:'success',f:11,sk:0,fl:0,err:null},{n:'Amazon S3',st:'partial_success',f:6,sk:0,fl:2,err:{step:'find_in_page',dim:'S3 Glacier storage',ss:'s3_glacier_fail.png'}},{n:'Amazon RDS',st:'success',f:7,sk:0,fl:0,err:null}];
+  const cards=svcs.map(s=>{
+    const sc=s.st==='success'?'#98c379':s.st==='partial_success'?'#e5c07b':'#e06c75';
+    const ic=s.st==='success'?'✓':'!';
+    const eb=s.err?`<div style="border:1px solid #e06c7533;border-radius:3px;padding:5px 8px;background:#2a1f1f;font-size:11px;margin-top:4px"><div style="color:#e06c75;margin-bottom:2px">✗ Failed step: <span style="color:#e5c07b">${s.err.step}</span>  Dimension: <span style="color:#e5c07b">${s.err.dim}</span></div><div style="color:#5c6370">Label not found after 2 retries · Screenshot: outputs/screenshots/${s.err.ss}</div></div>`:'';
+    return `<div style="border:1px solid ${sc}33;border-left:3px solid ${sc};border-radius:3px;padding:8px 12px;margin-bottom:8px"><div style="display:flex;align-items:center;gap:8px;margin-bottom:${s.err?4:0}px"><span style="color:${sc};font-size:13px">${ic}</span><span style="color:#abb2bf;font-weight:bold">${s.n}</span>${bdg(s.st,s.st==='success'?'gn':s.st==='partial_success'?'yw':'or')}<span style="color:#5c6370;font-size:11px;margin-left:auto">filled:${s.f} skip:${s.sk} fail:${s.fl}</span></div>${eb}</div>`;
+  }).join('');
+  return sngP('yw','! Run Complete — partial_success',`
+    <div style="border:1px solid #e5c07b44;border-radius:3px;padding:8px 12px;background:#e5c07b08;margin-bottom:12px">
+      <span style="color:#e5c07b;font-weight:bold">! partial_success</span>
+      <span style="color:#abb2bf;font-size:11px;margin-left:10px">2 of 3 services fully filled · 1 partial · 2 dims failed</span>
+    </div>
+    ${cards}
+    <div style="border:1px solid #3e4451;border-radius:3px;padding:8px 12px;background:#21252b;margin-top:6px">
+      <div style="color:#e5c07b;font-weight:bold;font-size:11px;margin-bottom:6px">◆ Artifacts written</div>
+      <div style="color:#5c6370;font-size:11px;line-height:2">
+        <div>outputs/<span style="color:#56b6c2">run_20260225_143512.json</span> — full execution record</div>
+        <div>outputs/screenshots/<span style="color:#e5c07b">s3_glacier_fail.png</span> — failure evidence</div>
+      </div>
+    </div>
+  `);
+},
+
+run_success: ()=>`<div class="fs">
+  <div style="text-align:center;max-width:520px">
+    <div class="sucircle">✓</div>
+    <div style="color:#98c379;font-size:17px;font-weight:bold;margin-bottom:6px;letter-spacing:1px">[✓] Run complete — success</div>
+    <div style="color:#5c6370;font-size:12px;margin-bottom:22px">3 services · 26 dimensions filled · 0 failed · 0 skipped</div>
+    <div style="border:1px solid #3e4451;border-radius:4px;overflow:hidden;margin-bottom:16px">
+      ${[{k:'Calculator URL',v:'https://calculator.aws/#/estimate/...',c:'#56b6c2'},{k:'Run ID',v:'run_20260225_143512',c:'#61afef'},{k:'Duration',v:'3m 42s',c:'#e5c07b'},{k:'Artifact',v:'outputs/run_20260225_143512.json',c:'#98c379'}].map((r,i)=>`<div class="irow" style="background:${i%2===0?'#21252b':'#252a33'};border-top:${i>0?'1px solid #3e4451':'0'}"><span class="k">${r.k}</span><span style="color:${r.c};font-size:12px">${r.v}</span></div>`).join('')}
+    </div>
+    <div style="border:1px solid #e5c07b;border-radius:3px;padding:9px 14px;background:#252a33;text-align:left">
+      <div style="color:#e5c07b;font-weight:bold;font-size:11px;margin-bottom:8px">◆ Next steps</div>
+      <div style="color:#5c6370;font-size:11px;line-height:2.2">
+        <div>Open the calculator URL above to review your estimate</div>
+        <div>Inspect <span style="color:#56b6c2">outputs/run_20260225_143512.json</span> for the full execution record</div>
+        <div>Use <span style="color:#98c379">--set</span> to re-run with modified values without editing the profile</div>
+      </div>
+    </div>
+  </div>
+</div>`,
+
+artifact: ()=>{
+  const meta=[{k:'schema_version',v:'2.0'},{k:'run_id',v:'run_20260225_143512'},{k:'profile_name',v:'web_tier_estimate_20260225.json'},{k:'run_mode',v:'fill'},{k:'status',v:'success',vc:'#98c379'},{k:'started_at',v:'2026-02-25T14:31:30Z'},{k:'completed_at',v:'2026-02-25T14:35:12Z'},{k:'duration',v:'3m 42s',vc:'#e5c07b'},{k:'calculator_url',v:'https://calculator.aws/#/estimate/...',vc:'#56b6c2'}];
+  const svcs=[{g:'Production',n:'Amazon EC2',r:'us-east-1',st:'success',f:11,sk:0,fl:0},{g:'Production',n:'Amazon S3',r:'us-east-1',st:'success',f:8,sk:0,fl:0},{g:'Production',n:'Amazon RDS',r:'us-east-1',st:'success',f:7,sk:0,fl:0}];
+  return sngP('bl','◀ Run Artifact — outputs/run_20260225_143512.json',`
+    <div style="display:flex;gap:14px;height:100%">
+      <div style="width:305px;flex-shrink:0;overflow-y:auto">
+        <div style="color:#e5c07b;font-weight:bold;font-size:11px;margin-bottom:8px">◆ Run Metadata</div>
+        ${meta.map(m=>`<div style="display:flex;padding:3px 0;border-bottom:1px solid #3e4451"><span style="color:#5c6370;font-size:11px;width:112px;flex-shrink:0">${m.k}</span><span style="color:${m.vc||'#abb2bf'};font-size:11px">${m.v}</span></div>`).join('')}
+        <div style="margin-top:12px;border:1px solid #98c37944;border-radius:3px;padding:7px 10px;background:#98c37908">
+          <div style="display:flex;gap:20px">${[{l:'Filled',v:26,c:'#98c379'},{l:'Skipped',v:0,c:'#5c6370'},{l:'Failed',v:0,c:'#e06c75'}].map(s=>`<div><div style="color:${s.c};font-weight:bold;font-size:14px;text-align:center">${s.v}</div><div style="color:#5c6370;font-size:10px;text-align:center">${s.l}</div></div>`).join('')}</div>
+        </div>
+      </div>
+      <div style="flex:1;overflow-y:auto">
+        <div style="color:#e5c07b;font-weight:bold;font-size:11px;margin-bottom:8px">◆ Per-Service Results</div>
+        <table class="dtbl"><thead><tr><th>Group</th><th>Service</th><th>Region</th><th>Status</th><th style="text-align:center">Fill</th><th style="text-align:center">Skip</th><th style="text-align:center">Fail</th></tr></thead>
+        <tbody>${svcs.map((s,i)=>`<tr style="background:${i%2===0?'transparent':'#252a33'}"><td style="color:#5c6370;font-size:11px">${s.g}</td><td style="color:#abb2bf">${s.n}</td><td style="color:#61afef;font-size:11px">${s.r}</td><td>${bdg(s.st,'gn')}</td><td style="color:#98c379;text-align:center">${s.f}</td><td style="color:#5c6370;text-align:center">${s.sk}</td><td style="color:${s.fl>0?'#e06c75':'#5c6370'};text-align:center">${s.fl}</td></tr>`).join('')}</tbody></table>
+      </div>
+    </div>
+  `);
+},
+
+dryrun: ()=>sngP('yw','! Dry-Run — Preflight Validation Only',`
+  <div style="border:1px solid #e5c07b44;border-radius:3px;padding:8px 12px;background:#e5c07b08;margin-bottom:14px">
+    <span style="color:#e5c07b;font-weight:bold">! Dry-run mode</span>
+    <span style="color:#5c6370;font-size:11px;margin-left:10px">Profile loaded and validated — browser will not launch</span>
+  </div>
+  <div style="margin-bottom:14px">
+    <div style="color:#5c6370;font-size:11px;margin-bottom:4px">Command executed:</div>
+    <div style="background:#252a33;border:1px solid #3e4451;border-radius:3px;padding:6px 10px;font-size:12px">
+      <span style="color:#56b6c2">python main.py run</span>
+      <span style="color:#98c379"> --profile</span> profiles/web_tier_estimate.json
+      <span style="color:#e5c07b"> --dry-run</span>
+    </div>
+  </div>
+  <div style="color:#e5c07b;font-weight:bold;font-size:11px;margin-bottom:8px">◆ Resolution Summary</div>
+  <table class="dtbl" style="margin-bottom:14px"><thead><tr><th>Key</th><th>Value</th></tr></thead><tbody>
+    ${[['Project','Web Tier Estimate'],['Groups','1'],['Services','3'],['Dimensions (total)','26'],['Resolved','26'],['Unresolved required','0 ✓'],['Skipped optional','0']].map((r,i)=>`<tr style="background:${i%2===0?'transparent':'#252a33'}"><td style="color:#abb2bf">${r[0]}</td><td style="color:${r[0]==='Unresolved required'?'#98c379':'#abb2bf'}">${r[1]}</td></tr>`).join('')}
+  </tbody></table>
+  <div style="color:#98c379;font-size:11px;margin-bottom:4px">✓ Profile is valid — all required dimensions are resolved.</div>
+  <div style="color:#5c6370;font-size:11px">Remove <span style="color:#e5c07b">--dry-run</span> to launch browser automation.</div>
+`),
+
+explore: ()=>{
+  const steps=[{done:true,t:'Select service to explore: Amazon ECS'},{done:true,t:'Launch browser → https://calculator.aws/#/estimate'},{done:true,t:'Search and open Amazon ECS service card'},{done:true,t:'Set region: US East (N. Virginia)'},{done:false,t:'Scanning dimensions via CDP ···',act:true}];
+  const dims=[{k:'Cluster type',t:'RADIO',opts:['AWS Fargate','EC2 Instances'],v:'AWS Fargate'},{k:'Number of tasks or pods',t:'NUMBER',opts:[],v:'10'},{k:'Duration of each task',t:'NUMBER',opts:[],v:''},{k:'Operating system/Architecture',t:'SELECT',opts:['Linux/X86_64','Linux/ARM64'],v:''},{k:'CPU architecture',t:'SELECT',opts:['x86','ARM'],v:''}];
+  const log=steps.map(s=>`<div class="step-r ${s.act?'act':s.done?'done':''}"><span class="si">${s.act?'▶':s.done?'✓':' '}</span><span class="st">${s.t}</span></div>`).join('');
+  const tbody=dims.map((d,i)=>`<tr style="background:${i%2===0?'transparent':'#252a33'}"><td style="color:#abb2bf">${d.k}</td><td>${bdg(d.t,d.t==='NUMBER'?'cy':'yw')}</td><td style="color:#5c6370;font-size:11px">${d.opts.length?d.opts.slice(0,2).join(', ')+(d.opts.length>2?' …':''):'-'}</td><td style="color:${d.v?'#98c379':'#5c6370'}">${d.v||'—'}</td></tr>`).join('');
+  return sngP('cy','⟳ Explore Mode — Scanning Amazon ECS',`
+    <div style="border:1px solid #56b6c244;border-radius:3px;padding:6px 12px;background:#56b6c208;margin-bottom:12px">
+      <span style="color:#56b6c2;font-weight:bold">⟳ Explore Mode active</span>
+      <span style="color:#5c6370;font-size:11px;margin-left:10px">Scanning Amazon ECS — live browser session open</span>
+    </div>
+    <div style="display:flex;gap:14px;height:calc(100% - 80px)">
+      <div style="width:240px;flex-shrink:0;overflow-y:auto">
+        <div style="color:#e5c07b;font-weight:bold;font-size:11px;margin-bottom:8px">◆ Scan Progress</div>
+        ${log}
+      </div>
+      <div style="flex:1;overflow-y:auto">
+        <div style="color:#e5c07b;font-weight:bold;font-size:11px;margin-bottom:8px">◆ Discovered Dimensions (5 so far)</div>
+        <table class="dtbl"><thead><tr><th>Dimension Key</th><th>Type</th><th>Options (preview)</th><th>Sampled Value</th></tr></thead><tbody>${tbody}</tbody></table>
+        <div style="color:#5c6370;font-size:11px;margin-top:8px">Scan in progress · More dimensions may be discovered ···</div>
+        <div style="border:1px solid #3e4451;border-radius:3px;padding:8px 12px;background:#21252b;margin-top:12px">
+          <div style="color:#e5c07b;font-weight:bold;font-size:11px;margin-bottom:6px">◆ After scan completes</div>
+          <div style="color:#5c6370;font-size:11px;line-height:2.1">
+            <div>Draft written to <span style="color:#56b6c2">config/services/generated/amazon_ecs_draft.json</span></div>
+            <div>Run <span style="color:#98c379">python main.py promote</span> to review &amp; add to service catalog</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `);
+},
+
+};
+
+/* ═══ APP LOGIC ═══ */
+let idx = 0;
+
+function renderSidebar() {
+  const el = document.getElementById('sb-list');
+  const grps = [...new Set(SCREENS.map(s=>s.group))];
+  el.innerHTML = grps.map(g=>{
+    const items = SCREENS.filter(s=>s.group===g).map(s=>{
+      const i = SCREENS.indexOf(s);
+      return `<div class="sb-item${i===idx?' active':''}" data-i="${i}">${s.label}</div>`;
+    }).join('');
+    return `<div class="sb-grp">${g}</div>${items}`;
+  }).join('');
+  el.querySelectorAll('.sb-item').forEach(el=>{
+    el.addEventListener('click',()=>{idx=+el.dataset.i;render();});
+  });
+}
+
+function render() {
+  const s = SCREENS[idx];
+  document.getElementById('t-label').textContent = s.label;
+  document.getElementById('t-count').textContent = `${idx+1} / ${SCREENS.length}`;
+  document.getElementById('btn-p').disabled = idx===0;
+  document.getElementById('btn-n').disabled = idx===SCREENS.length-1;
+  document.getElementById('canvas').innerHTML = `<div class="screen on">${(R[s.id]||R.splash)()}</div>`;
+  renderSidebar();
+}
+
+document.getElementById('btn-p').addEventListener('click',()=>{if(idx>0){idx--;render();}});
+document.getElementById('btn-n').addEventListener('click',()=>{if(idx<SCREENS.length-1){idx++;render();}});
+document.addEventListener('keydown',e=>{
+  if(e.key==='ArrowLeft'&&idx>0){idx--;render();}
+  if(e.key==='ArrowRight'&&idx<SCREENS.length-1){idx++;render();}
+});
+
+render();
+</script>
+</body>
+</html>

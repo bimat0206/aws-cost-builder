@@ -191,6 +191,46 @@ describe('Profile Loader — F-L2: JSON Parse Errors', () => {
     });
 });
 
+// ─── HCL & Sections Parsing ─────────────────────────────────────────────────
+describe('Profile Loader — HCL parsing with sections', () => {
+    const filename = 'with_section.hcl';
+    const hclContent = `schema_version = "3.0"
+project_name = "HCL Test"
+
+group "g1" {
+  label = "Group1"
+
+  service "s3" "bucket" {
+    region = "us-east-1"
+    human_label = "My Bucket"
+
+    dimension "Storage amount" = 100
+
+    section "Advanced" {
+      dimension "Requests" = 50
+    }
+  }
+}
+`;
+
+    beforeEach(async () => {
+        await writeFixture(filename, hclContent);
+    });
+
+    afterEach(async () => {
+        await removeFixture(filename);
+    });
+
+    it('successfully loads HCL with section and populates dimensions', async () => {
+        const filePath = path.join(FIXTURES_DIR, filename);
+        const profile = await loadProfile(filePath, testCatalog, testRegionMap);
+        expect(profile.project_name).toBe('HCL Test');
+        expect(profile.groups[0].services[0].dimensions['Storage amount'].user_value).toBe(100);
+        // the section value should also be merged into dimensions by loader / model
+        expect(profile.groups[0].services[0].dimensions['Requests'].user_value).toBe(50);
+    });
+});
+
 // ─── F-L3: Schema Validation Error Tests ─────────────────────────────────────
 
 describe('Profile Loader — F-L3: Schema Validation Errors', () => {
@@ -262,6 +302,25 @@ describe('Profile Loader — F-L4: Cross-Field Validation Errors', () => {
             }],
         };
         const filePath = await writeFixture('cross_error.json', profile);
+        await expect(loadProfile(filePath, testCatalog, testRegionMap))
+            .rejects
+            .toThrow(ProfileCrossValidationError);
+    });
+
+    it('throws when a section dimension key is not in catalog', async () => {
+        const profile = {
+            ...validProfile,
+            groups: [{
+                ...validProfile.groups[0],
+                services: [{
+                    ...validProfile.groups[0].services[0],
+                    sections: [
+                        { section_name: 'Sec', dimensions: { 'BadKey': { user_value: 1, default_value: null } } }
+                    ],
+                }],
+            }],
+        };
+        const filePath = await writeFixture('cross_section_error.json', profile);
         await expect(loadProfile(filePath, testCatalog, testRegionMap))
             .rejects
             .toThrow(ProfileCrossValidationError);

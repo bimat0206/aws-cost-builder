@@ -9,7 +9,8 @@
  *   assignment   := IDENT "=" value
  *   group        := "group" STRING "{" (label_stmt | group | service)* "}"
  *   label_stmt   := "label" "=" STRING
- *   service      := "service" STRING STRING "{" (region_stmt | human_label_stmt | dimension)* "}"
+ *   service      := "service" STRING STRING "{" (region_stmt | human_label_stmt | dimension | section)* "}"
+ *   section      := "section" STRING "{" dimension* "}"
  *   dimension    := "dimension" STRING padding? "=" value
  *   value        := STRING | NUMBER | BOOL | "null"
  */
@@ -191,6 +192,41 @@ class Parser {
     }
 
     /**
+     * Parse a section block inside a service:
+     *   section "Section Name" {
+     *       dimension "..." = ...
+     *   }
+     * Returns { section_name, dimensions }
+     */
+    parseSection() {
+        this.expectValue('section');
+        const nameTok = this.expect(TK.STRING);
+        this.expect(TK.LBRACE);
+        const section = { section_name: nameTok.value, dimensions: {} };
+
+        while (!this.isAtRBrace()) {
+            const tok = this.peek();
+            if (tok.type === TK.IDENT && tok.value === 'dimension') {
+                const { key, value } = this.parseDimension();
+                section.dimensions[key] = {
+                    user_value: value,
+                    default_value: null,
+                };
+            } else {
+                // skip unknown or assignments inside section
+                this.advance();
+                if (this.peek().type === TK.EQ) {
+                    this.advance();
+                    this.parseValue();
+                }
+            }
+        }
+
+        this.expect(TK.RBRACE);
+        return section;
+    }
+
+    /**
      * Parse a service block:
      *   service "service_name" "slug" {
      *     region      = "..."
@@ -209,6 +245,7 @@ class Parser {
             human_label: slugTok.value,
             region: 'global',
             dimensions: {},
+            sections: [],
         };
 
         while (!this.isAtRBrace()) {
@@ -227,6 +264,9 @@ class Parser {
                 this.advance();
                 this.expect(TK.EQ);
                 service.human_label = this.parseValue();
+            } else if (tok.type === TK.IDENT && tok.value === 'section') {
+                const sec = this.parseSection();
+                if (sec) service.sections.push(sec);
             } else {
                 // Unknown statement — skip
                 this.advance();

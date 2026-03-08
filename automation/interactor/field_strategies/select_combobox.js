@@ -8,7 +8,7 @@
  * @returns {string}
  */
 function normalize(value) {
-  return String(value || '').replace(/[^a-z0-9]+/g, '').trim().toLowerCase();
+  return String(value || '').replace(/[^a-z0-9-/]+/gi, '').trim().toLowerCase();
 }
 
 /**
@@ -110,9 +110,17 @@ export async function fillCombobox(page, element, value) {
   const text = String(value ?? '');
   
   // Fallback for cases where locator anchored to nearby label/description is handled in findElement tier 4
+  await element.scrollIntoViewIfNeeded().catch(() => {});
   await element.click();
   await element.fill(text);
-  await page.waitForTimeout(300);
+  
+  // Wait for dynamic options to render (debounce)
+  try {
+    const listbox = page.locator('[role="listbox"]').first();
+    await listbox.waitFor({ state: 'visible', timeout: 2000 });
+  } catch {
+    await page.waitForTimeout(500);
+  }
 
   // Prefer selecting an explicit option if dropdown opens.
   try {

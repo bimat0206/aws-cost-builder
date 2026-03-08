@@ -103,6 +103,46 @@ export class Dimension {
 }
 
 /**
+ * Section model - groups dimensions logically (mirrors UI sections).
+ */
+export class Section {
+    /**
+     * @param {Object} params
+     * @param {string} params.section_name
+     * @param {Object.<string, Dimension>} [params.dimensions={}] 
+     */
+    constructor({ section_name, dimensions = {} }) {
+        this.section_name = section_name;
+        this.dimensions = dimensions;
+    }
+
+    /**
+     * Creates a Section from a plain object.
+     * @param {Object} obj
+     * @returns {Section}
+     */
+    static fromObject(obj) {
+        const dims = {};
+        for (const [k, v] of Object.entries(obj.dimensions || {})) {
+            dims[k] = Dimension.fromObject({ key: k, ...v });
+        }
+        return new Section({ section_name: obj.section_name, dimensions: dims });
+    }
+
+    /**
+     * Convert the section to a plain object.
+     * @returns {Object}
+     */
+    toObject() {
+        const out = { section_name: this.section_name, dimensions: {} };
+        for (const [k, v] of Object.entries(this.dimensions)) {
+            out.dimensions[k] = v.toObject();
+        }
+        return out;
+    }
+}
+
+/**
  * Service model - represents an AWS service within a group.
  */
 export class Service {
@@ -112,19 +152,24 @@ export class Service {
      * @param {string} params.human_label
      * @param {string} params.region
      * @param {Object.<string, Dimension>} [params.dimensions={}]
+     * @param {Section[]} [params.sections=[]]  Optional sections grouping dimensions
      */
-    constructor({ service_name, human_label, region, dimensions = {} }) {
+    constructor({ service_name, human_label, region, dimensions = {}, sections = [] }) {
         this.service_name = service_name;
         this.human_label = human_label;
         this.region = region;
-        this.dimensions = dimensions;
+        // merge any section dims into top‑level dimensions for backwards compatibility
+        this.dimensions = { ...dimensions };
+        for (const sec of sections || []) {
+            for (const [key, dim] of Object.entries(sec.dimensions || {})) {
+                // if duplicate keys exist we'll let later code catch it during validation
+                this.dimensions[key] = dim;
+            }
+        }
+        // store raw sections as well in case callers want to inspect structured data
+        this.sections = sections;
     }
 
-    /**
-     * Creates a Service from a plain object.
-     * @param {Object} obj - Plain object with service properties
-     * @returns {Service}
-     */
     static fromObject(obj) {
         const dimensions = Object.create(null);
         if (obj.dimensions) {
@@ -134,11 +179,20 @@ export class Service {
                 dimensions[key] = Dimension.fromObject({ key, ...dimObj });
             }
         }
+        const sections = (obj.sections || []).map(sec => {
+            const secDims = Object.create(null);
+            for (const [k, v] of Object.entries(sec.dimensions || {})) {
+                secDims[k] = Dimension.fromObject({ key: k, ...v });
+            }
+            return { section_name: sec.section_name, dimensions: secDims };
+        });
+
         return new Service({
             service_name: obj.service_name,
             human_label: obj.human_label,
             region: obj.region,
-            dimensions: Object.assign({}, dimensions)
+            dimensions: Object.assign({}, dimensions),
+            sections,
         });
     }
 
@@ -151,12 +205,22 @@ export class Service {
         for (const [key, dim] of Object.entries(this.dimensions)) {
             dimensionsObj[key] = dim.toObject();
         }
-        return {
+        const obj = {
             service_name: this.service_name,
             human_label: this.human_label,
             region: this.region,
             dimensions: dimensionsObj
         };
+        if (this.sections && this.sections.length > 0) {
+            obj.sections = this.sections.map(sec => {
+                const dims = {};
+                for (const [k, v] of Object.entries(sec.dimensions || {})) {
+                    dims[k] = v.toObject();
+                }
+                return { section_name: sec.section_name, dimensions: dims };
+            });
+        }
+        return obj;
     }
 
     /**

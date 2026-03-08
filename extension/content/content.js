@@ -101,6 +101,43 @@ function findLabel(el) {
 
 // ─── Page scanners ────────────────────────────────────────────────────────────
 
+const SERVICE_NAME_PREFIXES = [
+  /^Create estimate:\s*Configure\s+/i,
+  /^Create estimate:\s*/i,
+  /^Configure\s+/i,
+];
+
+const SERVICE_NAME_ALIASES = [
+  { pattern: /\bamazon ec2\b|\bec2\b/i, canonical: 'Amazon EC2' },
+  { pattern: /\bamazon s3\b|\bs3\b/i, canonical: 'Amazon S3' },
+  { pattern: /\baws lambda\b|\blambda\b/i, canonical: 'AWS Lambda' },
+];
+
+function normalizeServiceName(rawName) {
+  let name = String(rawName || '').trim().replace(/\s+/g, ' ');
+  for (const prefix of SERVICE_NAME_PREFIXES) {
+    name = name.replace(prefix, '');
+  }
+
+  // Remove common title suffixes if they leak through.
+  name = name
+    .replace(/\s*[|\-–]\s*AWS Pricing Calculator.*$/i, '')
+    .replace(/\s*-\s*Configure\s*$/i, '')
+    .trim();
+
+  const lower = name.toLowerCase();
+  for (const alias of SERVICE_NAME_ALIASES) {
+    if (alias.pattern.test(lower)) return alias.canonical;
+  }
+
+  return name || 'Unknown Service';
+}
+
+function isServiceConfigPage() {
+  const route = `${window.location.pathname}${window.location.hash}`.toLowerCase();
+  return route.includes('/createcalculator/');
+}
+
 function detectServiceName() {
   const candidates = [
     '[class*="serviceTitle"]',
@@ -114,10 +151,10 @@ function detectServiceName() {
     const el = document.querySelector(sel);
     if (el) {
       const text = el.textContent.trim().replace(/\s+/g, ' ');
-      if (text && text.length > 2) return text;
+      if (text && text.length > 2) return normalizeServiceName(text);
     }
   }
-  return document.title.replace(/\s*[|\-–]\s*AWS Pricing Calculator.*$/i, '').trim() || 'Unknown Service';
+  return normalizeServiceName(document.title);
 }
 
 function detectRegion() {
@@ -235,6 +272,9 @@ function scanFields() {
 }
 
 function captureCurrentPage() {
+  if (!isServiceConfigPage()) {
+    return { service_name: 'Unknown Service', region: 'us-east-1', dimensions: {} };
+  }
   const service_name = detectServiceName();
   const region = detectRegion();
   const rawFields = scanFields();
@@ -374,11 +414,17 @@ function triggerAutoCapture() {
   captureDebounceTimer = setTimeout(() => {
     captureScheduled = false;
 
+    // Only capture from real service configuration routes.
+    if (!isServiceConfigPage()) {
+      sendProgress('idle');
+      return;
+    }
+
     // Only capture if there are visible form fields (service config is open)
-    const hasFields = document.querySelectorAll(
+    const hasFields = Array.from(document.querySelectorAll(
       'input:not([type="hidden"]):not([type="submit"]):not([type="button"]):not([type="search"]), ' +
       'select, [role="combobox"], [role="spinbutton"]'
-    ).length > 0;
+    )).some(isVisible);
 
     if (!hasFields) {
       sendProgress('idle');
@@ -459,6 +505,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
   if (message.action === 'capture') {
     try {
+      if (!isServiceConfigPage()) {
+        sendResponse({
+          success: false,
+          error: 'Not on a service config page. Open a specific service under #/createCalculator/... first.',
+        });
+        return true;
+      }
       const data = captureCurrentPage();
       sendResponse({ success: true, data });
     } catch (err) {

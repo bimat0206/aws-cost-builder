@@ -16,7 +16,7 @@ import { ProfileDocument } from '../models/profile.js';
 // Canonical key order for each object type
 const PROFILE_KEY_ORDER = ['schema_version', 'project_name', 'description', 'groups'];
 const GROUP_KEY_ORDER   = ['group_name', 'label', 'services', 'groups'];
-const SERVICE_KEY_ORDER = ['service_name', 'human_label', 'region', 'dimensions'];
+const SERVICE_KEY_ORDER = ['service_name', 'human_label', 'region', 'dimensions', 'sections'];
 const DIM_KEY_ORDER     = ['user_value', 'default_value', 'unit', 'prompt_message',
                            'required', 'resolved_value', 'resolution_source', 'resolution_status'];
 
@@ -54,7 +54,17 @@ function stableGroup(g) {
         for (const k of sortedDimKeys) {
             dimensions[k] = reorder(s.dimensions[k], DIM_KEY_ORDER);
         }
-        return reorder({ ...s, dimensions }, SERVICE_KEY_ORDER);
+        const out = reorder({ ...s, dimensions }, SERVICE_KEY_ORDER);
+        if (s.sections && s.sections.length > 0) {
+            // ensure section dimensions are sorted as well
+            out.sections = s.sections.map(sec => {
+                const keys = Object.keys(sec.dimensions || {}).sort();
+                const dims = {};
+                for (const k of keys) dims[k] = reorder(sec.dimensions[k], DIM_KEY_ORDER);
+                return { section_name: sec.section_name, dimensions: dims };
+            });
+        }
+        return out;
     });
 
     const obj = { ...g, services };

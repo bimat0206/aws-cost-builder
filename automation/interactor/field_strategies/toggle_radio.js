@@ -78,26 +78,30 @@ async function resolveToggleTarget(page, locator, dimensionKey) {
 
   for (const selector of selectors) {
     try {
-      const child = await locator.$(selector);
-      if (child) {
-        await child.waitForElementState('visible', { timeout: 1000 });
-        return child;
+      const child = page.locator(selector).first();
+      await child.waitFor({ state: 'attached', timeout: 500 }).catch(() => {});
+      const count = await child.count().catch(() => 0);
+      if (count > 0) {
+        await child.waitFor({ state: 'visible', timeout: 1000 }).catch(() => {});
+        return await child.elementHandle() || locator;
       }
     } catch {}
   }
 
   const escapedKey = escapeCssString(dimensionKey);
   try {
-    const direct = await page.$(`
+    const direct = page.locator(`
       input[type='checkbox'][aria-label*="${escapedKey}" i], 
       [role='switch'][aria-label*="${escapedKey}" i], 
       [role='checkbox'][aria-label*="${escapedKey}" i], 
       button[aria-pressed][aria-label*="${escapedKey}" i], 
       button[aria-expanded][aria-label*="${escapedKey}" i]
-    `);
-    if (direct) {
-      await direct.waitForElementState('visible', { timeout: 1000 }).catch(() => {});
-      return direct;
+    `).first();
+    await direct.waitFor({ state: 'attached', timeout: 500 }).catch(() => {});
+    const count = await direct.count().catch(() => 0);
+    if (count > 0) {
+      await direct.waitFor({ state: 'visible', timeout: 1000 }).catch(() => {});
+      return await direct.elementHandle() || locator;
     }
   } catch {}
 
@@ -141,32 +145,40 @@ export async function fillToggle(page, element, dimensionKey, value) {
 export async function fillRadio(page, dimensionKey, value) {
   const text = String(value ?? '');
   
-  // Try to locate the radio by its label text within a fieldset
-  try {
-    const selector = `input[type='radio'][value='${text}']`;
-    const radio = page.locator(selector).first();
-    await radio.waitFor({ state: 'visible', timeout: 2000 });
-    await radio.click();
-    return;
-  } catch {}
-
-  // Fallback
+  // Cloudscape + Native fallback selectors
   const selectors = [
-    `[role="radio"][aria-label="${text}"]`,
-    `[role="radio"]:has-text("${text}")`,
-    `label:has-text("${text}")`,
-    `text="${text}"`,
+    `[role="radio"][aria-label*="${escapeCssString(text)}" i]`,
+    `label:has-text("${escapeCssString(text)}") + input[type="radio"]`,
+    `input[type="radio"][value="${escapeCssString(text)}" i]`,
+    `[role="radio"]:has-text("${escapeCssString(text)}")`,
   ];
 
   for (const selector of selectors) {
     try {
-      const node = await page.$(selector);
-      if (node) {
+      const node = page.locator(selector).first();
+      await node.waitFor({ state: 'attached', timeout: 500 }).catch(() => {});
+      const count = await node.count().catch(() => 0);
+      if (count > 0) {
+        await node.waitFor({ state: 'visible', timeout: 1500 }).catch(() => {});
+        await node.scrollIntoViewIfNeeded().catch(() => {});
         await node.click();
         return;
       }
     } catch {}
   }
+
+  // Final fallback using getByText proximity up tree
+  try {
+    const node = page.getByText(text, { exact: false }).first();
+    await node.waitFor({ state: 'visible', timeout: 1000 }).catch(() => {});
+    const radio = node.locator('xpath=./ancestor-or-self::label//input[type="radio"] | ./ancestor-or-self::*[@role="radio"]').first();
+    const count = await radio.count().catch(() => 0);
+    if (count > 0) {
+      await radio.scrollIntoViewIfNeeded().catch(() => {});
+      await radio.click();
+      return;
+    }
+  } catch {}
 
   throw new Error(`[E-FIELD-003] RADIO option '${text}' for dimension '${dimensionKey}' not found.`);
 }

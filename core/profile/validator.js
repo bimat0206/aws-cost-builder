@@ -116,10 +116,21 @@ export function validateCrossFields(profileData, catalog, regionMap) {
 
         // F-L4-03: each dimension key must be defined for this service
         const catalogKeys = new Set(catalogEntry.dimensions.map(d => d.key));
+        // validate top-level dimensions
         for (const dimKey of Object.keys(service.dimensions || {})) {
             if (!catalogKeys.has(dimKey)) {
                 errors.push(`  [cross-field] ${loc}.dimensions["${dimKey}"]: key not defined for service "${service.service_name}"`);
             }
+        }
+        // validate section dimensions if present
+        if (service.sections && Array.isArray(service.sections)) {
+            service.sections.forEach((sec, idx) => {
+                for (const dimKey of Object.keys(sec.dimensions || {})) {
+                    if (!catalogKeys.has(dimKey)) {
+                        errors.push(`  [cross-field] ${loc}.sections[${idx}].dimensions["${dimKey}"]: key not defined for service "${service.service_name}"`);
+                    }
+                }
+            });
         }
     }
 
