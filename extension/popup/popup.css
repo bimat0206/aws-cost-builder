@@ -84,6 +84,30 @@ body {
   flex-shrink: 0;
 }
 
+/* Pin / pop-out button */
+.btn-pin {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  border-radius: 5px;
+  padding: 3px 6px;
+  font-size: 13px;
+  cursor: pointer;
+  flex-shrink: 0;
+  line-height: 1;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.btn-pin:hover {
+  background: var(--bg3);
+  color: var(--cyan);
+  border-color: var(--cyan);
+}
+.btn-pin.pinned {
+  color: var(--green);
+  border-color: var(--green);
+  background: color-mix(in srgb, var(--green) 10%, transparent);
+}
+
 /* ─── Pulsing dot ────────────────────────────────────────────────────────── */
 .pulse-dot {
   width: 8px;

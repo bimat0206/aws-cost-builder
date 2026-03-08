@@ -616,6 +616,32 @@ document.getElementById('btn-start-over').addEventListener('click', async () => 
   showToast('Session cleared.', 'info');
 });
 
+// ─── Pin / pop-out window ─────────────────────────────────────────────────────
+
+(async () => {
+  const btn = document.getElementById('btn-pin-window');
+  // Detect if we're already running in a detached (non-popup) window
+  const win = await chrome.windows.getCurrent();
+  if (win && win.type !== 'popup') {
+    // Already detached — show as "pinned" and disable the button
+    btn.classList.add('pinned');
+    btn.title = 'Window is pinned (already detached)';
+    btn.textContent = '⊟';
+    btn.addEventListener('click', () => window.close());
+    return;
+  }
+
+  btn.addEventListener('click', () => {
+    chrome.windows.create({
+      url: chrome.runtime.getURL('popup/popup.html'),
+      type: 'popup',
+      width: 480,
+      height: 640,
+      focused: true,
+    });
+  });
+})();
+
 // ─── Boot ─────────────────────────────────────────────────────────────────────
 
 init().catch(err => {

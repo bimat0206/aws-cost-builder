@@ -27,19 +27,25 @@ async function setSession(session) {
 }
 
 async function getActiveCalculatorTab() {
-  const tabs = await chrome.tabs.query({ currentWindow: true });
-  const tab = tabs.find(t => t.url && t.url.includes('calculator.aws'));
-  return tab || null;
+  // Query by URL across ALL windows — currentWindow is unreliable from a service worker context
+  const tabs = await chrome.tabs.query({ url: '*://calculator.aws/*' });
+  if (tabs.length > 0) return tabs[0];
+  // Fallback: scan all tabs manually (handles cases where URL pattern match fails)
+  const all = await chrome.tabs.query({});
+  return all.find(t => t.url && t.url.includes('calculator.aws')) || null;
 }
 
 async function ensureContentScript(tabId) {
   try {
     await chrome.tabs.sendMessage(tabId, { action: 'ping' });
   } catch {
+    // Content script not yet loaded — inject it and wait for it to be ready
     await chrome.scripting.executeScript({
       target: { tabId },
       files: ['content/content.js'],
     });
+    // Give the script a moment to register its message listener
+    await new Promise(resolve => setTimeout(resolve, 250));
   }
 }
 
@@ -67,11 +73,17 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       await setSession(session);
 
       const tab = await getActiveCalculatorTab();
-      if (tab) {
-        try {
-          await ensureContentScript(tab.id);
-          await chrome.tabs.sendMessage(tab.id, { action: 'startAutoCapture' });
-        } catch (_) {}
+      if (!tab) {
+        sendResponse({ success: false, error: 'No AWS Calculator tab found. Open https://calculator.aws in a tab first, then start capture.' });
+        return;
+      }
+
+      try {
+        await ensureContentScript(tab.id);
+        await chrome.tabs.sendMessage(tab.id, { action: 'startAutoCapture' });
+      } catch (err) {
+        sendResponse({ success: false, error: 'Could not reach the calculator tab: ' + err.message });
+        return;
       }
 
       sendResponse({ success: true });
