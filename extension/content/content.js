@@ -161,6 +161,98 @@ function classifyField(el) {
   return 'TEXT';
 }
 
+// ─── Dimension key cleaning ───────────────────────────────────────────────────
+
+const NOISE_LABELS = new Set([
+  'description - optional',
+  'enter the amount',
+  'enter',
+  'optional',
+  'value',
+]);
+
+const STRIP_SUFFIXES = [
+  / value$/i,
+  / enter the amount in this field$/i,
+  / enter the amount$/i,
+  / enter$/i,
+];
+
+/**
+ * Cleans a raw label into a canonical dimension key.
+ * Returns null to signal "skip this field".
+ * @param {string} rawLabel
+ * @returns {string|null}
+ */
+function cleanDimensionKey(rawLabel) {
+  if (!rawLabel) return null;
+  let key = rawLabel.trim().replace(/\s+/g, ' ');
+  for (const suffix of STRIP_SUFFIXES) {
+    key = key.replace(suffix, '').trim();
+  }
+  if (key.length < 3) return null;
+  if (key.length > 120 && /[.?!]/.test(key)) return null;
+  if (NOISE_LABELS.has(key.toLowerCase())) return null;
+  return key;
+}
+
+// ─── Section detection ────────────────────────────────────────────────────────
+
+const SECTION_HEADER_SELECTORS = [
+  'h2',
+  'h3',
+  '[class*="awsui-container__header"] h2',
+  '[class*="awsui-container__header"] h3',
+  '[class*="awsui-expandable-section__header"]',
+  '[class*="section-header"]',
+  '[class*="awsui-header__text"]',
+].join(', ');
+
+/**
+ * Detects section groupings for a list of field elements.
+ * Returns an array of { name, keys } where keys are the cleaned dimension keys
+ * that fall under each section header in DOM order.
+ * @param {Array<{el: Element, key: string}>} fieldEntries
+ * @returns {Array<{name: string, keys: string[]}>}
+ */
+function detectSections(fieldEntries) {
+  if (fieldEntries.length === 0) return [];
+
+  const headerEls = Array.from(document.querySelectorAll(SECTION_HEADER_SELECTORS))
+    .filter(h => isVisible(h) && h.textContent.trim().length > 0);
+
+  if (headerEls.length === 0) return [];
+
+  const allNodes = Array.from(document.querySelectorAll('*'));
+  const indexOf = el => allNodes.indexOf(el);
+
+  const sectionMap = new Map();
+
+  for (const entry of fieldEntries) {
+    let bestHeader = null;
+    let bestIdx = -1;
+    const fieldIdx = indexOf(entry.el);
+    for (const h of headerEls) {
+      const hIdx = indexOf(h);
+      if (hIdx < fieldIdx && hIdx > bestIdx) {
+        bestIdx = hIdx;
+        bestHeader = h;
+      }
+    }
+    const sectionName = bestHeader ? bestHeader.textContent.trim().replace(/\s+/g, ' ') : '_unsectioned';
+    if (!sectionMap.has(sectionName)) sectionMap.set(sectionName, []);
+    sectionMap.get(sectionName).push(entry.key);
+  }
+
+  const sections = [];
+  for (const [name, keys] of sectionMap) {
+    if (name !== '_unsectioned') {
+      sections.push({ name, keys });
+    }
+  }
+  return sections;
+}
+
 function scanFields() {
   const dimensions = [];
   const seen = new Set();
@@ -181,16 +273,16 @@ function scanFields() {
     for (const el of document.querySelectorAll(sel)) {
       if (!isVisible(el)) continue;
 
-      const label = findLabel(el);
-      if (!label || label.length < 2 || seen.has(label)) continue;
+      const rawLabel = findLabel(el);
+      const key = cleanDimensionKey(rawLabel);
+      if (!key || seen.has(key)) continue;
 
       const value = readFieldValue(el);
       const fieldType = classifyField(el);
-      // Allow empty value only for select, number, spinbutton, slider (0 is valid)
       if (!value && !['SELECT', 'NUMBER', 'SLIDER'].includes(fieldType)) continue;
 
-      seen.add(label);
-      dimensions.push({ key: label, value, fieldType });
+      seen.add(key);
+      dimensions.push({ key, value, fieldType, el });
     }
   }
 
@@ -204,7 +296,6 @@ function scanFields() {
   for (const container of awsuiContainers) {
     if (!isVisible(container)) continue;
 
-    // Find the label text
     const labelEl = container.querySelector(
       '[class*="awsui-form-field-label"] label, ' +
       '[class*="form-field__label"] label, ' +
@@ -213,10 +304,10 @@ function scanFields() {
       'label'
     );
     if (!labelEl) continue;
-    const label = labelEl.textContent.trim().replace(/\s*\*\s*$/, '').replace(/\s+/g, ' ');
-    if (!label || label.length < 2 || seen.has(label)) continue;
+    const rawLabel = labelEl.textContent.trim().replace(/\s*\*\s*$/, '').replace(/\s+/g, ' ');
+    const key = cleanDimensionKey(rawLabel);
+    if (!key || seen.has(key)) continue;
 
-    // Find the control inside this container
     const control = container.querySelector(
       'input:not([type="hidden"]):not([type="submit"]):not([type="button"]):not([type="search"]), ' +
       'select, textarea, [role="combobox"], [role="spinbutton"], [role="slider"]'
@@ -227,8 +318,8 @@ function scanFields() {
     const fieldType = classifyField(control);
     if (!value && !['SELECT', 'NUMBER', 'SLIDER'].includes(fieldType)) continue;
 
-    seen.add(label);
-    dimensions.push({ key: label, value, fieldType });
+    seen.add(key);
+    dimensions.push({ key, value, fieldType, el: control });
   }
 
   return dimensions;
@@ -240,9 +331,10 @@ function captureCurrentPage() {
   const rawFields = scanFields();
   const dimensions = {};
   for (const f of rawFields) {
-    if (f.key) dimensions[f.key] = { user_value: f.value, default_value: null };
+    dimensions[f.key] = { user_value: f.value, default_value: null };
   }
-  return { service_name, region, dimensions };
+  const sections = detectSections(rawFields);
+  return { service_name, region, dimensions, sections };
 }
 
 // ─── Estimate tree scanner ────────────────────────────────────────────────────

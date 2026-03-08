@@ -46,9 +46,23 @@ function hclVal(v) {
   return `"${s.replace(/\\/g, "\\\\").replace(/"/g, '\\"').replace(/\n/g, "\\n")}"`;
 }
 
+function renderDimLines(keys, dims, pad) {
+  if (keys.length === 0) return [];
+  const maxLen = Math.max(...keys.map((k) => k.length));
+  return keys.map((key) => {
+    const d = dims[key];
+    const val =
+      d && d.user_value !== null && d.user_value !== undefined
+        ? d.user_value
+        : d ? d.default_value : null;
+    return `${pad}dimension ${hclVal(key)}${" ".repeat(maxLen - key.length)} = ${hclVal(val)}`;
+  });
+}
+
 function serializeServiceHCL(svc, ind) {
   const p = " ".repeat(ind);
   const pp = " ".repeat(ind + 2);
+  const ppp = " ".repeat(ind + 4);
   const label = svc.human_label || svc.service_name;
   const slug =
     label
@@ -60,21 +74,31 @@ function serializeServiceHCL(svc, ind) {
   lines.push(`${pp}region      = ${hclVal(svc.region || "us-east-1")}`);
   lines.push(`${pp}human_label = ${hclVal(label)}`);
   const dims = svc.dimensions || {};
-  const keys = Object.keys(dims).sort();
-  if (keys.length > 0) {
-    lines.push("");
-    const maxLen = Math.max(...keys.map((k) => k.length));
-    for (const key of keys) {
-      const d = dims[key];
-      const val =
-        d.user_value !== null && d.user_value !== undefined
-          ? d.user_value
-          : d.default_value;
-      lines.push(
-        `${pp}dimension ${hclVal(key)}${" ".repeat(maxLen - key.length)} = ${hclVal(val)}`,
-      );
+  const sections = svc.sections || [];
+
+  if (sections.length > 0) {
+    const sectionedKeys = new Set(sections.flatMap((s) => s.keys || []));
+    const unsectioned = Object.keys(dims).filter((k) => !sectionedKeys.has(k)).sort();
+    if (unsectioned.length > 0) {
+      lines.push("");
+      lines.push(...renderDimLines(unsectioned, dims, pp));
+    }
+    for (const sec of sections) {
+      const secKeys = (sec.keys || []).filter((k) => k in dims);
+      if (secKeys.length === 0) continue;
+      lines.push("");
+      lines.push(`${pp}section ${hclVal(sec.name)} {`);
+      lines.push(...renderDimLines(secKeys, dims, ppp));
+      lines.push(`${pp}}`);
+    }
+  } else {
+    const keys = Object.keys(dims).sort();
+    if (keys.length > 0) {
+      lines.push("");
+      lines.push(...renderDimLines(keys, dims, pp));
     }
   }
+
   lines.push(`${p}}`);
   return lines.join("\n");
 }
@@ -103,7 +127,7 @@ function serializeGroupHCL(group, ind) {
 
 function serializeHCL(profile) {
   const lines = [];
-  lines.push(`schema_version = ${hclVal(profile.schema_version || "3.0")}`);
+  lines.push(`schema_version = ${hclVal(profile.schema_version || "4.0")}`);
   lines.push(`project_name   = ${hclVal(profile.project_name || "unnamed")}`);
   if (profile.description)
     lines.push(`description    = ${hclVal(profile.description)}`);
@@ -129,6 +153,7 @@ function buildProfile(session) {
     human_label: s.service_name,
     region: s.region || "us-east-1",
     dimensions: s.dimensions || {},
+    sections: s.sections || [],
   }));
 
   let groups;
@@ -153,6 +178,7 @@ function buildProfile(session) {
             human_label: match.service_name,
             region: match.region || "us-east-1",
             dimensions: match.dimensions || {},
+            sections: match.sections || [],
           });
         }
       }
@@ -165,6 +191,7 @@ function buildProfile(session) {
             human_label: cs.service_name,
             region: cs.region || "us-east-1",
             dimensions: cs.dimensions || {},
+            sections: cs.sections || [],
           });
         }
       }
@@ -187,6 +214,7 @@ function buildProfile(session) {
           human_label: cs.service_name,
           region: cs.region || "us-east-1",
           dimensions: cs.dimensions || {},
+          sections: cs.sections || [],
         })),
         groups: [],
       });
@@ -207,7 +235,7 @@ function buildProfile(session) {
   }
 
   return {
-    schema_version: "3.0",
+    schema_version: "4.0",
     project_name: profile.project_name || "unnamed",
     description: profile.description || null,
     groups,

@@ -112,12 +112,14 @@ export class Service {
      * @param {string} params.human_label
      * @param {string} params.region
      * @param {Object.<string, Dimension>} [params.dimensions={}]
+     * @param {Array<{section_name: string, keys: string[]}>} [params.sections=[]]
      */
-    constructor({ service_name, human_label, region, dimensions = {} }) {
+    constructor({ service_name, human_label, region, dimensions = {}, sections = [] }) {
         this.service_name = service_name;
         this.human_label = human_label;
         this.region = region;
         this.dimensions = dimensions;
+        this.sections = sections;
     }
 
     /**
@@ -138,7 +140,8 @@ export class Service {
             service_name: obj.service_name,
             human_label: obj.human_label,
             region: obj.region,
-            dimensions: Object.assign({}, dimensions)
+            dimensions: Object.assign({}, dimensions),
+            sections: Array.isArray(obj.sections) ? obj.sections : []
         });
     }
 
@@ -151,16 +154,20 @@ export class Service {
         for (const [key, dim] of Object.entries(this.dimensions)) {
             dimensionsObj[key] = dim.toObject();
         }
-        return {
+        const obj = {
             service_name: this.service_name,
             human_label: this.human_label,
             region: this.region,
             dimensions: dimensionsObj
         };
+        if (this.sections && this.sections.length > 0) {
+            obj.sections = this.sections;
+        }
+        return obj;
     }
 
     /**
-     * Gets all dimension values as an array.
+     * Gets all dimension values as a flat array (runner-compatible, section-agnostic).
      * @returns {Dimension[]}
      */
     getDimensions() {
@@ -174,6 +181,14 @@ export class Service {
      */
     getDimension(key) {
         return this.dimensions[key];
+    }
+
+    /**
+     * Gets the sections array for this service.
+     * @returns {Array<{section_name: string, keys: string[]}>}
+     */
+    getSections() {
+        return this.sections || [];
     }
 }
 
@@ -343,10 +358,10 @@ export class ProfileDocument {
     }
 
     /**
-     * Validates that schema_version is '3.0' or '2.0' (backwards compat).
+     * Validates that schema_version is '4.0', '3.0', or '2.0' (backwards compat).
      * @returns {boolean}
      */
     hasValidSchemaVersion() {
-        return this.schema_version === '3.0' || this.schema_version === '2.0';
+        return this.schema_version === '4.0' || this.schema_version === '3.0' || this.schema_version === '2.0';
     }
 }

@@ -13,7 +13,7 @@ Use the Chrome Extension to capture live AWS Calculator pages and build cost pro
 - **Package manager**: npm
 - **Test framework**: Vitest + fast-check (property-based testing)
 - **Browser automation**: Playwright (Chromium)
-- **Profile format**: HCL DSL (`.hcl`) or JSON (`.json`), schema v3.0 (backwards-compatible with v2.0)
+- **Profile format**: HCL DSL (`.hcl`) or JSON (`.json`), schema v4.0 (backwards-compatible with v3.0 and v2.0)
 
 ## Project Structure
 
@@ -41,7 +41,6 @@ aws-cost-builder/
 
 - **Mode B (Runner)** — Browser automation against a saved profile
 - **Mode C (Dry Run)** — Validate and resolve profile without a browser
-- **Mode D (Explorer)** — Discover service dimensions from the live AWS Calculator
 - **Mode E (Promoter)** — Promote draft catalog entries to the service catalog
 - **Mode F (Export Archive)** — Export `profiles/` directory as a gzip-compressed `.tar.gz`
 
@@ -51,7 +50,6 @@ aws-cost-builder/
 npm start                                              # Interactive mode picker
 node main.js --run --profile profiles/my_project.hcl  # Mode B
 node main.js --dry-run --profile profiles/my_project.hcl  # Mode C
-node main.js --explore                                 # Mode D
 node main.js --promote                                 # Mode E
 node main.js --export-archive profiles.tar.gz          # Mode F
 ```
@@ -61,7 +59,7 @@ node main.js --export-archive profiles.tar.gz          # Mode F
 Profiles can be written in HCL DSL (`.hcl`) or JSON (`.json`). HCL is preferred for readability:
 
 ```hcl
-schema_version = "3.0"
+schema_version = "4.0"
 project_name   = "Production Stack"
 description    = "Multi-tier AWS infrastructure estimate"
 
@@ -75,9 +73,11 @@ group "web_tier" {
       region      = "us-east-1"
       human_label = "Frontend Servers"
 
-      dimension "Operating System"    = "Linux"
-      dimension "Number of instances" = 3
-      dimension "Instance type"       = "t3.medium"
+      section "Instance Configuration" {
+        dimension "Operating System"    = "Linux"
+        dimension "Number of instances" = 3
+        dimension "Instance type"       = "t3.medium"
+      }
     }
   }
 
@@ -85,13 +85,15 @@ group "web_tier" {
     region      = "us-east-1"
     human_label = "Static Assets Bucket"
 
-    dimension "S3 Standard storage"      = 500
-    dimension "S3 Standard storage Unit" = "GB"
+    section "Storage" {
+      dimension "S3 Standard storage"      = 500
+      dimension "S3 Standard storage Unit" = "GB"
+    }
   }
 }
 ```
 
-Groups can be nested to any depth. Services live inside groups.
+Groups can be nested to any depth. Services live inside groups. Within each service, dimensions may be grouped into named `section` blocks (schema v4.0). The runner treats all dimensions as flat — sections are metadata only.
 
 ## Chrome Extension
 

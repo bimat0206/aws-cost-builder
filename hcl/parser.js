@@ -9,7 +9,8 @@
  *   assignment   := IDENT "=" value
  *   group        := "group" STRING "{" (label_stmt | group | service)* "}"
  *   label_stmt   := "label" "=" STRING
- *   service      := "service" STRING STRING "{" (region_stmt | human_label_stmt | dimension)* "}"
+ *   service      := "service" STRING STRING "{" (region_stmt | human_label_stmt | dimension | section)* "}"
+ *   section      := "section" STRING "{" dimension* "}"
  *   dimension    := "dimension" STRING padding? "=" value
  *   value        := STRING | NUMBER | BOOL | "null"
  */
@@ -191,11 +192,47 @@ class Parser {
     }
 
     /**
+     * Parse a section block inside a service:
+     *   section "Section Name" {
+     *     dimension "..." = ...
+     *   }
+     * Returns { section: { name, keys }, dims: { [key]: { user_value, default_value } } }
+     */
+    parseSection() {
+        this.expectValue('section');
+        const nameTok = this.expect(TK.STRING);
+        this.expect(TK.LBRACE);
+
+        const section = { name: nameTok.value, keys: [] };
+        const dims = {};
+
+        while (!this.isAtRBrace()) {
+            const tok = this.peek();
+            if (tok.type === TK.IDENT && tok.value === 'dimension') {
+                const { key, value } = this.parseDimension();
+                section.keys.push(key);
+                dims[key] = { user_value: value, default_value: null };
+            } else {
+                // Unknown — skip
+                this.advance();
+                if (this.peek().type === TK.EQ) {
+                    this.advance();
+                    this.parseValue();
+                }
+            }
+        }
+
+        this.expect(TK.RBRACE);
+        return { section, dims };
+    }
+
+    /**
      * Parse a service block:
      *   service "service_name" "slug" {
      *     region      = "..."
      *     human_label = "..."
      *     dimension "..." = ...
+     *     section "Section Name" { dimension "..." = ... }
      *   }
      */
     parseService() {
@@ -209,6 +246,7 @@ class Parser {
             human_label: slugTok.value,
             region: 'global',
             dimensions: {},
+            sections: [],
         };
 
         while (!this.isAtRBrace()) {
@@ -219,6 +257,10 @@ class Parser {
                     user_value: value,
                     default_value: null,
                 };
+            } else if (tok.type === TK.IDENT && tok.value === 'section') {
+                const { section, dims } = this.parseSection();
+                service.sections.push(section);
+                Object.assign(service.dimensions, dims);
             } else if (tok.type === TK.IDENT && tok.value === 'region') {
                 this.advance();
                 this.expect(TK.EQ);
@@ -238,6 +280,10 @@ class Parser {
         }
 
         this.expect(TK.RBRACE);
+
+        // Drop empty sections array to keep output clean for v3 files
+        if (service.sections.length === 0) delete service.sections;
+
         return service;
     }
 

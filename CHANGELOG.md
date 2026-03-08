@@ -5,6 +5,30 @@ All notable changes to the AWS Cost Profile Builder project are documented in th
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.0.0] - 2026-03-08
+
+### Added
+- **HCL schema v4.0** — `schema_version = "4.0"` is now the default for all newly exported profiles
+  - **Section blocks** — dimensions inside a service can be grouped into named `section "Name" { ... }` blocks; the runner iterates all dimensions flat (sections are structural metadata only)
+  - `hcl/parser.js`: `parseSection()` added; section blocks parse into `service.sections` while also merging keys into `service.dimensions` for runner compatibility
+  - `hcl/serializer.js`: `renderDimensionLines()` helper extracted; `serializeService()` renders `section` blocks when `service.sections` is non-empty; dimensions not in any section are rendered before the first section
+  - `core/models/profile.js` `Service`: new optional `sections` property (`[{ section_name, keys }]`); `fromObject()` / `toObject()` round-trip sections; `getSections()` accessor added
+  - `ProfileDocument.hasValidSchemaVersion()` now accepts `"4.0"` in addition to `"3.0"` and `"2.0"`
+  - `config/schemas/json-schema.json`: `"4.0"` added to `schema_version` enum
+- **Dimension key cleaning in extension** (`extension/content/content.js`)
+  - `cleanDimensionKey(rawLabel)` strips noisy suffixes (` Value`, ` Enter the amount`, ` Enter the amount in this field`, ` Enter`), filters noise labels and too-short/sentence-long strings; returns `null` to skip a field
+  - Applied in `scanFields()` pass 1 and pass 2 — captured keys no longer carry AWS UI suffix noise
+- **Section detection in extension** (`extension/content/content.js`)
+  - `detectSections(fieldEntries)` scans DOM for visible `h2`/`h3` and CloudScape container headers preceding each captured field; groups keys by nearest preceding header
+  - `captureCurrentPage()` now returns `{ service_name, region, dimensions, sections }` — sections flow through `service_worker.js` → `popup.js` → exported HCL
+
+### Changed
+- **Extension popup** (`extension/popup/popup.js`): `buildProfile()` passes `sections` through on all service-object construction paths; `serializeServiceHCL()` renders section blocks when present; `serializeHCL()` defaults to `"4.0"`
+- **`replit.md`**: updated schema version references and modes list
+
+### Removed
+- **Mode D (Explorer)** — `--explore` flag and `runExploreMode()` removed from `main.js`; `runInteractiveExplorer` import dropped; `tests/main/main_ui.test.js` updated to reflect 4-mode definition
+
 ## [2.2.0] - 2026-03-08
 
 ### Added

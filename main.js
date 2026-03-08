@@ -26,7 +26,6 @@ import { BrowserSession, AutomationFatalError } from './automation/session/brows
 import { navigateToService, clickSave } from './automation/navigation/navigator.js';
 import { findElement } from './automation/locator/find_in_page_locator.js';
 import { fillDimension } from './automation/interactor/field_interactor.js';
-import { runInteractiveExplorer } from './explorer/wizard/interactive_explorer.js';
 import { promoteDraft } from './explorer/draft/draft_promoter.js';
 import { selectPrompt } from './builder/prompts/select_prompt.js';
 import {
@@ -102,13 +101,6 @@ const MODE_OPTIONS = [
     color: COL_YELLOW,
   },
   {
-    id: 'explore',
-    label: 'Explorer',
-    badge: 'Mode D',
-    description: 'Discover service dimensions from a live AWS Calculator page',
-    color: COL_MAGENTA,
-  },
-  {
     id: 'promote',
     label: 'Promoter',
     badge: 'Mode E',
@@ -133,7 +125,7 @@ const MODE_OPTIONS = [
 async function promptInteractiveModeSelection() {
   if (!process.stdin.isTTY || !process.stdout.isTTY) {
     throw new Error(
-      'No mode specified in non-interactive environment. Use --run --profile <path>, --dry-run --profile <path>, --explore, --promote, or --export-archive.',
+      'No mode specified in non-interactive environment. Use --run --profile <path>, --dry-run --profile <path>, --promote, or --export-archive.',
     );
   }
 
@@ -258,10 +250,6 @@ export function buildParser(rawArgv = process.argv) {
       type: 'boolean',
       description: 'Validate and resolve profile without opening a browser (Mode C)',
     })
-    .option('explore', {
-      type: 'boolean',
-      description: 'Discover new AWS service dimensions from a live calculator page (Mode D)',
-    })
     .option('promote', {
       type: 'boolean',
       description: 'Promote a draft catalog entry to the service catalog (Mode E)',
@@ -287,7 +275,7 @@ export function buildParser(rawArgv = process.argv) {
       default: [],
     })
     .check((argv) => {
-      const modes = ['run', 'dryRun', 'explore', 'promote', 'exportArchive'];
+      const modes = ['run', 'dryRun', 'promote', 'exportArchive'];
       const activeModes = modes.filter((m) => argv[m]);
       if (activeModes.length > 1) {
         throw new Error(`Only one mode may be specified at a time. Got: ${activeModes.join(', ')}`);
@@ -309,12 +297,11 @@ export function buildParser(rawArgv = process.argv) {
 
 /**
  * @param {any} parsed
- * @returns {'run'|'dryRun'|'explore'|'promote'|'exportArchive'|null}
+ * @returns {'run'|'dryRun'|'promote'|'exportArchive'|null}
  */
 function getActiveMode(parsed) {
   if (parsed.run) return 'run';
   if (parsed.dryRun) return 'dryRun';
-  if (parsed.explore) return 'explore';
   if (parsed.promote) return 'promote';
   if (parsed.exportArchive !== undefined && parsed.exportArchive !== null && parsed.exportArchive !== false) return 'exportArchive';
   return null;
@@ -634,15 +621,6 @@ export async function runDryRunMode(opts) {
 }
 
 /**
- * Discover new AWS service dimensions from a live calculator page (Mode D).
- * @returns {Promise<number>} exit code
- */
-export async function runExploreMode() {
-  const result = await runInteractiveExplorer({ root: process.cwd() });
-  return result ? 0 : 1;
-}
-
-/**
  * Promote a draft catalog entry to the validated service catalog (Mode E).
  * @returns {Promise<number>} exit code
  */
@@ -723,7 +701,6 @@ export async function main(argv) {
 
     if (mode === 'run')           return await runRunnerMode({ profile, headless, overrides });
     if (mode === 'dryRun')        return await runDryRunMode({ profile, overrides });
-    if (mode === 'explore')       return await runExploreMode();
     if (mode === 'promote')       return await runPromoteMode();
     if (mode === 'exportArchive') return await runExportArchiveMode({ outputPath: parsed.exportArchive });
   } catch (err) {
