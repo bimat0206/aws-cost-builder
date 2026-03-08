@@ -5,6 +5,37 @@ All notable changes to the AWS Cost Profile Builder project are documented in th
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.0] - 2026-03-08
+
+### Added
+- **Capture progress tracking** — real-time visibility into what the auto-capture detector is doing at every phase
+  - **Detector state chip** (`extension/popup/popup.html`, `popup.css`) — colored badge below the status bar that transitions through four states: `Idle` (grey) → `Activity detected` (yellow pulsing) → `Stabilizing…` (orange pulsing) → `✓ Captured!` (green); resets to idle automatically
+  - **"Currently viewing" label** — shows the name of the service being scanned (e.g. `↳ Amazon EC2`) alongside the chip when state is not idle; hidden otherwise
+  - **Activity log panel** (`extension/popup/popup.html`, `popup.js`, `popup.css`) — collapsed by default (▸ Show toggle), reveals a scrollable monospace feed of timestamped events: `HH:MM:SS  ✓  Amazon EC2   8 dim`, `HH:MM:SS  =  (duplicate skipped)`, etc.; auto-scrolls to latest; persisted in session storage across popup closes
+  - **New card slide-in animation** (`popup.css`) — newly captured service cards animate in from the right with a green left border flash (`@keyframes slideIn`, 0.35s ease-out); no animation on first popup open
+
+### Changed
+- **`content.js`** — `triggerAutoCapture()` now emits a `captureProgress` message at each phase: `detecting` when the debounce starts, `stabilizing` just before capture runs, `idle` when skipped or complete
+- **`service_worker.js`** — session now stores `captureStatus: { state, serviceName, updatedAt }` and `captureLog: []`; both updated on every `captureProgress` and `serviceAutoCaptured` message; log capped at 50 entries; duplicate captures recorded in log with `event: "duplicate"`
+- **`popup.js`** — `populateCapturingView()` calls `renderDetectorChip()` and `renderCaptureLog()` on every storage update; tracks `_prevServiceCount` to apply slide-in animation only to genuinely new cards
+
+## [2.1.0] - 2026-03-08
+
+### Changed
+- **Chrome Extension capture flow redesigned** — replaced the tab-based UI with a focused 3-view flow
+  - **View 1 — Setup**: project name + description form + step-by-step instructions + "Start Capture" button; no capture session means this is shown first
+  - **View 2 — Capturing**: pulsing "Capturing" header indicator, profile metadata row, live captured-services list (with individual remove buttons), "Snapshot Estimate Groups" button, "Stop Capture" red button; session state in `chrome.storage.local` means reopening the popup resumes mid-session
+  - **View 3 — Export**: green summary card, full service list, optional group tree (shown when estimate was snapshotted), "Export Archive (.tar.gz)" and "Export .hcl" buttons, "Start Over" button
+- **`service_worker.js`** — rewritten to manage `captureSession` in storage; new message actions: `startCapture`, `stopCapture`, `captureEstimateTree`, `getSession`, `clearSession`, `removeService`, `updateServiceGroup`
+- **`content.js`** — added `startAutoCapture()` / `stopAutoCapture()` using `MutationObserver` for automatic detection; `captureEstimateTree()` scans the left sidebar for group/service structure; `sendProgress()` helper for status messages
+- **`popup.html`** — replaced tabs with three `<div id="view-*">` views; header now shows capture indicator; added detector-row, activity-log, and export-summary sections
+- **`popup.js`** — new `buildProfile()` converts flat captured services + optional estimate tree into a grouped `ProfileDocument`; HCL serializer, tar/gz builder, download helper all carried forward
+- **`manifest.json`** — added `"tabs"` permission (required for querying non-active calculator tabs in the current window)
+
+### Removed
+- Tab-based popup UI (Capture / Profile / HCL Preview tabs) replaced by the 3-view flow
+- Manual "Add to Group" workflow during capture — group assignment now handled automatically at export time using the estimate tree
+
 ## [2.0.0] - 2026-03-08
 
 ### Added
