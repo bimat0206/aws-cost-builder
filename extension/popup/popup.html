@@ -10,152 +10,155 @@
 
 <div class="header">
   <div class="header-icon">☁</div>
-  <div>
+  <div class="header-info">
     <div class="header-title">AWS Cost Builder</div>
-    <div class="header-sub">Chrome Extension · HCL Profile Capture</div>
+    <div class="header-sub" id="header-sub">Chrome Extension · HCL Profile Capture</div>
+  </div>
+  <div id="capture-indicator" class="capture-indicator" style="display:none">
+    <span class="pulse-dot"></span>
+    <span>Capturing</span>
   </div>
 </div>
 
-<div class="tabs">
-  <button class="tab active" data-tab="capture">Capture</button>
-  <button class="tab" data-tab="profile">Profile</button>
-  <button class="tab" data-tab="preview">HCL Preview</button>
-</div>
+<!-- ═══════════════════════════════════════════════════════════════════════════
+     VIEW 1 — SETUP
+     Shown when no active capture session exists.
+════════════════════════════════════════════════════════════════════════════ -->
+<div id="view-setup" class="view">
 
-<!-- ─── Capture Tab ─────────────────────────────────────────────────────────── -->
-<div id="tab-capture" class="content active">
-
-  <div class="capture-panel">
-    <div class="capture-panel-title">Capture Current Page</div>
-    <p style="font-size:11px;color:var(--text-muted);margin-bottom:10px;">
-      Navigate to a service configuration page on <code style="color:var(--cyan)">calculator.aws</code>, then click Capture to read all visible fields.
-    </p>
-    <div class="btn-row" style="margin-bottom:10px;">
-      <button id="btn-capture" class="btn btn-primary">⬇ Capture Page</button>
-      <button id="btn-add-manual" class="btn btn-secondary">+ Manual Entry</button>
-    </div>
-
-    <div id="capture-preview" class="captured-preview" style="display:none"></div>
-  </div>
-
-  <div id="captured-service-panel" style="display:none">
-    <div class="section-header">
-      <span class="section-label">Captured Dimensions</span>
-      <span id="captured-count" class="badge badge-cyan">0 fields</span>
-    </div>
-
-    <div class="field-row">
-      <label>Service Name</label>
-      <input id="cap-service-name" type="text" placeholder="e.g. Amazon EC2">
-    </div>
-    <div class="field-row">
-      <label>Human Label</label>
-      <input id="cap-human-label" type="text" placeholder="e.g. Frontend Servers">
-    </div>
-    <div class="field-row">
-      <label>Region</label>
-      <input id="cap-region" type="text" placeholder="e.g. us-east-1">
-    </div>
-
-    <div class="section-header" style="margin-top:8px;">
-      <span class="section-label">Dimensions</span>
-    </div>
-    <div id="dim-editor" class="dimension-list"></div>
-
-    <div class="section-header" style="margin-top:8px;">
-      <span class="section-label">Add to Group</span>
-    </div>
-    <div class="field-row">
-      <label>Target Group</label>
-      <select id="target-group-select" style="width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:5px;color:var(--text);padding:6px 8px;font-size:13px;">
-        <option value="">— select group —</option>
-      </select>
-    </div>
-
-    <div class="btn-row">
-      <button id="btn-add-service" class="btn btn-success">✓ Add Service to Group</button>
-      <button id="btn-discard-capture" class="btn btn-secondary">Discard</button>
+  <div class="setup-hero">
+    <div class="setup-hero-icon">📋</div>
+    <div class="setup-hero-title">Create a Cost Profile</div>
+    <div class="setup-hero-desc">
+      Name your profile, then start capturing. Navigate through your
+      <strong>AWS Pricing Calculator</strong> estimate — every service you
+      open will be captured automatically.
     </div>
   </div>
-
-</div>
-
-<!-- ─── Profile Tab ─────────────────────────────────────────────────────────── -->
-<div id="tab-profile" class="content">
 
   <div class="field-row">
-    <label>Project Name</label>
-    <input id="project-name" type="text" placeholder="my-aws-stack">
+    <label>Project Name <span class="required">*</span></label>
+    <input id="setup-project-name" type="text" placeholder="e.g. production-stack" autocomplete="off">
   </div>
   <div class="field-row">
     <label>Description</label>
-    <textarea id="project-desc" rows="2" placeholder="Optional description"></textarea>
+    <textarea id="setup-description" rows="2" placeholder="Optional — describe this estimate"></textarea>
   </div>
 
-  <div class="divider"></div>
+  <div class="setup-steps">
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-text">Fill in the project name above</div>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-text">Click <strong>Start Capture</strong></div>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <div class="step-text">Open <code>calculator.aws/#/estimate</code> and click each service to configure it</div>
+    </div>
+    <div class="step">
+      <div class="step-num">4</div>
+      <div class="step-text">Return here and click <strong>Stop Capture</strong> when done</div>
+    </div>
+  </div>
+
+  <button id="btn-start-capture" class="btn btn-primary btn-full">▶ Start Capture</button>
+
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════════
+     VIEW 2 — CAPTURING
+     Shown while isCapturing = true.
+════════════════════════════════════════════════════════════════════════════ -->
+<div id="view-capturing" class="view" style="display:none">
+
+  <div class="capture-status-bar">
+    <span class="pulse-dot"></span>
+    <span class="capture-status-text">Auto-capturing — navigate your estimate and open each service</span>
+  </div>
+
+  <div class="capture-meta-row">
+    <div class="capture-meta-item">
+      <span class="meta-label">Profile</span>
+      <span id="cap-profile-name" class="meta-value">—</span>
+    </div>
+    <div class="capture-meta-item">
+      <span class="meta-label">Services Captured</span>
+      <span id="cap-service-count" class="meta-value badge-cyan">0</span>
+    </div>
+  </div>
 
   <div class="section-header">
-    <span class="section-label">Groups</span>
-    <div class="btn-row">
-      <button id="btn-add-group" class="btn-xs">+ Add Group</button>
+    <span class="section-label">Captured Services</span>
+    <button id="btn-snapshot-tree" class="btn-xs">⬡ Snapshot Estimate Groups</button>
+  </div>
+
+  <div id="captured-services-list" class="captured-services-list">
+    <div class="empty-state">
+      <div class="empty-icon">🔍</div>
+      <div>No services yet. Open a service in the calculator to capture it.</div>
     </div>
   </div>
 
-  <div id="groups-tree" class="groups-tree">
-    <div class="empty-state">
-      <div class="empty-icon">📁</div>
-      <div>No groups yet. Add a group to start building your profile.</div>
+  <div class="hint-box">
+    <strong>How it works:</strong> Every time you click on a service in your estimate,
+    the extension reads its configuration automatically. You do not need to do anything extra.
+  </div>
+
+  <div class="btn-row" style="margin-top:12px">
+    <button id="btn-stop-capture" class="btn btn-stop btn-full">■ Stop Capture</button>
+  </div>
+
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════════
+     VIEW 3 — EXPORT
+     Shown after capture is stopped.
+════════════════════════════════════════════════════════════════════════════ -->
+<div id="view-export" class="view" style="display:none">
+
+  <div class="export-summary">
+    <div class="export-summary-icon">✅</div>
+    <div>
+      <div class="export-summary-title" id="exp-profile-name">Profile Ready</div>
+      <div class="export-summary-meta" id="exp-profile-meta">0 services captured</div>
     </div>
   </div>
+
+  <div class="section-header" style="margin-top:10px">
+    <span class="section-label">Captured Services</span>
+    <span id="exp-service-count" class="badge badge-green">0</span>
+  </div>
+
+  <div id="export-services-list" class="captured-services-list" style="max-height:200px"></div>
+
+  <div class="section-header" style="margin-top:10px">
+    <span class="section-label">Group Assignment</span>
+    <span id="exp-tree-badge" class="badge badge-orange" style="display:none">tree captured</span>
+  </div>
+  <div id="exp-group-info" class="hint-box">
+    Services will be exported into a single group. To use groups from your estimate, click
+    <strong>Snapshot Estimate Groups</strong> during capture.
+  </div>
+
+  <div id="exp-group-tree" class="groups-tree" style="display:none; margin-bottom:10px"></div>
 
   <div class="divider"></div>
 
   <div class="btn-row">
-    <button id="btn-export-hcl" class="btn btn-primary">↓ Export .hcl</button>
-    <button id="btn-export-archive" class="btn btn-secondary">↓ Export Archive (.tar.gz)</button>
-    <button id="btn-clear-profile" class="btn btn-danger">✕ Clear</button>
+    <button id="btn-export-archive" class="btn btn-primary">↓ Export Archive (.tar.gz)</button>
+    <button id="btn-export-hcl" class="btn btn-secondary">↓ Export .hcl</button>
   </div>
-
-</div>
-
-<!-- ─── HCL Preview Tab ──────────────────────────────────────────────────────── -->
-<div id="tab-preview" class="content">
-
-  <div class="section-header">
-    <span class="section-label">HCL Output</span>
-    <button id="btn-copy-hcl" class="btn-xs">⧉ Copy</button>
+  <div class="btn-row" style="margin-top:6px">
+    <button id="btn-start-over" class="btn btn-danger">↺ Start Over</button>
   </div>
-  <pre id="hcl-preview-content" class="hcl-preview"># No profile data yet.\n# Go to the Capture or Profile tab to build a profile.</pre>
 
 </div>
 
 <!-- ─── Status toast ─────────────────────────────────────────────────────────── -->
 <div id="status-toast"></div>
-
-<!-- ─── Add Group Modal (inline) ─────────────────────────────────────────────── -->
-<div id="modal-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:200;display:none;align-items:center;justify-content:center;">
-  <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:16px;width:340px;">
-    <div style="font-size:13px;font-weight:600;color:var(--cyan);margin-bottom:12px;" id="modal-title">Add Group</div>
-    <div class="field-row">
-      <label>Group Name (identifier)</label>
-      <input id="modal-group-name" type="text" placeholder="web_tier">
-    </div>
-    <div class="field-row">
-      <label>Display Label (optional)</label>
-      <input id="modal-group-label" type="text" placeholder="Web Tier">
-    </div>
-    <div class="field-row" id="modal-parent-row">
-      <label>Parent Group (for nested)</label>
-      <select id="modal-parent-group" style="width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:5px;color:var(--text);padding:6px 8px;font-size:13px;">
-        <option value="">— top level —</option>
-      </select>
-    </div>
-    <div class="btn-row" style="margin-top:8px;">
-      <button id="modal-confirm" class="btn btn-primary">Add</button>
-      <button id="modal-cancel" class="btn btn-secondary">Cancel</button>
-    </div>
-  </div>
-</div>
 
 <script src="popup.js"></script>
 </body>
