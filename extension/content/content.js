@@ -101,6 +101,43 @@ function findLabel(el) {
 
 // ─── Page scanners ────────────────────────────────────────────────────────────
 
+const SERVICE_NAME_PREFIXES = [
+  /^Create estimate:\s*Configure\s+/i,
+  /^Create estimate:\s*/i,
+  /^Configure\s+/i,
+];
+
+const SERVICE_NAME_ALIASES = [
+  { pattern: /\bamazon ec2\b|\bec2\b/i, canonical: 'Amazon EC2' },
+  { pattern: /\bamazon s3\b|\bs3\b/i, canonical: 'Amazon S3' },
+  { pattern: /\baws lambda\b|\blambda\b/i, canonical: 'AWS Lambda' },
+];
+
+function normalizeServiceName(rawName) {
+  let name = String(rawName || '').trim().replace(/\s+/g, ' ');
+  for (const prefix of SERVICE_NAME_PREFIXES) {
+    name = name.replace(prefix, '');
+  }
+
+  // Remove common title suffixes if they leak through.
+  name = name
+    .replace(/\s*[|\-–]\s*AWS Pricing Calculator.*$/i, '')
+    .replace(/\s*-\s*Configure\s*$/i, '')
+    .trim();
+
+  const lower = name.toLowerCase();
+  for (const alias of SERVICE_NAME_ALIASES) {
+    if (alias.pattern.test(lower)) return alias.canonical;
+  }
+
+  return name || 'Unknown Service';
+}
+
+function isServiceConfigPage() {
+  const route = `${window.location.pathname}${window.location.hash}`.toLowerCase();
+  return route.includes('/createcalculator/');
+}
+
 function detectServiceName() {
   const candidates = [
     '[class*="serviceTitle"]',
@@ -114,10 +151,10 @@ function detectServiceName() {
     const el = document.querySelector(sel);
     if (el) {
       const text = el.textContent.trim().replace(/\s+/g, ' ');
-      if (text && text.length > 2) return text;
+      if (text && text.length > 2) return normalizeServiceName(text);
     }
   }
-  return document.title.replace(/\s*[|\-–]\s*AWS Pricing Calculator.*$/i, '').trim() || 'Unknown Service';
+  return normalizeServiceName(document.title);
 }
 
 function detectRegion() {
@@ -161,98 +198,6 @@ function classifyField(el) {
   return 'TEXT';
 }
 
-// ─── Dimension key cleaning ───────────────────────────────────────────────────
-
-const NOISE_LABELS = new Set([
-  'description - optional',
-  'enter the amount',
-  'enter',
-  'optional',
-  'value',
-]);
-
-const STRIP_SUFFIXES = [
-  / value$/i,
-  / enter the amount in this field$/i,
-  / enter the amount$/i,
-  / enter$/i,
-];
-
-/**
- * Cleans a raw label into a canonical dimension key.
- * Returns null to signal "skip this field".
- * @param {string} rawLabel
- * @returns {string|null}
- */
-function cleanDimensionKey(rawLabel) {
-  if (!rawLabel) return null;
-  let key = rawLabel.trim().replace(/\s+/g, ' ');
-  for (const suffix of STRIP_SUFFIXES) {
-    key = key.replace(suffix, '').trim();
-  }
-  if (key.length < 3) return null;
-  if (key.length > 120 && /[.?!]/.test(key)) return null;
-  if (NOISE_LABELS.has(key.toLowerCase())) return null;
-  return key;
-}
-
-// ─── Section detection ────────────────────────────────────────────────────────
-
-const SECTION_HEADER_SELECTORS = [
-  'h2',
-  'h3',
-  '[class*="awsui-container__header"] h2',
-  '[class*="awsui-container__header"] h3',
-  '[class*="awsui-expandable-section__header"]',
-  '[class*="section-header"]',
-  '[class*="awsui-header__text"]',
-].join(', ');
-
-/**
- * Detects section groupings for a list of field elements.
- * Returns an array of { name, keys } where keys are the cleaned dimension keys
- * that fall under each section header in DOM order.
- * @param {Array<{el: Element, key: string}>} fieldEntries
- * @returns {Array<{name: string, keys: string[]}>}
- */
-function detectSections(fieldEntries) {
-  if (fieldEntries.length === 0) return [];
-
-  const headerEls = Array.from(document.querySelectorAll(SECTION_HEADER_SELECTORS))
-    .filter(h => isVisible(h) && h.textContent.trim().length > 0);
-
-  if (headerEls.length === 0) return [];
-
-  const allNodes = Array.from(document.querySelectorAll('*'));
-  const indexOf = el => allNodes.indexOf(el);
-
-  const sectionMap = new Map();
-
-  for (const entry of fieldEntries) {
-    let bestHeader = null;
-    let bestIdx = -1;
-    const fieldIdx = indexOf(entry.el);
-    for (const h of headerEls) {
-      const hIdx = indexOf(h);
-      if (hIdx < fieldIdx && hIdx > bestIdx) {
-        bestIdx = hIdx;
-        bestHeader = h;
-      }
-    }
-    const sectionName = bestHeader ? bestHeader.textContent.trim().replace(/\s+/g, ' ') : '_unsectioned';
-    if (!sectionMap.has(sectionName)) sectionMap.set(sectionName, []);
-    sectionMap.get(sectionName).push(entry.key);
-  }
-
-  const sections = [];
-  for (const [name, keys] of sectionMap) {
-    if (name !== '_unsectioned') {
-      sections.push({ name, keys });
-    }
-  }
-  return sections;
-}
-
 function scanFields() {
   const dimensions = [];
   const seen = new Set();
@@ -273,16 +218,16 @@ function scanFields() {
     for (const el of document.querySelectorAll(sel)) {
       if (!isVisible(el)) continue;
 
-      const rawLabel = findLabel(el);
-      const key = cleanDimensionKey(rawLabel);
-      if (!key || seen.has(key)) continue;
+      const label = findLabel(el);
+      if (!label || label.length < 2 || seen.has(label)) continue;
 
       const value = readFieldValue(el);
       const fieldType = classifyField(el);
+      // Allow empty value only for select, number, spinbutton, slider (0 is valid)
       if (!value && !['SELECT', 'NUMBER', 'SLIDER'].includes(fieldType)) continue;
 
-      seen.add(key);
-      dimensions.push({ key, value, fieldType, el });
+      seen.add(label);
+      dimensions.push({ key: label, value, fieldType });
     }
   }
 
@@ -296,6 +241,7 @@ function scanFields() {
   for (const container of awsuiContainers) {
     if (!isVisible(container)) continue;
 
+    // Find the label text
     const labelEl = container.querySelector(
       '[class*="awsui-form-field-label"] label, ' +
       '[class*="form-field__label"] label, ' +
@@ -304,10 +250,10 @@ function scanFields() {
       'label'
     );
     if (!labelEl) continue;
-    const rawLabel = labelEl.textContent.trim().replace(/\s*\*\s*$/, '').replace(/\s+/g, ' ');
-    const key = cleanDimensionKey(rawLabel);
-    if (!key || seen.has(key)) continue;
+    const label = labelEl.textContent.trim().replace(/\s*\*\s*$/, '').replace(/\s+/g, ' ');
+    if (!label || label.length < 2 || seen.has(label)) continue;
 
+    // Find the control inside this container
     const control = container.querySelector(
       'input:not([type="hidden"]):not([type="submit"]):not([type="button"]):not([type="search"]), ' +
       'select, textarea, [role="combobox"], [role="spinbutton"], [role="slider"]'
@@ -318,23 +264,25 @@ function scanFields() {
     const fieldType = classifyField(control);
     if (!value && !['SELECT', 'NUMBER', 'SLIDER'].includes(fieldType)) continue;
 
-    seen.add(key);
-    dimensions.push({ key, value, fieldType, el: control });
+    seen.add(label);
+    dimensions.push({ key: label, value, fieldType });
   }
 
   return dimensions;
 }
 
 function captureCurrentPage() {
+  if (!isServiceConfigPage()) {
+    return { service_name: 'Unknown Service', region: 'us-east-1', dimensions: {} };
+  }
   const service_name = detectServiceName();
   const region = detectRegion();
   const rawFields = scanFields();
   const dimensions = {};
   for (const f of rawFields) {
-    dimensions[f.key] = { user_value: f.value, default_value: null };
+    if (f.key) dimensions[f.key] = { user_value: f.value, default_value: null };
   }
-  const sections = detectSections(rawFields);
-  return { service_name, region, dimensions, sections };
+  return { service_name, region, dimensions };
 }
 
 // ─── Estimate tree scanner ────────────────────────────────────────────────────
@@ -466,11 +414,17 @@ function triggerAutoCapture() {
   captureDebounceTimer = setTimeout(() => {
     captureScheduled = false;
 
+    // Only capture from real service configuration routes.
+    if (!isServiceConfigPage()) {
+      sendProgress('idle');
+      return;
+    }
+
     // Only capture if there are visible form fields (service config is open)
-    const hasFields = document.querySelectorAll(
+    const hasFields = Array.from(document.querySelectorAll(
       'input:not([type="hidden"]):not([type="submit"]):not([type="button"]):not([type="search"]), ' +
       'select, [role="combobox"], [role="spinbutton"]'
-    ).length > 0;
+    )).some(isVisible);
 
     if (!hasFields) {
       sendProgress('idle');
@@ -551,6 +505,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
   if (message.action === 'capture') {
     try {
+      if (!isServiceConfigPage()) {
+        sendResponse({
+          success: false,
+          error: 'Not on a service config page. Open a specific service under #/createCalculator/... first.',
+        });
+        return true;
+      }
       const data = captureCurrentPage();
       sendResponse({ success: true, data });
     } catch (err) {

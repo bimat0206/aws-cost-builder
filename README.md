@@ -182,7 +182,7 @@ aws-cost-builder/
 ├── hcl/                     # HCL DSL parser & serializer
 │   ├── parser.js            #   Recursive descent parser → ProfileDocument
 │   ├── serializer.js        #   ProfileDocument → HCL string
-│   └── index.js             #   Exports { parseHCL, serializeHCL }
+│   └── index.js             #   Exports { parseHCL, serializeHCL } (supports nested groups & sections)
 ├── profiles/                # User-created cost profiles (gitignored)
 ├── artifacts/               # Exploration artifacts & screenshots
 ├── outputs/                 # Run results (gitignored)

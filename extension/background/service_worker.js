@@ -26,6 +26,28 @@ async function setSession(session) {
   await chrome.storage.local.set({ captureSession: session });
 }
 
+// Serialize storage mutations to avoid lost updates when multiple messages
+// (e.g. captureProgress + serviceAutoCaptured) arrive close together.
+let sessionMutationQueue = Promise.resolve();
+
+function mutateSession(mutator) {
+  sessionMutationQueue = sessionMutationQueue
+    .then(async () => {
+      const session = await getSession();
+      if (!session) return null;
+      const shouldPersist = await mutator(session);
+      if (shouldPersist === false) return session;
+      await setSession(session);
+      return session;
+    })
+    .catch((err) => {
+      console.error('Session mutation failed:', err);
+      return null;
+    });
+
+  return sessionMutationQueue;
+}
+
 async function getActiveCalculatorTab() {
   // Query by URL across ALL windows — currentWindow is unreliable from a service worker context
   const tabs = await chrome.tabs.query({ url: '*://calculator.aws/*' });
@@ -115,14 +137,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   // ── captureProgress (from content script) ───────────────────────────────────
   if (message.action === 'captureProgress') {
     (async () => {
-      const session = await getSession();
-      if (!session || !session.isCapturing) return;
-      session.captureStatus = {
-        state: message.status,
-        serviceName: message.serviceName || null,
-        updatedAt: Date.now(),
-      };
-      await setSession(session);
+      await mutateSession((session) => {
+        if (!session.isCapturing) return false;
+        session.captureStatus = {
+          state: message.status,
+          serviceName: message.serviceName || null,
+          updatedAt: Date.now(),
+        };
+      });
     })();
     return false;
   }
@@ -130,37 +152,36 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   // ── serviceAutoCaptured (from content script) ────────────────────────────────
   if (message.action === 'serviceAutoCaptured') {
     (async () => {
-      const session = await getSession();
-      if (!session || !session.isCapturing) return;
+      await mutateSession((session) => {
+        if (!session.isCapturing) return false;
 
-      const { service_name, region, dimensions } = message.data;
-      const dim_count = Object.keys(dimensions || {}).length;
-      const now = Date.now();
+        const { service_name, region, dimensions } = message.data;
+        const dim_count = Object.keys(dimensions || {}).length;
+        const now = Date.now();
 
-      // Deduplicate by service_name+region
-      const isDuplicate = session.capturedServices.some(
-        s => s.service_name === service_name && s.region === region
-      );
+        // Deduplicate by service_name+region
+        const isDuplicate = session.capturedServices.some(
+          s => s.service_name === service_name && s.region === region
+        );
 
-      if (!isDuplicate) {
-        session.capturedServices.push({
-          id: `svc_${now}_${Math.random().toString(36).slice(2, 7)}`,
-          service_name,
-          region,
-          dimensions,
-          capturedAt: now,
-          groupPath: null,
-        });
-        session.captureLog.push({ timestamp: now, event: 'captured', service_name, dim_count });
-        session.captureStatus = { state: 'captured', serviceName: service_name, updatedAt: now };
-      } else {
-        session.captureLog.push({ timestamp: now, event: 'duplicate', service_name, dim_count });
-      }
+        if (!isDuplicate) {
+          session.capturedServices.push({
+            id: `svc_${now}_${Math.random().toString(36).slice(2, 7)}`,
+            service_name,
+            region,
+            dimensions,
+            capturedAt: now,
+            groupPath: null,
+          });
+          session.captureLog.push({ timestamp: now, event: 'captured', service_name, dim_count });
+          session.captureStatus = { state: 'captured', serviceName: service_name, updatedAt: now };
+        } else {
+          session.captureLog.push({ timestamp: now, event: 'duplicate', service_name, dim_count });
+        }
 
-      // Keep log to last 50 entries
-      if (session.captureLog.length > 50) session.captureLog = session.captureLog.slice(-50);
-
-      await setSession(session);
+        // Keep log to last 50 entries
+        if (session.captureLog.length > 50) session.captureLog = session.captureLog.slice(-50);
+      });
     })();
     return false;
   }

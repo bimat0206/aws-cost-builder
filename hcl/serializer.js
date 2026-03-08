@@ -4,7 +4,7 @@
  *
  * Produces output in this format:
  *
- *   schema_version = "4.0"
+ *   schema_version = "3.0"
  *   project_name   = "My Project"
  *   description    = "Optional description"
  *
@@ -20,6 +20,10 @@
  *
  *         dimension "Operating System"    = "Linux"
  *         dimension "Number of instances" = 3
+ *
+ *         section "Advanced" {
+ *           dimension "Extra option" = true
+ *         }
  *       }
  *     }
  *
@@ -63,29 +67,14 @@ function indent(text, n) {
 }
 
 /**
- * Render a block of dimension key/values with column-aligned `=`.
- * @param {string[]} keys
- * @param {object} dims
- * @param {string} pad - indentation prefix
- * @returns {string[]} lines (no trailing newline)
+ * Serialize a single service object to HCL lines.
+ * @param {object} service
+ * @param {number} indentLevel - spaces of indentation
+ * @returns {string}
  */
-function renderDimensionLines(keys, dims, pad) {
-    if (keys.length === 0) return [];
-    const maxKeyLen = Math.max(...keys.map(k => k.length));
-    return keys.map(key => {
-        const dim = dims[key];
-        const rawVal = (dim && dim.user_value !== null && dim.user_value !== undefined)
-            ? dim.user_value
-            : (dim ? dim.default_value : null);
-        const padding = ' '.repeat(maxKeyLen - key.length);
-        return `${pad}dimension ${hclValue(key)}${padding} = ${hclValue(rawVal)}`;
-    });
-}
-
 function serializeService(service, indentLevel) {
     const pad = ' '.repeat(indentLevel);
     const innerPad = ' '.repeat(indentLevel + 2);
-    const sectionPad = ' '.repeat(indentLevel + 4);
     const lines = [];
 
     const label = service.human_label || service.service_name;
@@ -96,38 +85,45 @@ function serializeService(service, indentLevel) {
     lines.push(`${innerPad}human_label = ${hclValue(label)}`);
 
     const dims = service.dimensions || {};
-    const sections = service.sections || [];
+    const dimKeys = Object.keys(dims).sort();
 
-    if (sections.length > 0) {
-        // Build set of all keys that belong to a section
-        const sectionedKeys = new Set(sections.flatMap(s => s.keys || []));
-
-        // Render unsectioned dimensions first (sorted)
-        const unsectionedKeys = Object.keys(dims)
-            .filter(k => !sectionedKeys.has(k))
-            .sort();
-
-        if (unsectionedKeys.length > 0) {
-            lines.push('');
-            lines.push(...renderDimensionLines(unsectionedKeys, dims, innerPad));
+    if (dimKeys.length > 0) {
+        lines.push('');
+        const maxKeyLen = Math.max(...dimKeys.map(k => k.length));
+        for (const key of dimKeys) {
+            const dim = dims[key];
+            const rawVal = dim.user_value !== null && dim.user_value !== undefined
+                ? dim.user_value
+                : dim.default_value;
+            const padding = ' '.repeat(maxKeyLen - key.length);
+            lines.push(`${innerPad}dimension ${hclValue(key)}${padding} = ${hclValue(rawVal)}`);
         }
+    }
 
-        // Render each section block
-        for (const section of sections) {
-            const sectionKeys = (section.keys || []).filter(k => k in dims);
-            if (sectionKeys.length === 0) continue;
-            lines.push('');
-            lines.push(`${innerPad}section ${hclValue(section.name)} {`);
-            lines.push(...renderDimensionLines(sectionKeys, dims, sectionPad));
+    // sections, if any, each with their own dimensions block
+    if (service.sections && service.sections.length > 0) {
+        // leave blank line before sections for readability
+        lines.push('');
+        for (const sec of service.sections) {
+            lines.push(`${innerPad}section ${hclValue(sec.section_name)} {`);
+            const secDimKeys = Object.keys(sec.dimensions || {}).sort();
+            if (secDimKeys.length > 0) {
+                const secInnerPad = innerPad + '  ';
+                const maxSecKeyLen = Math.max(...secDimKeys.map(k => k.length));
+                for (const key of secDimKeys) {
+                    const dim = sec.dimensions[key];
+                    const rawVal = dim.user_value !== null && dim.user_value !== undefined
+                        ? dim.user_value
+                        : dim.default_value;
+                    const padding = ' '.repeat(maxSecKeyLen - key.length);
+                    lines.push(`${secInnerPad}dimension ${hclValue(key)}${padding} = ${hclValue(rawVal)}`);
+                }
+            }
             lines.push(`${innerPad}}`);
-        }
-    } else {
-        // No sections — flat dimension list (v3 style, sorted)
-        const dimKeys = Object.keys(dims).sort();
-        if (dimKeys.length > 0) {
             lines.push('');
-            lines.push(...renderDimensionLines(dimKeys, dims, innerPad));
         }
+        // drop trailing blank line added by loop
+        if (lines[lines.length - 1] === '') lines.pop();
     }
 
     lines.push(`${pad}}`);
@@ -183,7 +179,7 @@ function serializeGroup(group, indentLevel) {
 export function serializeHCL(profileData) {
     const lines = [];
 
-    lines.push(`schema_version = ${hclValue(profileData.schema_version || '4.0')}`);
+    lines.push(`schema_version = ${hclValue(profileData.schema_version || '3.0')}`);
     lines.push(`project_name   = ${hclValue(profileData.project_name)}`);
 
     if (profileData.description !== null && profileData.description !== undefined) {

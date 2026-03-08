@@ -13,7 +13,10 @@
     "properties": {
         "schema_version": {
             "type": "string",
-            "enum": ["2.0", "3.0", "4.0"]
+            "enum": [
+                "2.0",
+                "3.0"
+            ]
         },
         "project_name": {
             "type": "string",
@@ -93,6 +96,12 @@
                     "additionalProperties": {
                         "$ref": "#/definitions/Dimension"
                     }
+                },
+                "sections": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/Section"
+                    }
                 }
             }
         },
@@ -166,6 +175,26 @@
                         "unresolved",
                         null
                     ]
+                }
+            }
+        },
+        "Section": {
+            "type": "object",
+            "required": [
+                "section_name",
+                "dimensions"
+            ],
+            "additionalProperties": false,
+            "properties": {
+                "section_name": {
+                    "type": "string",
+                    "minLength": 1
+                },
+                "dimensions": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "$ref": "#/definitions/Dimension"
+                    }
                 }
             }
         }

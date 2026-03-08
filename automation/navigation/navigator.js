@@ -79,11 +79,20 @@ async function clickAddService(page) {
   logEvent('INFO', 'EVT-SVC-01', { step: 'clicking_add_service' });
 
   try {
-    // Use text-based search like Python's find_button()
-    const button = page.getByRole('button', { name: /Add service/i }).first();
-    await button.waitFor({ state: 'visible', timeout: 5000 });
+    // CONFIRMED from live discovery: aria-label is exactly "Add service"
+    // The primary button is variant-primary (top-right). The secondary is in the estimate table.
+    // Use the primary variant first.
+    let button = page.locator('button[aria-label="Add service"]').first();
+    try {
+      await button.waitFor({ state: 'visible', timeout: 3000 });
+    } catch {
+      // fallback to text-based
+      button = page.getByRole('button', { name: 'Add service', exact: true }).first();
+      await button.waitFor({ state: 'visible', timeout: 5000 });
+    }
     await button.click();
-    await page.waitForLoadState('domcontentloaded', { timeout: 10000 });
+    // Wait for search panel to appear (aria-label='Find Service' input)
+    await page.waitForSelector('input[aria-label="Find Service"]', { state: 'visible', timeout: 10000 });
     logEvent('INFO', 'EVT-SVC-01', { step: 'panel_opened' });
   } catch (error) {
     logEvent('ERROR', 'EVT-SVC-01', { error: error.message });
@@ -99,38 +108,19 @@ async function clickAddService(page) {
  * @param {string[]} [searchboxNames]
  * @returns {Promise<import('playwright').Locator>}
  */
-async function findSearchInput(page, placeholders = [], searchboxNames = []) {
-  const defaultPlaceholders = [
-    'Search for a service',
-    'Search services',
-    'Find resources',
-    'Search',
+async function findSearchInput(page) {
+  // CONFIRMED from live discovery: aria-label is "Find Service", placeholder is "Search for a service"
+  // Try aria-label first (most reliable)
+  const selectors = [
+    'input[aria-label="Find Service"]',
+    'input[placeholder="Search for a service"]',
+    'input[type="search"]',
   ];
 
-  const defaultSearchboxNames = [
-    'Find Service',
-    'Find resources',
-  ];
-
-  const allPlaceholders = [...placeholders, ...defaultPlaceholders];
-  const allSearchboxNames = [...searchboxNames, ...defaultSearchboxNames];
-
-  // Try placeholder-based search
-  for (const placeholder of allPlaceholders) {
+  for (const selector of selectors) {
     try {
-      const input = page.getByPlaceholder(placeholder).first();
-      await input.waitFor({ state: 'visible', timeout: 1000 });
-      return input;
-    } catch {
-      continue;
-    }
-  }
-
-  // Try searchbox role-based search
-  for (const name of allSearchboxNames) {
-    try {
-      const input = page.getByRole('searchbox', { name }).first();
-      await input.waitFor({ state: 'visible', timeout: 1000 });
+      const input = page.locator(selector).first();
+      await input.waitFor({ state: 'visible', timeout: 2000 });
       return input;
     } catch {
       continue;
@@ -149,46 +139,48 @@ async function findSearchInput(page, placeholders = [], searchboxNames = []) {
  * @returns {Promise<boolean>}
  */
 async function clickBestMatchingResult(page, expectedTitles, activeTerm) {
-  // Try to find service cards using text search
-  const cards = page.getByRole('listitem').filter({ hasText: /Configure/i });
-
-  try {
-    const count = await cards.count();
-    if (count === 0) return false;
-  } catch {
-    return false;
-  }
-
-  // Priority 1: Match expected titles
+  // CONFIRMED from live discovery: Configure buttons have aria-label="Configure <ServiceName> "
+  // (trailing space is common in Cloudscape button labels)
+  // Strategy: find Configure buttons for the expected titles first
   for (const title of expectedTitles) {
     try {
-      const card = cards.filter({ hasText: title }).first();
-      await card.waitFor({ state: 'visible', timeout: 1500 });
-      await card.click();
-      logEvent('INFO', 'EVT-SVC-03', { service: title, step: 'selected_by_title' });
+      // Match by aria-label with the exact or partial service name
+      const btn = page.locator(`button[aria-label*="Configure ${title}"]`).first();
+      await btn.waitFor({ state: 'visible', timeout: 1500 });
+      await btn.click();
+      logEvent('INFO', 'EVT-SVC-03', { service: title, step: 'selected_by_aria_label' });
+      return true;
+    } catch {
+      // Fall through to role-based
+    }
+
+    try {
+      // Role-based with accessible name pattern
+      const btn = page.getByRole('button', { name: new RegExp(`Configure ${title}`, 'i') }).first();
+      await btn.waitFor({ state: 'visible', timeout: 1500 });
+      await btn.click();
+      logEvent('INFO', 'EVT-SVC-03', { service: title, step: 'selected_by_role_name' });
       return true;
     } catch {
       continue;
     }
   }
 
-  // Priority 2: Match active search term
+  // Priority 2: Match by active search term
   try {
-    const card = cards.filter({ hasText: activeTerm }).first();
-    await card.waitFor({ state: 'visible', timeout: 1500 });
-    await card.click();
+    const btn = page.locator(`button[aria-label*="Configure"]`).filter({ hasText: activeTerm }).first();
+    await btn.waitFor({ state: 'visible', timeout: 1500 });
+    await btn.click();
     logEvent('INFO', 'EVT-SVC-03', { service: activeTerm, step: 'selected_by_term' });
     return true;
-  } catch {
-    // Continue to fallback
-  }
+  } catch {}
 
-  // Priority 3: First result fallback
+  // Priority 3: First Configure button on page
   try {
-    const firstCard = cards.first();
-    await firstCard.waitFor({ state: 'visible', timeout: 1500 });
-    await firstCard.click();
-    logEvent('INFO', 'EVT-SVC-03', { step: 'selected_first_fallback' });
+    const btn = page.locator('button[aria-label*="Configure"]').first();
+    await btn.waitFor({ state: 'visible', timeout: 1500 });
+    await btn.click();
+    logEvent('INFO', 'EVT-SVC-03', { step: 'selected_first_configure' });
     return true;
   } catch {
     return false;
@@ -215,10 +207,13 @@ async function searchAndSelectService(page, searchTerms, expectedTitles) {
 
   // Try each search term
   for (const term of terms) {
-    searchInput.fill(term);
+    await searchInput.fill(term);
     await page.waitForTimeout(900); // Allow filtered results to render
 
     if (await clickBestMatchingResult(page, expectedTitles, term)) {
+      // After clicking the Configure button, handle any immediate modal (e.g., EC2 workloads)
+      await page.waitForTimeout(1000);
+      await handleOptionalWorkloadsModal(page);
       return;
     }
   }
@@ -232,13 +227,32 @@ async function searchAndSelectService(page, searchTerms, expectedTitles) {
  * @param {import('playwright').Page} page
  * @returns {Promise<void>}
  */
-export async function clickConfigure(page) {
-  logEvent('INFO', 'EVT-SVC-03', { step: 'clicking_configure' });
+export async function clickConfigure(page, serviceName = null) {
+  logEvent('INFO', 'EVT-SVC-03', { step: 'clicking_configure', service: serviceName });
   try {
-    const configureButton = page.getByRole('button', { name: /Configure/i }).first();
+    // CONFIRMED from live discovery: aria-label is "Configure <ServiceName>" or "Configure <ServiceName> " (trailing space)
+    // Try the most specific selector first if we know the service name
+    if (serviceName) {
+      try {
+        const specificBtn = page.locator(`button[aria-label*="Configure ${serviceName}"]`).first();
+        await specificBtn.waitFor({ state: 'visible', timeout: 3000 });
+        await specificBtn.click();
+        await page.waitForTimeout(1000);
+        logEvent('INFO', 'EVT-SVC-03', { step: 'configure_clicked_specific' });
+        await handleOptionalWorkloadsModal(page);
+        return;
+      } catch {
+        // fall through
+      }
+    }
+
+    // Generic fallback: any visible Configure button
+    const configureButton = page.getByRole('button', { name: /Configure/i })
+      .filter({ hasNot: page.locator('[aria-label*="Add service"]') })
+      .first();
     await configureButton.waitFor({ state: 'visible', timeout: 5000 });
     await configureButton.click();
-    await page.waitForLoadState('domcontentloaded', { timeout: 10000 });
+    await page.waitForTimeout(1000);
     logEvent('INFO', 'EVT-SVC-03', { step: 'configure_clicked' });
     
     // Gap 9: EC2 specific workload quick-start modal evasion
@@ -314,28 +328,53 @@ async function selectRegion(page, regionCode, catalogEntry = null) {
     const regLabel = catalogEntry?.ui_mapping?.region_picker_label || 'Choose a Region';
 
     // Step 1: Ensure location type is set to "Region"
-    const locationType = page.getByLabel(new RegExp(locLabel, 'i')).first();
-    await locationType.waitFor({ state: 'visible', timeout: 8000 });
+    // CONFIRMED from live discovery: dropdowns use aria-labelledby pointing to a label element
+    // We can locate the button whose preceding label text matches the desired label
+    const locDropdown = page.locator(`button[aria-labelledby]`).filter({
+      has: page.locator(`xpath=./ancestor::*[contains(@class, "awsui_form-field")]//*[contains(text(), "${locLabel}")]`)
+    }).first();
+    
+    // Fallback to getByLabel if above fails
+    const locationDropdown = await (async () => {
+      try {
+        await locDropdown.waitFor({ state: 'visible', timeout: 3000 });
+        return locDropdown;
+      } catch {
+        return page.getByLabel(new RegExp(locLabel, 'i')).first();
+      }
+    })();
+    
+    await locationDropdown.waitFor({ state: 'visible', timeout: 8000 });
 
-    const locationTypeText = await locationType.textContent();
+    const locationTypeText = await locationDropdown.textContent();
     if (!locationTypeText?.toLowerCase().includes('region')) {
-      await locationType.click();
-      const regionOption = page.getByRole('option', { name: /Region/i }).first();
+      await locationDropdown.click();
+      const regionOption = page.getByRole('option', { name: /^Region$/i }).first();
       await regionOption.waitFor({ state: 'visible', timeout: 5000 });
       await regionOption.click();
+      await page.waitForTimeout(300);
     }
 
     // Step 2: Select region by code (not display name)
-    const regionPicker = page.getByLabel(new RegExp(regLabel, 'i')).first();
-    await regionPicker.waitFor({ state: 'visible', timeout: 8000 });
-    await regionPicker.click();
+    const regionDropdown = await (async () => {
+      try {
+        const d = page.locator(`button[aria-labelledby]`).filter({
+          has: page.locator(`xpath=./ancestor::*[contains(@class, "awsui_form-field")]//*[contains(text(), "${regLabel}")]`)
+        }).first();
+        await d.waitFor({ state: 'visible', timeout: 3000 });
+        return d;
+      } catch {
+        return page.getByLabel(new RegExp(regLabel, 'i')).first();
+      }
+    })();
+    await regionDropdown.waitFor({ state: 'visible', timeout: 8000 });
+    await regionDropdown.click();
 
     // Find region option by code pattern (e.g., "us-east-1")
     const regionCodePattern = new RegExp(`\\b${regionCode}\\b`, 'i');
     const regionOption = page.getByRole('option', { name: regionCodePattern }).first();
     await regionOption.waitFor({ state: 'visible', timeout: 5000 });
     await regionOption.click();
-
     await page.waitForTimeout(300);
     logEvent('INFO', 'EVT-REG-01', { region: regionCode, status: 'selected' });
   } catch (error) {
@@ -449,7 +488,9 @@ export async function navigateToService(page, opts) {
       );
     }
 
-    // Step 4: Search for service and select best match
+    // Step 4: Search for service, click Configure, and handle optional modals
+    // NOTE: clickBestMatchingResult directly clicks the Configure button in the search panel,
+    // which opens the service form. There is NO separate Step 5 needed.
     await withRetry(
       async () => {
         try {
@@ -461,23 +502,6 @@ export async function navigateToService(page, opts) {
       },
       {
         stepName: 'service-search',
-        maxRetries: 2,
-        delayMs: 1500,
-      }
-    );
-
-    // Step 5: Click Configure to open service dimension form
-    await withRetry(
-      async () => {
-        try {
-          await clickConfigure(page);
-        } catch (err) {
-          await captureFail('configure-click');
-          throw err;
-        }
-      },
-      {
-        stepName: 'configure-click',
         maxRetries: 2,
         delayMs: 1500,
       }

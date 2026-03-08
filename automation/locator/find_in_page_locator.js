@@ -217,12 +217,52 @@ async function tryAriaLabelStrategy(page, labelText, disambiguationIndex) {
 }
 
 /**
- * Try label[for] strategy.
+ * Try aria-labelledby strategy (Cloudscape components like selects and comboboxes).
+ * CONFIRMED from live browser discovery: AWS Pricing Calculator dropdowns use aria-labelledby
+ * pointing to a label element rather than a direct aria-label attribute.
  * @param {import('playwright').Page} page
  * @param {string} labelText
  * @param {number} disambiguationIndex
  * @returns {Promise<{element: import('playwright').ElementHandle, strategy: string} | null>}
  */
+async function tryLabelledByStrategy(page, labelText, disambiguationIndex) {
+  try {
+    // Find label elements whose text matches, then find form controls that reference them via aria-labelledby
+    const escaped = escapeCssString(labelText);
+    // Get the id of the label element(s) that contain this text
+    const labelIds = await page.evaluate((text) => {
+      const labels = [...document.querySelectorAll('label, [id]')];
+      return labels
+        .filter(el => el.tagName === 'LABEL' || el.id)
+        .filter(el => el.textContent?.toLowerCase().includes(text.toLowerCase()))
+        .map(el => el.id)
+        .filter(Boolean);
+    }, labelText);
+
+    if (!labelIds || labelIds.length === 0) return null;
+
+    for (const labelId of labelIds) {
+      try {
+        const selector = `[aria-labelledby*="${escapeCssString(labelId)}"]`;
+        const candidates = page.locator(selector);
+        const count = await candidates.count();
+        if (count === 0) continue;
+
+        const selected = await candidates.nth(disambiguationIndex).elementHandle();
+        if (!selected) continue;
+
+        await selected.waitForElementState('visible', { timeout: 2000 });
+        return { element: selected, strategy: 'aria-labelledby' };
+      } catch {
+        continue;
+      }
+    }
+
+    return null;
+  } catch {
+    return null;
+  }
+}
 async function tryLabelForStrategy(page, labelText, disambiguationIndex) {
   try {
     const candidates = page.getByLabel(labelText, { exact: false });
@@ -270,11 +310,16 @@ async function tryRoleStrategy(page, labelText, disambiguationIndex) {
 
 /**
  * Escape CSS string for safe use in selectors.
+ * Supports escaping apostrophes and slashes to prevent query parsing errors.
  * @param {string} value
  * @returns {string}
  */
 function escapeCssString(value) {
-  return value.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+  return value
+    .replace(/\\/g, '\\\\')
+    .replace(/"/g, '\\"')
+    .replace(/'/g, "\\'")
+    .replace(/\//g, '\\/');
 }
 
 // ─── Main locator function ────────────────────────────────────────────────────
@@ -352,9 +397,11 @@ export async function findElement(page, dimensionKey, opts = {}) {
           }
         }
 
-        // Tiers 2-4: Iterate over labels and strategies
+        // Tiers 2-5: Iterate over labels and strategies
+        // Ordered like Python: aria-label → aria-labelledby (Cloudscape) → label-for → role
         const strategies = [
           tryAriaLabelStrategy,
+          tryLabelledByStrategy,
           tryLabelForStrategy,
           tryRoleStrategy
         ];
@@ -382,27 +429,55 @@ export async function findElement(page, dimensionKey, opts = {}) {
             // Find nearest input control
             const nearbyInputs = page.locator('input, select, textarea, [role="combobox"], [role="spinbutton"]');
             const count = await nearbyInputs.count();
+            const candidates = [];
+            
             for (let i = 0; i < count; i++) {
               const input = nearbyInputs.nth(i);
               try {
                 const box = await input.boundingBox();
                 const textBox = await textLocator.boundingBox();
-                if (box && textBox && Math.abs(box.y - textBox.y) < 100) {
-                  const element = await input.elementHandle();
-                  if (element) {
-                    logEvent('INFO', 'EVT-FND-01', { label: dimensionKey, strategy: 'text-proximity' });
-                    return {
-                      element,
-                      strategy: 'text-proximity',
-                      fieldType: await getFieldType(element),
-                      status: 'success',
-                      matchTop: 0
-                    };
+                
+                if (box && textBox) {
+                  // Must be roughly in the same vertical band (±100px)
+                  const dy = box.y - textBox.y;
+                  if (Math.abs(dy) < 100) {
+                     candidates.push({ 
+                       input, 
+                       box, 
+                       distY: Math.abs(dy), 
+                       // prefer items directly right or below
+                       distX: box.x - textBox.x 
+                     });
                   }
                 }
               } catch {
                 continue;
               }
+            }
+            
+            if (candidates.length > 0) {
+               // Sort: prefer items to the right/below, minimum structural distance
+               candidates.sort((a, b) => {
+                 // Discard items far to the left
+                 if (a.distX < -50 && b.distX >= -50) return 1;
+                 if (b.distX < -50 && a.distX >= -50) return -1;
+                 // Sort by vertical alignment first
+                 if (a.distY !== b.distY) return a.distY - b.distY;
+                 // Then sort by horizontal proximity
+                 return a.distX - b.distX;
+               });
+               
+               const element = await candidates[0].input.elementHandle();
+               if (element) {
+                 logEvent('INFO', 'EVT-FND-01', { label: dimensionKey, strategy: 'text-proximity' });
+                 return {
+                   element,
+                   strategy: 'text-proximity',
+                   fieldType: await getFieldType(element),
+                   status: 'success',
+                   matchTop: 0
+                 };
+               }
             }
           } catch {
             // Continue failure

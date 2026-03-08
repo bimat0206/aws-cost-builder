@@ -64,6 +64,7 @@ import {
 const MODE_DEFINITIONS = [
   { id: 'run',           label: 'Runner',         badge: 'Mode B', color: COL_GREEN },
   { id: 'dryRun',        label: 'Dry Run',         badge: 'Mode C', color: COL_YELLOW },
+  { id: 'explore',       label: 'Explorer',        badge: 'Mode D', color: COL_MAGENTA },
   { id: 'promote',       label: 'Promoter',        badge: 'Mode E', color: COL_ORANGE },
   { id: 'exportArchive', label: 'Export Archive',  badge: 'Mode F', color: COL_CYAN },
 ];
@@ -131,19 +132,18 @@ describe('statusLine()', () => {
 // ─── MODE_DEFINITIONS completeness ───────────────────────────────────────────
 
 describe('MODE_DEFINITIONS', () => {
-  it('has exactly 4 mode entries (no build mode, no explorer mode)', () => {
-    expect(MODE_DEFINITIONS).toHaveLength(4);
+  it('has exactly 5 mode entries (no build mode)', () => {
+    expect(MODE_DEFINITIONS).toHaveLength(5);
   });
 
   it('does NOT contain build mode', () => {
     const ids = MODE_DEFINITIONS.map((m) => m.id);
     expect(ids).not.toContain('build');
-    expect(ids).not.toContain('explore');
   });
 
   it('contains all expected mode ids', () => {
     const ids = MODE_DEFINITIONS.map((m) => m.id);
-    for (const id of ['run', 'dryRun', 'promote', 'exportArchive']) {
+    for (const id of ['run', 'dryRun', 'explore', 'promote', 'exportArchive']) {
       expect(ids).toContain(id);
     }
   });
@@ -156,7 +156,7 @@ describe('MODE_DEFINITIONS', () => {
 
   it('every mode has a badge in format "Mode X"', () => {
     for (const m of MODE_DEFINITIONS) {
-      expect(m.badge).toMatch(/^Mode [BCEF]$/);
+      expect(m.badge).toMatch(/^Mode [B-F]$/);
     }
   });
 
@@ -200,7 +200,7 @@ describe('printModeStart()', () => {
   });
 
   it('contains separator dashes', () => {
-    expect(strip(renderModeStart('promote'))).toContain('──');
+    expect(strip(renderModeStart('explore'))).toContain('──');
   });
 
   it('all valid mode ids produce non-empty output', () => {
