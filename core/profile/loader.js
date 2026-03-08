@@ -1,19 +1,24 @@
 /**
- * Profile loader — orchestrates file I/O, JSON parse, schema validation,
+ * Profile loader — orchestrates file I/O, JSON parse / HCL parse, schema validation,
  * cross-field validation, and deserialization.
  *
  * Failure layers (FAIL FAST — all throw before browser launch):
  *   F-L1  Profile File I/O
- *   F-L2  JSON Parsing
- *   F-L3  Schema Validation
+ *   F-L2  JSON/HCL Parsing
+ *   F-L3  Schema Validation (JSON profiles only; HCL is pre-validated by parser)
  *   F-L4  Cross-Field Validation
+ *
+ * Supported file extensions:
+ *   .json  — existing JSON profile format (schema v2.0 / v3.0)
+ *   .hcl   — new HCL DSL format (schema v3.0)
  *
  * @module core/profile/loader
  */
 
 import { readFile } from 'node:fs/promises';
-import { resolve, sep } from 'node:path';
-import { validateSchema, validateCrossFields, ProfileValidationError } from './validator.js';import { deserializeProfile } from './serializer.js';
+import { resolve, sep, extname } from 'node:path';
+import { validateSchema, validateCrossFields, ProfileValidationError } from './validator.js';
+import { deserializeProfile } from './serializer.js';
 
 // ─── Base Error Classes ───────────────────────────────────────────────────────
 
@@ -52,12 +57,21 @@ export class ProfileEncodingError extends ProfileLoadError {
     }
 }
 
-// ─── F-L2 Error Class ─────────────────────────────────────────────────────────
+// ─── F-L2 Error Classes ───────────────────────────────────────────────────────
 
 export class ProfileJSONParseError extends ProfileLoadError {
     constructor(path, cause) {
         super(`Failed to parse profile JSON in "${resolve(path)}": ${cause ? cause.message : ''}`, 'F-L2');
         this.name = 'ProfileJSONParseError';
+        this.path = resolve(path);
+        this.cause = cause;
+    }
+}
+
+export class ProfileHCLParseError extends ProfileLoadError {
+    constructor(path, cause) {
+        super(`Failed to parse profile HCL in "${resolve(path)}": ${cause ? cause.message : ''}`, 'F-L2');
+        this.name = 'ProfileHCLParseError';
         this.path = resolve(path);
         this.cause = cause;
     }
@@ -103,11 +117,11 @@ export {
 // ─── Main loader ─────────────────────────────────────────────────────────────
 
 /**
- * Load, validate, and deserialize a profile JSON file.
+ * Load, validate, and deserialize a profile file (.json or .hcl).
  *
- * @param {string} profilePath - Absolute or relative path to the profile JSON
- * @param {Array} [catalog] - Optional pre-loaded catalog (for testing); if omitted, loads from disk
- * @param {object} [regionMap] - Optional pre-loaded region map (for testing); if omitted, loads from disk
+ * @param {string} profilePath - Absolute or relative path to the profile file
+ * @param {Array} [catalog] - Optional pre-loaded catalog (for testing)
+ * @param {object} [regionMap] - Optional pre-loaded region map (for testing)
  * @returns {Promise<import('../models/profile.js').ProfileDocument>}
  */
 export async function loadProfile(profilePath, catalog, regionMap) {
@@ -128,23 +142,33 @@ export async function loadProfile(profilePath, catalog, regionMap) {
         throw new ProfileEncodingError(profilePath);
     }
 
-    // ── F-L2: JSON Parsing ────────────────────────────────────────────────────
+    // ── F-L2: Parse (JSON or HCL) ────────────────────────────────────────────
+    const ext = extname(resolvedPath).toLowerCase();
     let profileData;
-    try {
-        profileData = JSON.parse(raw);
-    } catch (err) {
-        throw new ProfileJSONParseError(profilePath, err);
-    }
 
-    // ── F-L3: Schema Validation ───────────────────────────────────────────────
-    try {
-        validateSchema(profileData);
-    } catch (err) {
-        throw new ProfileSchemaValidationError(profilePath, err.errors || [err.message]);
+    if (ext === '.hcl') {
+        try {
+            const { parseHCL } = await import('../../hcl/index.js');
+            profileData = parseHCL(raw);
+        } catch (err) {
+            throw new ProfileHCLParseError(profilePath, err);
+        }
+    } else {
+        try {
+            profileData = JSON.parse(raw);
+        } catch (err) {
+            throw new ProfileJSONParseError(profilePath, err);
+        }
+
+        // ── F-L3: Schema Validation (JSON only) ───────────────────────────────
+        try {
+            validateSchema(profileData);
+        } catch (err) {
+            throw new ProfileSchemaValidationError(profilePath, err.errors || [err.message]);
+        }
     }
 
     // ── F-L4: Cross-Field Validation ──────────────────────────────────────────
-    // Load catalog/regionMap lazily if not injected (production path)
     if (!catalog) {
         const { loadAllCatalogs } = await import('../../config/loader/index.js');
         catalog = await loadAllCatalogs();
@@ -161,7 +185,6 @@ export async function loadProfile(profilePath, catalog, regionMap) {
     try {
         validateCrossFields(profileData, catalog, regionMap);
     } catch (err) {
-        // Map to ProfileCrossValidationError with violationType
         let violationType = 'dimension';
         const ctor = err.constructor.name;
         if (ctor === 'CrossValidationServiceCatalogError') violationType = 'service';

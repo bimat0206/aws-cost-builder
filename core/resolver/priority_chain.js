@@ -11,6 +11,8 @@
  * For unresolved dimensions:
  *   - If required=true → fail-fast before browser launch
  *   - If required=false → skip and continue
+ *
+ * Supports nested groups recursively.
  */
 
 import { ProfileDocument, Group, Service, Dimension } from '../models/profile.js';
@@ -57,10 +59,34 @@ export class ResolutionError extends Error {
 // ─── Resolution Functions ─────────────────────────────────────────────────────
 
 /**
+ * Recursively apply overrides across all groups (including nested child groups).
+ * @param {Group[]} groups
+ * @param {Map<string, import('./override_parser.js').ParsedOverride>} overrides
+ * @param {Set<string>} unmatchedOverrides
+ */
+function applyOverridesToGroups(groups, overrides, unmatchedOverrides) {
+    for (const group of groups) {
+        for (const service of group.getServices()) {
+            for (const dimension of service.getDimensions()) {
+                const key = buildOverrideKey(group.group_name, service.service_name, dimension.key);
+                const override = overrides.get(key);
+                if (override) {
+                    dimension.user_value = override.value;
+                    dimension.resolution_source = null;
+                    dimension.resolution_status = null;
+                    unmatchedOverrides.delete(key);
+                }
+            }
+        }
+        if (group.getGroups && group.getGroups().length > 0) {
+            applyOverridesToGroups(group.getGroups(), overrides, unmatchedOverrides);
+        }
+    }
+}
+
+/**
  * Apply --set overrides to targeted dimensions in the profile.
- *
- * Overrides are applied by matching groupName, serviceName, and dimensionKey.
- * When a match is found, the dimension's user_value is set to the override value.
+ * Supports nested groups recursively.
  *
  * @param {ProfileDocument} profile
  * @param {Map<string, import('./override_parser.js').ParsedOverride>} overrides
@@ -72,27 +98,9 @@ export function applyOverrides(profile, overrides) {
         return profile;
     }
 
-    const groups = profile.getGroups();
     const unmatchedOverrides = new Set(overrides.keys());
+    applyOverridesToGroups(profile.getGroups(), overrides, unmatchedOverrides);
 
-    for (const group of groups) {
-        for (const service of group.getServices()) {
-            for (const dimension of service.getDimensions()) {
-                const key = buildOverrideKey(group.group_name, service.service_name, dimension.key);
-                const override = overrides.get(key);
-
-                if (override) {
-                    // Apply the override by setting user_value
-                    dimension.user_value = override.value;
-                    dimension.resolution_source = null;
-                    dimension.resolution_status = null;
-                    unmatchedOverrides.delete(key);
-                }
-            }
-        }
-    }
-
-    // Report any unmatched overrides
     if (unmatchedOverrides.size > 0) {
         const unmatched = Array.from(unmatchedOverrides).map(k => {
             const [g, s, d] = k.split('|');
@@ -107,19 +115,12 @@ export function applyOverrides(profile, overrides) {
 /**
  * Resolve a single dimension value using the priority chain.
  *
- * Priority chain:
- *   1. user_value (if not null)
- *   2. default_value (if not null)
- *   3. prompt_message (if set) → mark as skipped for runtime prompt
- *   4. unresolved
- *
  * @param {Dimension} dimension
  * @param {string} groupName
  * @param {string} serviceName
  * @returns {{ resolved: boolean, unresolved: UnresolvedDimension | null }}
  */
 function resolveDimension(dimension, groupName, serviceName) {
-    // Priority 1: user_value
     if (dimension.user_value !== null && dimension.user_value !== undefined) {
         dimension.resolved_value = dimension.user_value;
         dimension.resolution_source = 'user_value';
@@ -127,7 +128,6 @@ function resolveDimension(dimension, groupName, serviceName) {
         return { resolved: true, unresolved: null };
     }
 
-    // Priority 2: default_value
     if (dimension.default_value !== null && dimension.default_value !== undefined) {
         dimension.resolved_value = dimension.default_value;
         dimension.resolution_source = 'default_value';
@@ -135,18 +135,14 @@ function resolveDimension(dimension, groupName, serviceName) {
         return { resolved: true, unresolved: null };
     }
 
-    // Priority 3: prompt_message (runtime prompt)
     if (dimension.prompt_message !== null && dimension.prompt_message !== undefined && dimension.prompt_message !== '') {
-        // Mark as skipped - will be prompted at runtime
         dimension.resolved_value = null;
         dimension.resolution_source = 'prompt';
         dimension.resolution_status = 'skipped';
         return { resolved: false, unresolved: null };
     }
 
-    // Priority 4: unresolved (required) or skipped (optional) — Req 5.3
     if (!dimension.required) {
-        // Optional with no resolution path → skip, do not block execution
         dimension.resolved_value = null;
         dimension.resolution_source = null;
         dimension.resolution_status = 'skipped';
@@ -170,55 +166,60 @@ function resolveDimension(dimension, groupName, serviceName) {
 }
 
 /**
- * Resolve all dimension values using the priority chain.
- *
- * @param {ProfileDocument} profile
- * @param {Object} [opts]
- * @param {boolean} [opts.includeOptionalInReport] - If true, include optional dimensions in unresolved report
- * @returns {{ profile: ProfileDocument, unresolved: UnresolvedDimension[] }}
+ * Recursively resolve dimensions in all groups (including nested child groups).
+ * @param {Group[]} groups
+ * @param {UnresolvedDimension[]} unresolved
+ * @param {boolean} includeOptionalInReport
  */
-export function resolveDimensions(profile, opts = {}) {
-    const { includeOptionalInReport = true } = opts;
-    const unresolved = [];
-
-    const groups = profile.getGroups();
-
+function resolveDimensionsInGroups(groups, unresolved, includeOptionalInReport) {
     for (const group of groups) {
         for (const service of group.getServices()) {
             for (const dimension of service.getDimensions()) {
                 const result = resolveDimension(dimension, group.group_name, service.service_name);
-
                 if (result.unresolved) {
-                    // Only track unresolved if it's required OR if we're including optional in report
                     if (result.unresolved.required || includeOptionalInReport) {
                         unresolved.push(result.unresolved);
                     }
                 }
             }
         }
+        if (group.getGroups && group.getGroups().length > 0) {
+            resolveDimensionsInGroups(group.getGroups(), unresolved, includeOptionalInReport);
+        }
     }
+}
 
+/**
+ * Resolve all dimension values using the priority chain.
+ * Traverses nested groups recursively.
+ *
+ * @param {ProfileDocument} profile
+ * @param {Object} [opts]
+ * @param {boolean} [opts.includeOptionalInReport]
+ * @returns {{ profile: ProfileDocument, unresolved: UnresolvedDimension[] }}
+ */
+export function resolveDimensions(profile, opts = {}) {
+    const { includeOptionalInReport = true } = opts;
+    const unresolved = [];
+    resolveDimensionsInGroups(profile.getGroups(), unresolved, includeOptionalInReport);
     return { profile, unresolved };
 }
 
 /**
  * Assert no unresolved required dimensions exist; throw ResolutionError if any.
  *
- * This is the fail-fast gate before browser launch.
- *
  * @param {UnresolvedDimension[]} unresolved
  * @throws {ResolutionError}
  */
 export function assertNoUnresolved(unresolved) {
     const required = unresolved.filter(u => u.required);
-
     if (required.length > 0) {
         throw new ResolutionError(required);
     }
 }
 
 /**
- * Get a summary of resolution status for a profile.
+ * Get a summary of resolution status for a profile (traverses nested groups).
  *
  * @param {ProfileDocument} profile
  * @returns {{ total: number, resolved: number, skipped: number, unresolved: number }}
@@ -229,20 +230,22 @@ export function getResolutionSummary(profile) {
     let skipped = 0;
     let unresolved = 0;
 
-    for (const group of profile.getGroups()) {
-        for (const service of group.getServices()) {
-            for (const dimension of service.getDimensions()) {
-                total++;
-                if (dimension.resolution_status === 'resolved') {
-                    resolved++;
-                } else if (dimension.resolution_status === 'skipped') {
-                    skipped++;
-                } else if (dimension.resolution_status === 'unresolved') {
-                    unresolved++;
+    function countInGroups(groups) {
+        for (const group of groups) {
+            for (const service of group.getServices()) {
+                for (const dimension of service.getDimensions()) {
+                    total++;
+                    if (dimension.resolution_status === 'resolved') resolved++;
+                    else if (dimension.resolution_status === 'skipped') skipped++;
+                    else if (dimension.resolution_status === 'unresolved') unresolved++;
                 }
+            }
+            if (group.getGroups && group.getGroups().length > 0) {
+                countInGroups(group.getGroups());
             }
         }
     }
 
+    countInGroups(profile.getGroups());
     return { total, resolved, skipped, unresolved };
 }

@@ -7,13 +7,15 @@
  *  - 2-space indentation
  *  - Stable key order: top-level keys always appear in canonical order,
  *    dimension keys are sorted alphabetically for diff-friendliness.
+ *
+ * Also provides serializeToHCL() for the HCL DSL format.
  */
 
 import { ProfileDocument } from '../models/profile.js';
 
 // Canonical key order for each object type
 const PROFILE_KEY_ORDER = ['schema_version', 'project_name', 'description', 'groups'];
-const GROUP_KEY_ORDER   = ['group_name', 'services'];
+const GROUP_KEY_ORDER   = ['group_name', 'label', 'services', 'groups'];
 const SERVICE_KEY_ORDER = ['service_name', 'human_label', 'region', 'dimensions'];
 const DIM_KEY_ORDER     = ['user_value', 'default_value', 'unit', 'prompt_message',
                            'required', 'resolved_value', 'resolution_source', 'resolution_status'];
@@ -41,26 +43,37 @@ function reorder(obj, order) {
 }
 
 /**
+ * Produce a stable plain-object representation of a group (recursively).
+ * @param {object} g
+ * @returns {object}
+ */
+function stableGroup(g) {
+    const services = (g.services || []).map(s => {
+        const sortedDimKeys = Object.keys(s.dimensions || {}).sort();
+        const dimensions = {};
+        for (const k of sortedDimKeys) {
+            dimensions[k] = reorder(s.dimensions[k], DIM_KEY_ORDER);
+        }
+        return reorder({ ...s, dimensions }, SERVICE_KEY_ORDER);
+    });
+
+    const obj = { ...g, services };
+
+    if (g.groups && g.groups.length > 0) {
+        obj.groups = g.groups.map(child => stableGroup(child));
+    }
+
+    return reorder(obj, GROUP_KEY_ORDER);
+}
+
+/**
  * Produce a stable plain-object representation of a ProfileDocument.
  * @param {ProfileDocument} profile
  * @returns {object}
  */
 function toStableObject(profile) {
     const plain = profile.toObject();
-
-    const groups = plain.groups.map(g => {
-        const services = g.services.map(s => {
-            // Sort dimension keys alphabetically for stable ordering
-            const sortedDimKeys = Object.keys(s.dimensions).sort();
-            const dimensions = {};
-            for (const k of sortedDimKeys) {
-                dimensions[k] = reorder(s.dimensions[k], DIM_KEY_ORDER);
-            }
-            return reorder({ ...s, dimensions }, SERVICE_KEY_ORDER);
-        });
-        return reorder({ ...g, services }, GROUP_KEY_ORDER);
-    });
-
+    const groups = plain.groups.map(g => stableGroup(g));
     return reorder({ ...plain, groups }, PROFILE_KEY_ORDER);
 }
 
@@ -72,6 +85,16 @@ function toStableObject(profile) {
  */
 export function serializeProfile(profile) {
     return JSON.stringify(toStableObject(profile), null, 2);
+}
+
+/**
+ * Serialize a ProfileDocument to an HCL DSL string.
+ * @param {ProfileDocument} profile
+ * @returns {string}
+ */
+export async function serializeToHCL(profile) {
+    const { serializeHCL } = await import('../../hcl/index.js');
+    return serializeHCL(profile.toObject());
 }
 
 /**

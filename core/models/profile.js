@@ -130,7 +130,6 @@ export class Service {
         if (obj.dimensions) {
             for (const [key, dimObj] of Object.entries(obj.dimensions)) {
                 if (!Object.hasOwn(obj.dimensions, key)) continue;
-                // Guard against prototype-poisoning keys
                 if (key === '__proto__' || key === 'constructor' || key === 'prototype') continue;
                 dimensions[key] = Dimension.fromObject({ key, ...dimObj });
             }
@@ -179,41 +178,53 @@ export class Service {
 }
 
 /**
- * Group model - represents a named group of services.
+ * Group model - represents a named group of services, with optional nested child groups.
  */
 export class Group {
     /**
      * @param {Object} params
      * @param {string} params.group_name
      * @param {Service[]} [params.services=[]]
+     * @param {Group[]} [params.groups=[]]  Child groups (nested group support)
+     * @param {string|null} [params.label=null]  Optional display label
      */
-    constructor({ group_name, services = [] }) {
+    constructor({ group_name, services = [], groups = [], label = null }) {
         this.group_name = group_name;
         this.services = services;
+        this.groups = groups;
+        this.label = label;
     }
 
     /**
-     * Creates a Group from a plain object.
+     * Creates a Group from a plain object (recursively handles nested groups).
      * @param {Object} obj - Plain object with group properties
      * @returns {Group}
      */
     static fromObject(obj) {
         const services = (obj.services || []).map(s => Service.fromObject(s));
+        const groups = (obj.groups || []).map(g => Group.fromObject(g));
         return new Group({
             group_name: obj.group_name,
-            services
+            services,
+            groups,
+            label: obj.label ?? null
         });
     }
 
     /**
-     * Converts the group to a plain object.
+     * Converts the group to a plain object (recursively).
      * @returns {Object}
      */
     toObject() {
-        return {
+        const obj = {
             group_name: this.group_name,
-            services: this.services.map(s => s.toObject())
+            services: this.services.map(s => s.toObject()),
         };
+        if (this.label !== null) obj.label = this.label;
+        if (this.groups && this.groups.length > 0) {
+            obj.groups = this.groups.map(g => g.toObject());
+        }
+        return obj;
     }
 
     /**
@@ -225,11 +236,39 @@ export class Group {
     }
 
     /**
-     * Gets all services in the group.
+     * Gets all services directly in this group.
      * @returns {Service[]}
      */
     getServices() {
         return this.services;
+    }
+
+    /**
+     * Gets all child groups.
+     * @returns {Group[]}
+     */
+    getGroups() {
+        return this.groups;
+    }
+
+    /**
+     * Adds a child group.
+     * @param {Group} group
+     */
+    addGroup(group) {
+        this.groups.push(group);
+    }
+
+    /**
+     * Get all services in this group and all descendant groups (recursive).
+     * @returns {Service[]}
+     */
+    getAllServicesRecursive() {
+        const result = [...this.services];
+        for (const child of this.groups) {
+            result.push(...child.getAllServicesRecursive());
+        }
+        return result;
     }
 }
 
@@ -239,12 +278,12 @@ export class Group {
 export class ProfileDocument {
     /**
      * @param {Object} params
-     * @param {string} [params.schema_version='2.0']
+     * @param {string} [params.schema_version='3.0']
      * @param {string} params.project_name
      * @param {string|null} [params.description=null]
      * @param {Group[]} [params.groups=[]]
      */
-    constructor({ schema_version = '2.0', project_name, description = null, groups = [] }) {
+    constructor({ schema_version = '3.0', project_name, description = null, groups = [] }) {
         this.schema_version = schema_version;
         this.project_name = project_name;
         this.description = description;
@@ -288,7 +327,7 @@ export class ProfileDocument {
     }
 
     /**
-     * Gets all groups in the profile.
+     * Gets top-level groups in the profile.
      * @returns {Group[]}
      */
     getGroups() {
@@ -296,18 +335,18 @@ export class ProfileDocument {
     }
 
     /**
-     * Gets all services across all groups.
+     * Gets all services across all groups (recursively through nested groups).
      * @returns {Service[]}
      */
     getAllServices() {
-        return this.groups.flatMap(g => g.services);
+        return this.groups.flatMap(g => g.getAllServicesRecursive());
     }
 
     /**
-     * Validates that schema_version is '2.0'.
+     * Validates that schema_version is '3.0' or '2.0' (backwards compat).
      * @returns {boolean}
      */
     hasValidSchemaVersion() {
-        return this.schema_version === '2.0';
+        return this.schema_version === '3.0' || this.schema_version === '2.0';
     }
 }

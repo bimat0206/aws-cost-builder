@@ -65,8 +65,29 @@ export function validateSchema(profileData) {
 }
 
 /**
+ * Recursively collect all services from a group tree.
+ * @param {object[]} groups
+ * @param {string} parentPath
+ * @returns {Array<{loc: string, service: object}>}
+ */
+function collectServicesFromGroups(groups, parentPath = '') {
+    const result = [];
+    for (const group of (groups || [])) {
+        const groupPath = parentPath ? `${parentPath}.${group.group_name}` : group.group_name;
+        for (const service of (group.services || [])) {
+            result.push({ loc: `groups[${groupPath}].services[${service.service_name}]`, service });
+        }
+        if (group.groups && group.groups.length > 0) {
+            result.push(...collectServicesFromGroups(group.groups, groupPath));
+        }
+    }
+    return result;
+}
+
+/**
  * Cross-field validation: service names, regions, and dimension keys must all
  * exist in the catalog / region map. All violations are aggregated before throwing.
+ * Traverses nested groups recursively.
  * @param {object} profileData - Already schema-valid plain profile object
  * @param {Array<{service_name: string, supported_regions: string[], dimensions: Array<{key: string}>}>} catalog
  * @param {object} regionMap - { [regionCode]: displayName }
@@ -78,36 +99,32 @@ export function validateCrossFields(profileData, catalog, regionMap) {
     const catalogByName = new Map(catalog.map(e => [e.service_name, e]));
     const validRegions = new Set(Object.keys(regionMap));
 
-    for (const group of (profileData.groups || [])) {
-        for (const service of (group.services || [])) {
-            const loc = `groups[${group.group_name}].services[${service.service_name}]`;
+    const allServices = collectServicesFromGroups(profileData.groups || []);
 
-            // F-L4-01: service_name must exist in catalog
-            const catalogEntry = catalogByName.get(service.service_name);
-            if (!catalogEntry) {
-                errors.push(`  [cross-field] ${loc}: service_name "${service.service_name}" not found in catalog`);
-                // Can't validate dimensions without a catalog entry — skip further checks for this service
-                continue;
-            }
+    for (const { loc, service } of allServices) {
+        // F-L4-01: service_name must exist in catalog
+        const catalogEntry = catalogByName.get(service.service_name);
+        if (!catalogEntry) {
+            errors.push(`  [cross-field] ${loc}: service_name "${service.service_name}" not found in catalog`);
+            continue;
+        }
 
-            // F-L4-02: region must be in region_map or "global"
-            if (service.region !== 'global' && !validRegions.has(service.region)) {
-                errors.push(`  [cross-field] ${loc}: region "${service.region}" not in region_map and is not "global"`);
-            }
+        // F-L4-02: region must be in region_map or "global"
+        if (service.region !== 'global' && !validRegions.has(service.region)) {
+            errors.push(`  [cross-field] ${loc}: region "${service.region}" not in region_map and is not "global"`);
+        }
 
-            // F-L4-03: each dimension key must be defined for this service
-            const catalogKeys = new Set(catalogEntry.dimensions.map(d => d.key));
-            for (const dimKey of Object.keys(service.dimensions || {})) {
-                if (!catalogKeys.has(dimKey)) {
-                    errors.push(`  [cross-field] ${loc}.dimensions["${dimKey}"]: key not defined for service "${service.service_name}"`);
-                }
+        // F-L4-03: each dimension key must be defined for this service
+        const catalogKeys = new Set(catalogEntry.dimensions.map(d => d.key));
+        for (const dimKey of Object.keys(service.dimensions || {})) {
+            if (!catalogKeys.has(dimKey)) {
+                errors.push(`  [cross-field] ${loc}.dimensions["${dimKey}"]: key not defined for service "${service.service_name}"`);
             }
         }
     }
 
     if (errors.length === 0) return;
 
-    // Pick the most specific error class based on what was found
     if (errors.some(e => e.includes('not found in catalog'))) {
         throw new CrossValidationServiceCatalogError(errors);
     }

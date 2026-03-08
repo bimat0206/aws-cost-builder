@@ -18,7 +18,6 @@ import * as readline from 'node:readline';
 import { basename, join } from 'node:path';
 import { loadProfile, ProfileFileNotFoundError, ProfileJSONParseError, ProfileSchemaValidationError } from './core/profile/loader.js';
 import { applyOverrides, resolveDimensions, assertNoUnresolved, ResolutionError } from './core/resolver/priority_chain.js';
-import { runInteractiveBuilder } from './builder/wizard/interactive_builder.js';
 import { parseOverrides } from './core/resolver/override_parser.js';
 import { loadAllCatalogs } from './config/loader/index.js';
 import { ensureOutputDirs, buildRunId, writeRunResult } from './core/emitter/artifact_writer.js';
@@ -57,7 +56,7 @@ function statusLine(level, text) {
 
 /**
  * Print mode start banner.
- * @param {'build'|'run'|'dryRun'|'explore'|'promote'} mode
+ * @param {'run'|'dryRun'|'explore'|'promote'|'exportArchive'} mode
  */
 function printModeStart(mode) {
   const opt = MODE_OPTIONS.find((m) => m.id === mode);
@@ -73,23 +72,14 @@ function printModeStart(mode) {
 // ─── Splash screen ────────────────────────────────────────────────────────────
 
 /**
- * Print the startup splash screen (design mock screen-01).
+ * Print the startup splash screen.
  */
 function printSplash() {
   print('');
-  // "Local CLI Tool · v1.3"
-  print('  ' + dim('LOCAL CLI TOOL · v1.3'.split('').join(' '))); // simple letter spacing sim
+  print('  ' + dim('LOCAL CLI TOOL · v2.0'.split('').join(' ')));
   print('');
-
-  // "AWS Cost Builder"
-  // Since we can't do true gradients easily in basic ANSI without a library,
-  // we'll stick to the dominant cyan color from the design.
   print('  ' + bold(fg('AWS Cost Builder', COL_CYAN)));
-
-  // "Automate AWS Pricing Calculator · Reusable profiles · Git-friendly JSON"
-  print('  ' + dim('Automate AWS Pricing Calculator · Reusable profiles · Git-friendly JSON'));
-
-  // Separator line
+  print('  ' + dim('Chrome Extension capture · Browser automation · HCL profiles · Git-friendly'));
   print('  ' + dim('─'.repeat(60)));
   print('');
 }
@@ -97,13 +87,6 @@ function printSplash() {
 // ─── Mode card definitions ────────────────────────────────────────────────────
 
 const MODE_OPTIONS = [
-  {
-    id: 'build',
-    label: 'Builder',
-    badge: 'Mode A',
-    description: 'Create a cost profile interactively (TUI wizard)',
-    color: COL_CYAN,
-  },
   {
     id: 'run',
     label: 'Runner',
@@ -132,30 +115,32 @@ const MODE_OPTIONS = [
     description: 'Promote a draft catalog entry to the validated service catalog',
     color: COL_ORANGE,
   },
+  {
+    id: 'exportArchive',
+    label: 'Export Archive',
+    badge: 'Mode F',
+    description: 'Package all HCL profiles into a compressed .tar.gz archive',
+    color: COL_CYAN,
+  },
 ];
 
 // ─── Interactive mode picker ──────────────────────────────────────────────────
 
 /**
- * Run the interactive mode-selection screen (design mock screen-01).
- *
- * Uses `selectPrompt` (arrow-key navigation) instead of plain readline.
- *
- * @returns {Promise<{ mode: 'build'|'run'|'dryRun'|'explore'|'promote', profile?: string, headless?: boolean }>}
+ * Run the interactive mode-selection screen.
+ * @returns {Promise<{ mode: string, profile?: string, headless?: boolean }>}
  */
 async function promptInteractiveModeSelection() {
   if (!process.stdin.isTTY || !process.stdout.isTTY) {
     throw new Error(
-      'No mode specified in non-interactive environment. Use --build, --run --profile <path>, --dry-run --profile <path>, --explore, or --promote.',
+      'No mode specified in non-interactive environment. Use --run --profile <path>, --dry-run --profile <path>, --explore, --promote, or --export-archive.',
     );
   }
 
-  // Print splash
   printSplash();
 
-  // Build display labels (with right-aligned badge)
   const displayLabels = MODE_OPTIONS.map((opt) => {
-    const label  = bold(fg(opt.label.padEnd(12), opt.color));
+    const label  = bold(fg(opt.label.padEnd(16), opt.color));
     const badge  = fg(`[${opt.badge}]`, COL_DIM);
     const desc   = dim(opt.description);
     return { display: `${label} ${badge}  ${desc}`, id: opt.id };
@@ -169,53 +154,43 @@ async function promptInteractiveModeSelection() {
   });
 
   const chosenIndex = displayLabels.findIndex((d) => d.display === selectedDisplay);
-  const mode = /** @type {'build'|'run'|'dryRun'|'explore'|'promote'} */ (
-    MODE_OPTIONS[chosenIndex < 0 ? 0 : chosenIndex].id
-  );
+  const mode = MODE_OPTIONS[chosenIndex < 0 ? 0 : chosenIndex].id;
 
   print('');
 
-  /** @type {{ mode: 'build'|'run'|'dryRun'|'explore'|'promote', profile?: string, headless?: boolean }} */
   const result = { mode };
 
-  // Follow-up prompts for modes that need extra input
   if (mode === 'run' || mode === 'dryRun') {
-    // Auto-discover profiles from profiles/ directory
     const { readdir } = await import('node:fs/promises');
-    // `join` is already imported statically at the top of the file.
-
     try {
       const profilesDir = join(process.cwd(), 'profiles');
       const files = await readdir(profilesDir).catch(() => []);
-      const profileFiles = files.filter(f => f.endsWith('.json'));
-      
+      const profileFiles = files.filter(f => f.endsWith('.json') || f.endsWith('.hcl'));
+
       if (profileFiles.length > 0) {
-        // Show profile selection menu
         const profileOptions = profileFiles.map(f => ({
           display: f,
           path: join('profiles', f),
         }));
-        
+
         const selectedProfile = await selectPrompt({
           label: 'Select a profile',
           options: profileOptions.map(p => p.display),
           defaultValue: profileOptions[0].display,
           descriptions: {},
         });
-        
+
         const selectedPath = profileOptions.find(p => p.display === selectedProfile)?.path;
         result.profile = selectedPath || join('profiles', profileFiles[0]);
       } else {
-        // No profiles found, ask for path
         result.profile = await promptForInput(
-          `  ${dim('Profile path')} ${fg('›', COL_CYAN)} `,
+          `  ${dim('Profile path (.json or .hcl)')} ${fg('›', COL_CYAN)} `,
           { required: true, errorMsg: 'Profile path is required.' },
         );
       }
     } catch {
-      // Fallback to manual input
       result.profile = await promptForInput(
-        `  ${dim('Profile path')} ${fg('›', COL_CYAN)} `,
+        `  ${dim('Profile path (.json or .hcl)')} ${fg('›', COL_CYAN)} `,
         { required: true, errorMsg: 'Profile path is required.' },
       );
     }
@@ -242,7 +217,6 @@ async function promptInteractiveModeSelection() {
 
 /**
  * Prompt for a single free-text input with optional validation.
- *
  * @param {string} label
  * @param {{ required?: boolean, errorMsg?: string }} [opts]
  * @returns {Promise<string>}
@@ -276,10 +250,6 @@ export function buildParser(rawArgv = process.argv) {
   return yargs(hideBin(rawArgv))
     .scriptName('aws-cost-builder')
     .usage('$0 <mode> [options]')
-    .option('build', {
-      type: 'boolean',
-      description: 'Launch interactive TUI wizard to build a cost profile (Mode A)',
-    })
     .option('run', {
       type: 'boolean',
       description: 'Run browser automation using a profile (Mode B)',
@@ -296,9 +266,15 @@ export function buildParser(rawArgv = process.argv) {
       type: 'boolean',
       description: 'Promote a draft catalog entry to the service catalog (Mode E)',
     })
+    .option('export-archive', {
+      type: 'string',
+      description: 'Package all HCL profiles into a .tar.gz archive (Mode F). Optionally specify output path.',
+      nargs: '?',
+      const: 'profiles.tar.gz',
+    })
     .option('profile', {
       type: 'string',
-      description: 'Path to the profile JSON file (required for --run and --dry-run)',
+      description: 'Path to the profile file (.json or .hcl) — required for --run and --dry-run',
     })
     .option('headless', {
       type: 'boolean',
@@ -311,7 +287,7 @@ export function buildParser(rawArgv = process.argv) {
       default: [],
     })
     .check((argv) => {
-      const modes = ['build', 'run', 'dryRun', 'explore', 'promote'];
+      const modes = ['run', 'dryRun', 'explore', 'promote', 'exportArchive'];
       const activeModes = modes.filter((m) => argv[m]);
       if (activeModes.length > 1) {
         throw new Error(`Only one mode may be specified at a time. Got: ${activeModes.join(', ')}`);
@@ -333,23 +309,21 @@ export function buildParser(rawArgv = process.argv) {
 
 /**
  * @param {any} parsed
- * @returns {'build'|'run'|'dryRun'|'explore'|'promote'|null}
+ * @returns {'run'|'dryRun'|'explore'|'promote'|'exportArchive'|null}
  */
 function getActiveMode(parsed) {
-  if (parsed.build) return 'build';
   if (parsed.run) return 'run';
   if (parsed.dryRun) return 'dryRun';
   if (parsed.explore) return 'explore';
   if (parsed.promote) return 'promote';
+  if (parsed.exportArchive !== undefined && parsed.exportArchive !== null && parsed.exportArchive !== false) return 'exportArchive';
   return null;
 }
 
 // ─── Override helper ──────────────────────────────────────────────────────────
 
 /**
- * Parse --set override expressions into a structured map.
- *
- * @param {string[]} values - raw --set argument values
+ * @param {string[]} values
  * @returns {Map<string, string>}
  */
 export function parseSetOverrides(values) {
@@ -357,16 +331,6 @@ export function parseSetOverrides(values) {
 }
 
 // ─── Mode runners ─────────────────────────────────────────────────────────────
-
-/**
- * Launch the interactive TUI wizard (Mode A).
- * @returns {Promise<number>} exit code
- */
-export async function runBuildMode() {
-  const result = await runInteractiveBuilder();
-  if (result === null) return 5;
-  return 0;
-}
 
 /**
  * Launch browser automation using a resolved profile (Mode B).
@@ -379,7 +343,7 @@ export async function runRunnerMode(opts) {
   const { outputDir, screenshotsDir } = ensureOutputDirs(process.cwd());
 
   statusLine('info', `Loading profile from: ${opts.profile}`);
-  
+
   let profile;
   try {
     profile = await loadProfile(opts.profile);
@@ -395,7 +359,7 @@ export async function runRunnerMode(opts) {
     }
     throw err;
   }
-  
+
   const catalogs = await loadAllCatalogs();
   const catalogByService = new Map(catalogs.map((c) => [c.service_name, c]));
 
@@ -427,7 +391,17 @@ export async function runRunnerMode(opts) {
     await session.start();
     await session.openCalculator();
 
-    for (const group of profile.getGroups()) {
+    // Iterate all groups recursively
+    function* iterGroups(groups) {
+      for (const group of groups) {
+        yield group;
+        if (group.getGroups && group.getGroups().length > 0) {
+          yield* iterGroups(group.getGroups());
+        }
+      }
+    }
+
+    for (const group of iterGroups(profile.getGroups())) {
       const groupResult = new GroupResult({ group_name: group.group_name, services: [] });
 
       for (const service of group.getServices()) {
@@ -439,7 +413,9 @@ export async function runRunnerMode(opts) {
         });
 
         const catalog = catalogByService.get(service.service_name);
-        const searchTerms = catalog ? [catalog.search_term, catalog.service_name, catalog.calculator_page_title, ...(catalog.search_keywords || [])].filter(Boolean) : [service.service_name];
+        const searchTerms = catalog
+          ? [catalog.search_term, catalog.service_name, catalog.calculator_page_title, ...(catalog.search_keywords || [])].filter(Boolean)
+          : [service.service_name];
         const context = {
           runId,
           screenshotsDir,
@@ -478,7 +454,6 @@ export async function runRunnerMode(opts) {
 
           if (dimension.resolved_value === null || dimension.resolved_value === undefined) {
             const unresolvedStatus = dimension.required ? 'failed' : 'skipped';
-            // Capture diagnostic screenshot for failed required dimensions
             let screenshotPath = null;
             if (unresolvedStatus === 'failed' && context.runId && context.screenshotsDir) {
               try {
@@ -546,9 +521,7 @@ export async function runRunnerMode(opts) {
           }));
         }
 
-        // Save service to estimate
         try {
-          // If the profile sets `save_to_summary` we could conditionally pass the label, but we default to 'Save and add service'
           await clickSave(session.page, 'Save and add service');
         } catch (saveError) {
           serviceResult.failed_step = 'save';
@@ -620,20 +593,32 @@ export async function runDryRunMode(opts) {
     groups: [],
   });
 
-  for (const group of profile.getGroups()) {
+  function* iterGroups(groups) {
+    for (const group of groups) {
+      yield group;
+      if (group.getGroups && group.getGroups().length > 0) {
+        yield* iterGroups(group.getGroups());
+      }
+    }
+  }
+
+  for (const group of iterGroups(profile.getGroups())) {
     const groupResult = new GroupResult({ group_name: group.group_name, services: [] });
     for (const service of group.getServices()) {
       const serviceResult = new ServiceResult({
         service_name: service.service_name,
         human_label: service.human_label ?? service.service_name,
         dimensions: [],
+        failed_step: null,
       });
 
       for (const dimension of service.getDimensions()) {
-        const status = dimension.resolution_status === 'resolved' ? 'filled' : 'skipped';
         serviceResult.addDimension(new DimensionResult({
           key: dimension.key,
-          status,
+          status: dimension.resolution_status === 'resolved'
+            ? 'filled'
+            : (dimension.resolution_status === 'skipped' ? 'skipped' : 'failed'),
+          error_detail: dimension.resolution_status === 'unresolved' ? 'No resolved value' : null,
         }));
       }
 
@@ -671,11 +656,38 @@ export async function runPromoteMode() {
   return result ? 0 : 1;
 }
 
+/**
+ * Export all HCL profiles from profiles/ directory as a gzip archive (Mode F).
+ * @param {{ outputPath: string }} opts
+ * @returns {Promise<number>} exit code
+ */
+export async function runExportArchiveMode(opts) {
+  const { writeProfileArchive } = await import('./core/emitter/archive_writer.js');
+  const profilesDir = join(process.cwd(), 'profiles');
+  const outputPath = opts.outputPath || join(process.cwd(), 'profiles.tar.gz');
+
+  statusLine('info', `Scanning ${profilesDir} for .hcl profiles...`);
+  try {
+    const { files, outputPath: out } = await writeProfileArchive(profilesDir, outputPath);
+    if (files.length === 0) {
+      statusLine('warn', 'No .hcl profile files found in profiles/ directory.');
+      statusLine('info', 'Use the Chrome Extension to capture profiles and export them as .hcl files.');
+      return 0;
+    }
+    statusLine('ok', `Archived ${files.length} profile(s): ${files.join(', ')}`);
+    statusLine('ok', `Output: ${out}`);
+    return 0;
+  } catch (err) {
+    statusLine('error', `Archive failed: ${err.message}`);
+    return 4;
+  }
+}
+
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
 /**
  * Main entry point — parse argv, dispatch to mode, map errors to exit codes.
- * @param {string[]} [argv] - process.argv (defaults to process.argv)
+ * @param {string[]} [argv]
  * @returns {Promise<number>} exit code
  */
 export async function main(argv) {
@@ -707,14 +719,13 @@ export async function main(argv) {
       if (typeof interactiveChoice.headless === 'boolean') headless = interactiveChoice.headless;
     }
 
-    // Print mode start banner
     printModeStart(mode);
 
-    if (mode === 'build')   return await runBuildMode();
-    if (mode === 'run')     return await runRunnerMode({ profile, headless, overrides });
-    if (mode === 'dryRun')  return await runDryRunMode({ profile, overrides });
-    if (mode === 'explore') return await runExploreMode();
-    if (mode === 'promote') return await runPromoteMode();
+    if (mode === 'run')           return await runRunnerMode({ profile, headless, overrides });
+    if (mode === 'dryRun')        return await runDryRunMode({ profile, overrides });
+    if (mode === 'explore')       return await runExploreMode();
+    if (mode === 'promote')       return await runPromoteMode();
+    if (mode === 'exportArchive') return await runExportArchiveMode({ outputPath: parsed.exportArchive });
   } catch (err) {
     if (err.code === 'ENOENT') {
       statusLine('error', `Profile file not found: ${err.path}`);

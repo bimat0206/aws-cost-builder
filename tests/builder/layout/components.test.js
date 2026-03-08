@@ -379,8 +379,8 @@ describe('StatusIcon()', () => {
     expect(stripAnsi(StatusIcon('failure'))).toBe('✗');
   });
 
-  it('info → ?', () => {
-    expect(stripAnsi(StatusIcon('info'))).toBe('?');
+  it('info → ℹ', () => {
+    expect(stripAnsi(StatusIcon('info'))).toBe('ℹ');
   });
 
   it('unknown type → ·', () => {

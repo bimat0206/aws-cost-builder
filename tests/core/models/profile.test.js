@@ -173,12 +173,12 @@ describe('Profile Models', () => {
     });
 
     describe('ProfileDocument', () => {
-        it('should create a profile with default schema version 2.0', () => {
+        it('should create a profile with default schema version 3.0', () => {
             const profile = new ProfileDocument({
                 project_name: 'Test Project'
             });
             
-            expect(profile.schema_version).toBe('2.0');
+            expect(profile.schema_version).toBe('3.0');
             expect(profile.project_name).toBe('Test Project');
             expect(profile.hasValidSchemaVersion()).toBe(true);
         });
