@@ -328,7 +328,7 @@ function buildProfile(session) {
   }
 
   return {
-    schema_version: "4.0",
+    schema_version: "7.0",
     project_name: profile.project_name || "unnamed",
     description: profile.description || null,
     groups,

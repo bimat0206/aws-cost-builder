@@ -412,12 +412,12 @@ export class Group {
 export class ProfileDocument {
     /**
      * @param {Object} params
-     * @param {string} [params.schema_version='4.0']
+     * @param {string} [params.schema_version='7.0']
      * @param {string} params.project_name
      * @param {string|null} [params.description=null]
      * @param {Group[]} [params.groups=[]]
      */
-    constructor({ schema_version = '4.0', project_name, description = null, groups = [] }) {
+    constructor({ schema_version = '7.0', project_name, description = null, groups = [] }) {
         this.schema_version = schema_version;
         this.project_name = project_name;
         this.description = description;
@@ -481,7 +481,8 @@ export class ProfileDocument {
      * @returns {boolean}
      */
     hasValidSchemaVersion() {
-        return this.schema_version === '5.0'
+        return this.schema_version === '7.0'
+            || this.schema_version === '5.0'
             || this.schema_version === '4.0'
             || this.schema_version === '3.0'
             || this.schema_version === '2.0';

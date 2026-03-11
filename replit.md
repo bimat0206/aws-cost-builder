@@ -13,7 +13,7 @@ Use the Chrome Extension to capture live AWS Calculator pages and build cost pro
 - **Package manager**: npm
 - **Test framework**: Vitest + fast-check (property-based testing)
 - **Browser automation**: Playwright (Chromium)
-- **Profile format**: HCL DSL (`.hcl`) or JSON (`.json`), schema v4.0 (backwards-compatible with v2.0/v3.0)
+- **Profile format**: HCL DSL (`.hcl`) or JSON (`.json`), schema v7.0 (backwards-compatible with v5.0, v4.0, v3.0, v2.0)
 
 ## Project Structure
 

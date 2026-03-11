@@ -361,7 +361,7 @@ function scanFields() {
 
     const value = readFieldValue(control);
     const fieldType = classifyField(control);
-    if (!value && !['SELECT', 'NUMBER', 'SLIDER'].includes(fieldType)) continue;
+    if (!value && !['SELECT', 'NUMBER', 'SLIDER', 'TOGGLE', 'RADIO'].includes(fieldType)) continue;
 
     seen.add(label);
     dimensions.push({
@@ -388,42 +388,6 @@ function captureCurrentPage() {
   }
   const config_groups = buildConfigGroups(rawFields);
   return { service_name, region, dimensions, config_groups };
-}
-
-// Also expose fieldType in config_groups for the popup serializer
-function buildConfigGroupsWithType(rawFields) {
-  const groups = [];
-
-  function ensureGroup(levelGroups, label, fallback = 'group') {
-    const groupName = slugifyName(label, fallback);
-    let group = levelGroups.find((item) => item.group_name === groupName);
-    if (!group) {
-      group = { group_name: groupName, label, fields: {}, groups: [] };
-      levelGroups.push(group);
-    }
-    return group;
-  }
-
-  for (const field of rawFields) {
-    const path = Array.isArray(field.sectionPath) && field.sectionPath.length > 0
-      ? field.sectionPath
-      : ['General'];
-
-    let currentGroups = groups;
-    let currentGroup = null;
-    for (const segment of path) {
-      currentGroup = ensureGroup(currentGroups, segment, 'section');
-      currentGroups = currentGroup.groups;
-    }
-
-    currentGroup.fields[field.key] = {
-      user_value: field.value,
-      default_value: null,
-      fieldType: field.fieldType || null,
-    };
-  }
-
-  return groups;
 }
 
 // ─── Estimate tree scanner ────────────────────────────────────────────────────

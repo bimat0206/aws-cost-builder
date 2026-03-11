@@ -85,7 +85,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         profile: {
           project_name: projectName || 'unnamed',
           description: description || null,
-          schema_version: '4.0',
+          schema_version: '7.0',
         },
         capturedServices: [],
         estimateTree: null,
