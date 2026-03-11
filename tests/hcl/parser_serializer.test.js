@@ -26,19 +26,19 @@ describe('HCL v7 Parser/Serializer', () => {
             expect(hcl).toContain('schema_version = "7.0"');
         });
 
-        it('emits flat attrs for ungrouped top-level fields', () => {
+        it('emits quoted original-label keys for ungrouped fields', () => {
             const hcl = serializeHCL({ project_name: 't', groups: [{ group_name: 'g', label: 'G', services: [{
                 service_name: 'S3', human_label: 'S3', region: 'us-east-1',
                 config_groups: [{ group_name: 'general', label: null, fields: {
                     'S3 General Purpose Buckets Value': { user_value: 2 },
                 }}]
             }] }] });
-            expect(hcl).toContain('s3_general_purpose_buckets = 2');
+            expect(hcl).toContain('"S3 General Purpose Buckets" = 2');
             expect(hcl).not.toContain('field "');
             expect(hcl).not.toContain('section');
         });
 
-        it('emits feature block for toggle-gated groups', () => {
+        it('emits feature block with quoted keys', () => {
             const hcl = serializeHCL({ project_name: 't', groups: [{ group_name: 'g', label: 'G', services: [{
                 service_name: 'S3', human_label: 'S3', region: 'us-east-1',
                 config_groups: [{ group_name: 's3_standard_feature', label: 'S3 Standard feature',
@@ -51,12 +51,14 @@ describe('HCL v7 Parser/Serializer', () => {
             }] }] });
             expect(hcl).toContain('feature "S3 Standard"');
             expect(hcl).toContain('section "S3 Standard"');
-            expect(hcl).toContain('storage      = 500');
-            expect(hcl).toContain('storage_unit = "GB per month"');
+            expect(hcl).toContain('"S3 Standard storage"');
+            expect(hcl).toContain('= 500');
+            expect(hcl).toContain('"S3 Standard storage Unit"');
+            expect(hcl).toContain('= "GB per month"');
             expect(hcl).not.toContain('field "');
         });
 
-        it('emits section block for non-feature groups', () => {
+        it('emits section block with quoted keys', () => {
             const hcl = serializeHCL({ project_name: 't', groups: [{ group_name: 'g', label: 'G', services: [{
                 service_name: 'EC2', human_label: 'EC2', region: 'us-east-1',
                 config_groups: [{ group_name: 'storage', label: 'Storage', fields: {
@@ -65,15 +67,17 @@ describe('HCL v7 Parser/Serializer', () => {
                 }}]
             }] }] });
             expect(hcl).toContain('section "Storage"');
-            expect(hcl).toContain('volume_size      = 100');
-            expect(hcl).toContain('volume_size_unit = "GB"');
+            expect(hcl).toContain('"Volume size"');
+            expect(hcl).toContain('= 100');
+            expect(hcl).toContain('"Volume size Unit"');
+            expect(hcl).toContain('= "GB"');
             expect(hcl).not.toContain('feature');
         });
     });
 
     describe('parseHCL v7', () => {
 
-        it('parses flat attrs under service as general config group', () => {
+        it('parses flat ident attrs under service as general config group', () => {
             const hcl = `
 schema_version = "7.0"
 project_name = "t"
@@ -90,6 +94,25 @@ group "g" {
             expect(g).toBeDefined();
             expect(g.fields['description'].user_value).toBe('my bucket');
             expect(g.fields['buckets'].user_value).toBe(2);
+        });
+
+        it('parses quoted-string attr keys under service', () => {
+            const hcl = `
+schema_version = "7.0"
+project_name = "t"
+group "g" {
+  service "S3" "s3" {
+    region = "us-east-1"
+    human_label = "S3"
+    "S3 General Purpose Buckets" = 2
+    "Operating System" = "Linux"
+  }
+}`;
+            const obj = parseHCL(hcl);
+            const g = obj.groups[0].services[0].config_groups.find(cg => cg.group_name === 'general');
+            expect(g).toBeDefined();
+            expect(g.fields['S3 General Purpose Buckets'].user_value).toBe(2);
+            expect(g.fields['Operating System'].user_value).toBe('Linux');
         });
 
         it('parses section block with _unit pairing', () => {
@@ -111,6 +134,27 @@ group "g" {
             expect(sec).toBeDefined();
             expect(sec.fields['storage'].user_value).toBe(500);
             expect(sec.fields['storage'].unit).toBe('GB per month');
+        });
+
+        it('parses section block with quoted-string keys', () => {
+            const hcl = `
+schema_version = "7.0"
+project_name = "t"
+group "g" {
+  service "EC2" "ec2" {
+    region = "us-east-1"
+    human_label = "EC2"
+    section "Storage" {
+      "Volume size"      = 100
+      "Volume size Unit" = "GB"
+    }
+  }
+}`;
+            const obj = parseHCL(hcl);
+            const sec = obj.groups[0].services[0].config_groups.find(g => g.label === 'Storage');
+            expect(sec).toBeDefined();
+            expect(sec.fields['Volume size'].user_value).toBe(100);
+            expect(sec.fields['Volume size Unit'].user_value).toBe('GB');
         });
 
         it('parses feature block with nested section', () => {
@@ -139,7 +183,7 @@ group "g" {
             expect(inner.fields['storage'].unit).toBe('GB per month');
         });
 
-        it('roundtrip — serialize then parse', () => {
+        it('roundtrip — serialize then parse preserves original keys', () => {
             const original = {
                 project_name: 'roundtrip',
                 groups: [{ group_name: 'prod', label: 'Production', services: [{
@@ -164,6 +208,10 @@ group "g" {
             const feat = parsed.groups[0].services[0].config_groups
                 .find(g => g.label && g.label.includes('S3 Standard'));
             expect(feat).toBeDefined();
+            const inner = feat.groups?.[0];
+            expect(inner).toBeDefined();
+            expect(inner.fields['S3 Standard storage'].user_value).toBe(500);
+            expect(inner.fields['S3 Standard storage Unit'].user_value).toBe('GB per month');
         });
     });
 });

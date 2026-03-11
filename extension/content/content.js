@@ -408,36 +408,90 @@ function captureEstimateTree() {
   );
 
   if (treeContainer) {
-    // Walk tree nodes
-    const groupNodes = treeContainer.querySelectorAll('[role="treeitem"], [class*="group"], [class*="Group"]');
-    const seenGroups = new Set();
+    const seenNodes = new WeakSet();
 
-    for (const node of groupNodes) {
-      const labelEl = node.querySelector('[class*="label"], [class*="name"], [class*="title"]') || node;
-      const labelText = labelEl.textContent.trim().replace(/\s+/g, ' ');
-      if (!labelText || seenGroups.has(labelText)) continue;
+    function getNodeLabel(node) {
+      const ariaLabel = node.getAttribute('aria-label');
+      if (ariaLabel) return ariaLabel.trim();
 
-      // Check if it looks like a group (has children) vs service
-      const children = node.querySelectorAll('[role="treeitem"]');
-      if (children.length > 0) {
-        seenGroups.add(labelText);
+      const directLabel = node.querySelector(
+        ':scope > [class*="label"], :scope > [class*="name"], :scope > [class*="title"]'
+      );
+      if (directLabel) return directLabel.textContent.trim().replace(/\s+/g, ' ');
+
+      const ownText = Array.from(node.childNodes)
+        .filter(n => n.nodeType === Node.TEXT_NODE)
+        .map(n => n.textContent.trim())
+        .join(' ')
+        .trim();
+      if (ownText) return ownText.replace(/\s+/g, ' ');
+
+      const firstChild = node.querySelector('[class*="label"], [class*="name"], [class*="title"]');
+      if (firstChild && !firstChild.querySelector('[role="treeitem"]')) {
+        return firstChild.textContent.trim().replace(/\s+/g, ' ');
+      }
+
+      return '';
+    }
+
+    function buildTreeNode(node) {
+      if (seenNodes.has(node)) return null;
+      seenNodes.add(node);
+
+      const labelText = getNodeLabel(node);
+      if (!labelText) return null;
+
+      const directChildren = Array.from(
+        node.querySelectorAll(':scope > [role="treeitem"], :scope > [role="group"] > [role="treeitem"]')
+      );
+
+      if (directChildren.length > 0) {
+        const childGroups = [];
         const services = [];
-        for (const child of children) {
-          const childLabel = child.querySelector('[class*="label"], [class*="name"]') || child;
-          const childText = childLabel.textContent.trim().replace(/\s+/g, ' ');
-          if (childText && childText !== labelText) {
-            services.push({
-              service_name: childText,
-              region: 'us-east-1',
-            });
+
+        for (const child of directChildren) {
+          const childResult = buildTreeNode(child);
+          if (!childResult) continue;
+          if (childResult.type === 'group') {
+            childGroups.push(childResult.data);
+          } else {
+            services.push(childResult.data);
           }
         }
-        groups.push({
-          group_name: labelText.toLowerCase().replace(/[^a-z0-9]+/g, '_'),
-          label: labelText,
-          services,
-          groups: [],
-        });
+
+        return {
+          type: 'group',
+          data: {
+            group_name: labelText.toLowerCase().replace(/[^a-z0-9]+/g, '_'),
+            label: labelText,
+            services,
+            groups: childGroups,
+          },
+        };
+      }
+
+      return {
+        type: 'service',
+        data: { service_name: labelText, region: 'us-east-1' },
+      };
+    }
+
+    const topItems = Array.from(
+      treeContainer.querySelectorAll(':scope > [role="treeitem"], :scope > [role="group"] > [role="treeitem"]')
+    );
+
+    for (const item of topItems) {
+      const result = buildTreeNode(item);
+      if (!result) continue;
+      if (result.type === 'group') {
+        groups.push(result.data);
+      } else {
+        let defaultGroup = groups.find(g => g.group_name === 'estimate');
+        if (!defaultGroup) {
+          defaultGroup = { group_name: 'estimate', label: 'Estimate', services: [], groups: [] };
+          groups.push(defaultGroup);
+        }
+        defaultGroup.services.push(result.data);
       }
     }
   }
@@ -479,7 +533,7 @@ function captureEstimateTree() {
 let autoObserver = null;
 let captureDebounceTimer = null;
 let captureScheduled = false;   // true while debounce timer is pending
-let lastCapturedServiceName = null;
+let lastCaptureFingerprint = null;
 
 function sendProgress(status, serviceName = null) {
   chrome.runtime.sendMessage({
@@ -549,13 +603,20 @@ function triggerAutoCapture() {
       return;
     }
 
-    // Skip if this is the same service+region we just captured
-    const key = `${data.service_name}|${data.region}`;
-    if (key === lastCapturedServiceName) {
+    // Build a fingerprint from service+region+all dimension values.
+    // Only skip if the fingerprint is identical (same service AND same values).
+    const fpParts = [data.service_name, data.region];
+    const sortedKeys = Object.keys(data.dimensions).sort();
+    for (const k of sortedKeys) {
+      const v = data.dimensions[k];
+      fpParts.push(`${k}=${v && v.user_value !== undefined ? v.user_value : ''}`);
+    }
+    const fingerprint = fpParts.join('|');
+    if (fingerprint === lastCaptureFingerprint) {
       sendProgress('idle');
       return;
     }
-    lastCapturedServiceName = key;
+    lastCaptureFingerprint = fingerprint;
 
     chrome.runtime.sendMessage({
       action: 'serviceAutoCaptured',
@@ -570,7 +631,7 @@ function triggerAutoCapture() {
 function startAutoCapture() {
   if (autoObserver) return;
 
-  lastCapturedServiceName = null;
+  lastCaptureFingerprint = null;
   captureScheduled = false;
 
   // Trigger an initial capture of the current view
@@ -597,7 +658,7 @@ function stopAutoCapture() {
   }
   clearTimeout(captureDebounceTimer);
   captureScheduled = false;
-  lastCapturedServiceName = null;
+  lastCaptureFingerprint = null;
 }
 
 // ─── Message listener ─────────────────────────────────────────────────────────

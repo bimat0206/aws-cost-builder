@@ -222,15 +222,17 @@ class Parser {
                 subBlocks.push(blockParsers[tok.value]());
 
             } else if (tok.type === TK.IDENT) {
-                // Flat attribute: ident = value
                 const key = this.advance().value;
                 if (this.peek().type === TK.EQ) {
                     this.advance();
                     attrs[key] = this.parseValue();
                 } else if (this.peek().type === TK.LBRACE) {
-                    // Unnamed block with no keyword match — skip it
                     this.skipBlock();
                 }
+            } else if (tok.type === TK.STRING && this.tokens[this.pos + 1]?.type === TK.EQ) {
+                const key = this.advance().value;
+                this.advance();
+                attrs[key] = this.parseValue();
             } else {
                 this.skipUnknown();
             }
@@ -377,8 +379,7 @@ class Parser {
                 this.advance(); this.expect(TK.EQ);
                 service.human_label = this.parseValue();
 
-            } else if (tok.type === TK.IDENT) {
-                // Flat top-level attribute → general group
+            } else if (tok.type === TK.IDENT || (tok.type === TK.STRING && this.tokens[this.pos + 1]?.type === TK.EQ)) {
                 const key = this.advance().value;
                 if (this.peek().type === TK.EQ) {
                     this.advance();

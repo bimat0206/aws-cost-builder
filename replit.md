@@ -59,7 +59,7 @@ node main.js --export-archive profiles.tar.gz          # Mode E
 Profiles can be written in HCL DSL (`.hcl`) or JSON (`.json`). HCL is preferred for readability:
 
 ```hcl
-schema_version = "4.0"
+schema_version = "7.0"
 project_name   = "Production Stack"
 description    = "Multi-tier AWS infrastructure estimate"
 
@@ -69,25 +69,27 @@ group "web_tier" {
   group "compute" {
     label = "Compute Layer"
 
-    service "ec2" "frontend_servers" {
+    service "Amazon EC2" "frontend_servers" {
       region      = "us-east-1"
       human_label = "Frontend Servers"
 
-      config_group "Compute" {
-        field "Operating System"    = "Linux"
-        field "Number of instances" = 3
-        field "Instance type"       = "t3.medium"
+      section "Compute" {
+        "Operating System"    = "Linux"
+        "Number of instances" = 3
+        "Instance type"       = "t3.medium"
       }
     }
   }
 
-  service "s3" "static_assets" {
+  service "Amazon S3" "static_assets" {
     region      = "us-east-1"
     human_label = "Static Assets Bucket"
 
-    config_group "Storage" {
-      field "S3 Standard storage"      = 500
-      field "S3 Standard storage Unit" = "GB"
+    feature "S3 Standard" {
+      section "S3 Standard" {
+        "S3 Standard storage"      = 500
+        "S3 Standard storage Unit" = "GB"
+      }
     }
   }
 }

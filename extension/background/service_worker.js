@@ -159,12 +159,17 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         const dim_count = Object.keys(dimensions || {}).length;
         const now = Date.now();
 
-        // Deduplicate by service_name+region
-        const isDuplicate = session.capturedServices.some(
+        const existing = session.capturedServices.find(
           s => s.service_name === service_name && s.region === region
         );
 
-        if (!isDuplicate) {
+        if (existing) {
+          existing.dimensions = dimensions;
+          existing.config_groups = config_groups || [];
+          existing.capturedAt = now;
+          session.captureLog.push({ timestamp: now, event: 'updated', service_name, dim_count });
+          session.captureStatus = { state: 'captured', serviceName: service_name, updatedAt: now };
+        } else {
           session.capturedServices.push({
             id: `svc_${now}_${Math.random().toString(36).slice(2, 7)}`,
             service_name,
@@ -176,8 +181,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           });
           session.captureLog.push({ timestamp: now, event: 'captured', service_name, dim_count });
           session.captureStatus = { state: 'captured', serviceName: service_name, updatedAt: now };
-        } else {
-          session.captureLog.push({ timestamp: now, event: 'duplicate', service_name, dim_count });
         }
 
         // Keep log to last 50 entries

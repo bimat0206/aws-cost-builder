@@ -80,44 +80,22 @@ function normalizeConfigGroups(service) {
   return [{ group_name: "general", label: null, fields: dimensions }];
 }
 
-/** Emit flat key = value attributes, with _unit pairing. */
+/** Emit flat "Original Label" = value attributes, preserving original field keys. */
 function serializeAttrs(fields, sectionLabel, ind) {
   const pad = " ".repeat(ind);
   const entries = Object.entries(fields || {});
   if (!entries.length) return [];
 
-  // Build unit map: rawBaseKey → unit value
-  const unitMap = new Map();
-  const unitKeySet = new Set();
-  for (const [rawKey, field] of entries) {
-    if (/\s+Unit$/i.test(rawKey)) {
-      const base = rawKey.replace(/\s+Unit$/i, "").trim();
-      unitMap.set(base, field.user_value ?? field.default_value ?? null);
-      unitKeySet.add(rawKey);
-    }
-  }
-
-  // Compute alignment width
-  const snakeKeys = entries
-    .filter(([k]) => !unitKeySet.has(k))
-    .map(([k]) => fieldToSnakeKey(k, sectionLabel));
-  const unitSnakeKeys = snakeKeys.filter((_, i) => {
-    const rawKey = entries.filter(([k]) => !unitKeySet.has(k))[i]?.[0];
-    return rawKey && unitMap.has(rawKey);
-  }).map(k => k + "_unit");
-  const maxLen = Math.max(0, ...[...snakeKeys, ...unitSnakeKeys].map(k => k.length));
+  const quotedKeys = entries.map(([k]) => hclVal(cleanLabel(k)));
+  const maxLen = Math.max(0, ...quotedKeys.map(k => k.length));
 
   const lines = [];
-  for (const [rawKey, field] of entries) {
-    if (unitKeySet.has(rawKey)) continue;
-    const sk = fieldToSnakeKey(rawKey, sectionLabel);
+  for (let i = 0; i < entries.length; i++) {
+    const [, field] = entries[i];
+    const qk = quotedKeys[i];
     const val = field.user_value !== null && field.user_value !== undefined
       ? field.user_value : field.default_value;
-    lines.push(`${pad}${sk}${" ".repeat(Math.max(0, maxLen - sk.length))} = ${hclVal(val)}`);
-    if (unitMap.has(rawKey)) {
-      const uk = sk + "_unit";
-      lines.push(`${pad}${uk}${" ".repeat(Math.max(0, maxLen - uk.length))} = ${hclVal(unitMap.get(rawKey))}`);
-    }
+    lines.push(`${pad}${qk}${" ".repeat(Math.max(0, maxLen - qk.length))} = ${hclVal(val)}`);
   }
   return lines;
 }
@@ -263,14 +241,38 @@ function buildProfile(session) {
     };
   }
 
+  function normalizeForMatch(name) {
+    return String(name || "")
+      .trim()
+      .toLowerCase()
+      .replace(/^(amazon|aws)\s+/i, "")
+      .replace(/[^a-z0-9]+/g, " ")
+      .trim();
+  }
+
   function findMatchingCapturedService(treeService, usedIds) {
-    return capturedServices.find(
-      (cs) =>
-        !usedIds.has(cs.id) &&
-        cs.service_name
-          .toLowerCase()
-          .includes(treeService.service_name.toLowerCase().substring(0, 8)),
-    );
+    const treeNorm = normalizeForMatch(treeService.service_name);
+    if (!treeNorm) return null;
+
+    let bestMatch = null;
+    let bestScore = 0;
+
+    for (const cs of capturedServices) {
+      if (usedIds.has(cs.id)) continue;
+      const csNorm = normalizeForMatch(cs.service_name);
+
+      if (csNorm === treeNorm) return cs;
+
+      if (csNorm.includes(treeNorm) || treeNorm.includes(csNorm)) {
+        const score = Math.min(csNorm.length, treeNorm.length) / Math.max(csNorm.length, treeNorm.length);
+        if (score > bestScore) {
+          bestScore = score;
+          bestMatch = cs;
+        }
+      }
+    }
+
+    return bestScore >= 0.5 ? bestMatch : null;
   }
 
   function buildTreeGroup(treeGroup, usedIds) {

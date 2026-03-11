@@ -97,43 +97,16 @@ function serializeAttrs(fields, sectionLabel, indentLevel) {
     const entries = Object.entries(fields || {});
     if (entries.length === 0) return [];
 
-    // Build unit companion map: rawBaseKey → unit value
-    const unitMap = new Map();
-    const unitKeys = new Set();
-
-    for (const [rawKey, field] of entries) {
-        if (/\s+Unit$/i.test(rawKey)) {
-            // "S3 Standard storage Unit" → base = "S3 Standard storage"
-            const baseRaw = rawKey.replace(/\s+Unit$/i, '').trim();
-            unitMap.set(baseRaw, resolveValue(field));
-            unitKeys.add(rawKey);
-        }
-    }
-
     const lines = [];
-    // Compute max key length for alignment
-    const keys = entries
-        .filter(([k]) => !unitKeys.has(k))
-        .map(([k]) => fieldToSnakeKey(k, sectionLabel));
-    const unitKeys2 = entries
-        .filter(([k]) => !unitKeys.has(k) && unitMap.has(k))
-        .map(([k]) => fieldToSnakeKey(k, sectionLabel) + '_unit');
-    const allKeys = [...keys, ...unitKeys2];
-    const maxLen = allKeys.length > 0 ? Math.max(...allKeys.map(k => k.length)) : 0;
+    const quotedKeys = entries.map(([k]) => hclValue(cleanFieldLabel(k)));
+    const maxLen = quotedKeys.length > 0 ? Math.max(...quotedKeys.map(k => k.length)) : 0;
 
-    for (const [rawKey, field] of entries) {
-        if (unitKeys.has(rawKey)) continue; // emitted as companion
-
-        const snakeKey = fieldToSnakeKey(rawKey, sectionLabel);
+    for (let i = 0; i < entries.length; i++) {
+        const [, field] = entries[i];
+        const qk = quotedKeys[i];
         const val = resolveValue(field);
-        const padding = ' '.repeat(Math.max(0, maxLen - snakeKey.length));
-        lines.push(`${pad}${snakeKey}${padding} = ${hclValue(val)}`);
-
-        // Emit unit companion on next line if present
-        if (unitMap.has(rawKey)) {
-            const unitPad = ' '.repeat(Math.max(0, maxLen - (snakeKey + '_unit').length));
-            lines.push(`${pad}${snakeKey}_unit${unitPad} = ${hclValue(unitMap.get(rawKey))}`);
-        }
+        const padding = ' '.repeat(Math.max(0, maxLen - qk.length));
+        lines.push(`${pad}${qk}${padding} = ${hclValue(val)}`);
     }
 
     return lines;
