@@ -19,7 +19,7 @@ import fs from 'fs';
 import fsPromises from 'fs/promises';
 import path from 'path';
 import { buildScreenshotPath } from './screenshot_manager.js';
-import { logEvent as sharedLogEvent } from '../logger/logger.js';
+import { createModuleLogger } from '../logger/index.js';
 
 // ─── Re-export buildScreenshotPath so callers need only one import ────────────
 export { buildScreenshotPath };
@@ -45,18 +45,7 @@ export class ArtifactWriteError extends Error {
 
 // ─── Structured logger ────────────────────────────────────────────────────────
 
-/**
- * Write one structured log line to stderr.
- *
- * Format: YYYY-MM-DD HH:MM:SS | LEVEL    | module                        | key=value ...
- *
- * @param {'INFO'|'CRITICAL'} level
- * @param {string} eventType
- * @param {Record<string, string>} fields
- */
-function log(level, eventType, fields) {
-  sharedLogEvent(level, 'core/emitter/artifact_writer', eventType, fields);
-}
+const logger = createModuleLogger('core/emitter/artifact_writer');
 
 // ─── Directory management ─────────────────────────────────────────────────────
 
@@ -132,7 +121,12 @@ export async function writeRunResult(result, outputFile) {
     json = JSON.stringify(plain, null, 2);
   } catch (err) {
     const msg = `Failed to serialize run result: ${err.message}`;
-    log('CRITICAL', 'artifact_write_failed', { path: absPath });
+    logger.critical('artifact_write_failed', {
+      event_id: 'EVT-ART-02',
+      path: absPath,
+      stage: 'serialize',
+      error: err,
+    });
     throw new ArtifactWriteError(msg, absPath, err);
   }
 
@@ -142,10 +136,19 @@ export async function writeRunResult(result, outputFile) {
     await fsPromises.writeFile(absPath, json, { encoding: 'utf-8' });
   } catch (err) {
     const msg = `Failed to write run result to ${absPath}: ${err.message}`;
-    log('CRITICAL', 'artifact_write_failed', { path: absPath });
+    logger.critical('artifact_write_failed', {
+      event_id: 'EVT-ART-02',
+      path: absPath,
+      stage: 'write',
+      error: err,
+    });
     throw new ArtifactWriteError(msg, absPath, err);
   }
 
   // EVT-ART-01
-  log('INFO', 'artifact_written', { path: absPath });
+  logger.info('artifact_written', {
+    event_id: 'EVT-ART-01',
+    path: absPath,
+    bytes_written: Buffer.byteLength(json, 'utf8'),
+  });
 }

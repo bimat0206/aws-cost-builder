@@ -5,6 +5,30 @@ All notable changes to the AWS Cost Profile Builder project are documented in th
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.2] - 2026-03-11
+
+### Added
+- **Code quality baseline** — added shared repository configuration for formatting and linting
+  - Added `.editorconfig` for line endings, indentation, final newline, and trailing whitespace rules
+  - Added `.prettierrc.json` and `.prettierignore` to establish a consistent formatting policy without touching generated outputs
+  - Added `eslint.config.js` as a lightweight flat-config JavaScript lint baseline for Node, extension, and test code
+
+### Changed
+- **CLI architecture modularized** — split the monolithic `main.js` entrypoint into focused modules
+  - `main.js` is now a thin bootstrap that re-exports the CLI surface and handles direct execution only
+  - Added `cli/main.js` for parse/dispatch flow, `cli/parser.js` for argument parsing and override handling, `cli/prompts.js` for interactive input, and `cli/ui.js` for terminal rendering helpers
+  - Moved mode handlers into `cli/modes/` so runner, dry-run, promote, and export behaviors are isolated and easier to test
+  - Extracted browser automation orchestration into `automation/orchestration/` and shared recursive group traversal into `core/profile/group_iteration.js`
+- **CLI test coverage improved** — added focused tests for parser/dispatch seams and updated the startup UI test to import real extracted modules instead of mirroring `main.js` logic
+- **Runtime logging standardized** — replaced scattered module-local logging wrappers with the shared structured logger across navigation, locator, browser session, retry, emitter, and catalog-healing flows
+  - Added richer structured context to logs, including `event_type`, stable `event_id`, entity names, step names, retry metadata, screenshot paths, and flattened error details
+  - Standardized logger consumption through `core/logger/index.js` so runtime modules use one logging surface consistently
+  - Preserved CLI `statusLine()` output as a separate user-facing channel while moving troubleshooting diagnostics into structured runtime events
+
+### Fixed
+- **`--export-archive` parser configuration** (`cli/parser.js`) — replaced the invalid optional-arity setup with a coercion-based default so `--export-archive` correctly resolves to `profiles.tar.gz` when no explicit path is supplied
+- **Logger API coverage** — added focused tests for structured logger normalization and verified the refactored retry, emitter, and browser session paths against the shared logging surface
+
 ## [2.2.1] - 2026-03-08
 
 ### Fixed

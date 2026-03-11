@@ -1,0 +1,166 @@
+# Browser launch defaults, navigation wait strategy, and SPA readiness checks.
+browser:
+  defaultTimeoutMs: 30000
+  launchArgs:
+    - "--disable-gpu"
+    - "--disable-dev-shm-usage"
+  viewport:
+    width: 1920
+    height: 1080
+  userAgent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+  navigationWaitUntil: "domcontentloaded"
+  dialogDismiss:
+    selectors:
+      - "button#awsccc-cb-btn-accept"
+      - "button[data-id='awsccc-cb-btn-accept']"
+      - "button:has-text('Accept')"
+      - "button:has-text('Accept all')"
+      - "button:has-text('I agree')"
+      - "button[aria-label='Close']"
+      - "[data-testid='cookie-accept-btn']"
+    visibleTimeoutMs: 1000
+    clickTimeoutMs: 2000
+    pauseMs: 300
+  spaReady:
+    selectors:
+      - "button:has-text('Add service')"
+      - "button:has-text('Add a service')"
+      - "input[placeholder*='search' i]"
+      - "input[aria-label*='search' i]"
+      - "input[type='search']"
+      - "[data-testid='calculator-header']"
+      - "[class*='awsui_app-layout']"
+    visibleTimeoutMs: 15000
+    pauseMs: 500
+
+# Group creation/selection selectors, waits, and retry behavior.
+groupManager:
+  rootEstimate:
+    text: "My Estimate"
+    rolePattern: "^My Estimate$"
+    visibleTimeoutMs: 1200
+  groupLookupVisibleTimeoutMs: 1500
+  selection:
+    afterSelectWaitMs: 300
+  create:
+    buttonLabel: "Create group"
+    buttonVisibleTimeoutMs: 3000
+    fieldLabels:
+      - "Group name"
+      - "Group name e.g., \"My service group\""
+    fieldPlaceholders:
+      - "e.g., \"My service group\""
+      - "Group name"
+    fieldVisibleTimeoutMs: 1000
+    recoveryWaitMs: 500
+    afterOpenWaitMs: 250
+    afterFillWaitMs: 300
+    submitVisibleTimeoutMs: 1000
+    afterSubmitWaitMs: 600
+  retry:
+    maxRetries: 2
+    delayMs: 1500
+
+# Service navigation selectors, region workflow, save actions, and retries.
+navigator:
+  databaseKeywords:
+    - "rds"
+    - "aurora"
+    - "database"
+    - "mysql"
+    - "postgresql"
+    - "oracle"
+    - "dynamodb"
+  databaseFallbackTerms:
+    - "RDS"
+    - "Database"
+  addService:
+    primarySelector: "button[aria-label=\"Add service\"]"
+    fallbackButtonLabel: "Add service"
+    panelVisibleSelector: "input[aria-label=\"Find Service\"]"
+    primaryVisibleTimeoutMs: 3000
+    fallbackVisibleTimeoutMs: 5000
+    panelVisibleTimeoutMs: 10000
+  searchInput:
+    selectors:
+      - "input[aria-label=\"Find Service\"]"
+      - "input[placeholder=\"Search for a service\"]"
+      - "input[type=\"search\"]"
+    visibleTimeoutMs: 2000
+    searchSettleMs: 900
+  configure:
+    ariaLabelPrefix: "Configure"
+    genericButtonPattern: "Configure"
+    addServiceAriaFragment: "Add service"
+    resultVisibleTimeoutMs: 1500
+    specificVisibleTimeoutMs: 3000
+    genericVisibleTimeoutMs: 5000
+    afterClickWaitMs: 1000
+  workloadModal:
+    skipButtonPattern: "Skip"
+    visibleTimeoutMs: 2000
+    afterSkipWaitMs: 500
+  save:
+    defaultLabel: "Save and add service"
+    visibleTimeoutMs: 5000
+    loadState: "domcontentloaded"
+    loadStateTimeoutMs: 15000
+  region:
+    globalValue: "global"
+    defaultLocationTypeLabel: "Choose a location type"
+    defaultRegionPickerLabel: "Choose a Region"
+    regionOptionLabel: "Region"
+    labelVisibleTimeoutMs: 3000
+    dropdownVisibleTimeoutMs: 8000
+    optionVisibleTimeoutMs: 5000
+    afterSelectWaitMs: 300
+  retry:
+    maxRetries: 2
+    delayMs: 1500
+  currentService:
+    headingVisibleTimeoutMs: 2000
+    textPattern: "Amazon|CloudFront|Lambda|S3|EC2|RDS"
+
+locator:
+  findInPage:
+    openDelayMs: 300
+    closeDelayMs: 200
+    elementVisibleTimeoutMs: 2000
+    textVisibleTimeoutMs: 3000
+    retryDelayMs: 1500
+    scrollPauseMs: 300
+    proximityVerticalThresholdPx: 100
+
+interactor:
+  fieldInteraction:
+    retryDelayMs: 1500
+  selectCombobox:
+    optionVisibleTimeoutMs: 1200
+    candidatesVisibleTimeoutMs: 2500
+    scrollIntoViewTimeoutMs: 1000
+    clickTimeoutMs: 2000
+    afterOpenWaitMs: 300
+    keyboardSettleWaitMs: 250
+    listboxVisibleTimeoutMs: 2000
+    dropdownSettleWaitMs: 500
+    comboboxOptionVisibleTimeoutMs: 1000
+  toggleRadio:
+    truthyValues:
+      - "true"
+      - "1"
+      - "on"
+      - "yes"
+      - "mixed"
+      - "enabled"
+    falsyValues:
+      - "false"
+      - "0"
+      - "off"
+      - "no"
+    attachedTimeoutMs: 500
+    controlVisibleTimeoutMs: 1000
+    radioVisibleTimeoutMs: 1500
+    textFallbackVisibleTimeoutMs: 1000
+  instanceSearch:
+    filterWaitMs: 2000
+    radioVisibleTimeoutMs: 3000

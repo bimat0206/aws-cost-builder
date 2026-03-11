@@ -2,6 +2,11 @@
  * SELECT/COMBOBOX option selection strategy.
  */
 
+import { getAutomationRuntimeConfig } from '../../../config/runtime/index.js';
+
+const automationConfig = getAutomationRuntimeConfig();
+const selectConfig = automationConfig.interactor.selectCombobox;
+
 /**
  * Normalize option labels for tolerant matching across UI variants.
  * @param {string} value
@@ -21,7 +26,7 @@ async function clickCustomOption(page, value) {
   // Strategy 1: ARIA option by exact accessible name
   try {
     const option = page.getByRole('option', { name: value, exact: true }).first();
-    await option.waitFor({ state: 'visible', timeout: 1200 });
+    await option.waitFor({ state: 'visible', timeout: selectConfig.optionVisibleTimeoutMs });
     await option.click();
     return true;
   } catch {}
@@ -29,7 +34,7 @@ async function clickCustomOption(page, value) {
   // Strategy 2: visible role option by substring text
   try {
     const option = page.locator('[role="option"]:visible').filter({ hasText: value }).first();
-    await option.waitFor({ state: 'visible', timeout: 1200 });
+    await option.waitFor({ state: 'visible', timeout: selectConfig.optionVisibleTimeoutMs });
     await option.click();
     return true;
   } catch {}
@@ -39,7 +44,7 @@ async function clickCustomOption(page, value) {
   const candidates = page.locator('[role="option"]:visible, [data-value]:visible');
   
   try {
-    await candidates.first().waitFor({ state: 'visible', timeout: 2500 });
+    await candidates.first().waitFor({ state: 'visible', timeout: selectConfig.candidatesVisibleTimeoutMs });
   } catch {}
   
   const count = await candidates.count().catch(() => 0);
@@ -82,15 +87,15 @@ export async function fillSelect(page, element, value) {
   // Custom dropdown path.
   for (let attempt = 0; attempt < 2; attempt++) {
     try {
-      await element.scrollIntoViewIfNeeded({ timeout: 1000 }).catch(() => {});
-      await element.click({ timeout: 2000, force: true }).catch(() => {});
-      await page.waitForTimeout(300);
+      await element.scrollIntoViewIfNeeded({ timeout: selectConfig.scrollIntoViewTimeoutMs }).catch(() => {});
+      await element.click({ timeout: selectConfig.clickTimeoutMs, force: true }).catch(() => {});
+      await page.waitForTimeout(selectConfig.afterOpenWaitMs);
 
       if (await clickCustomOption(page, text)) return;
 
       // Some Cloudscape dropdowns open via keyboard interaction.
       await element.press('ArrowDown').catch(() => {});
-      await page.waitForTimeout(250);
+      await page.waitForTimeout(selectConfig.keyboardSettleWaitMs);
       
       if (await clickCustomOption(page, text)) return;
     } catch {}
@@ -117,15 +122,15 @@ export async function fillCombobox(page, element, value) {
   // Wait for dynamic options to render (debounce)
   try {
     const listbox = page.locator('[role="listbox"]').first();
-    await listbox.waitFor({ state: 'visible', timeout: 2000 });
+    await listbox.waitFor({ state: 'visible', timeout: selectConfig.listboxVisibleTimeoutMs });
   } catch {
-    await page.waitForTimeout(500);
+    await page.waitForTimeout(selectConfig.dropdownSettleWaitMs);
   }
 
   // Prefer selecting an explicit option if dropdown opens.
   try {
     const option = page.getByRole('option', { name: text, exact: false }).first();
-    await option.waitFor({ state: 'visible', timeout: 1000 });
+    await option.waitFor({ state: 'visible', timeout: selectConfig.comboboxOptionVisibleTimeoutMs });
     await option.click();
   } catch {
     // Some comboboxes accept Enter on typed value.

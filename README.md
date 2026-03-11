@@ -28,6 +28,16 @@ npm install
 npx playwright install chromium
 ```
 
+## Code Quality Baseline
+
+The repo now includes shared editor and formatting baselines:
+
+- `.editorconfig` for line endings, indentation, and trailing whitespace
+- `.prettierrc.json` for consistent formatting
+- `eslint.config.js` for a lightweight JavaScript lint baseline
+
+This keeps editor behavior consistent even before individual contributors wire ESLint or Prettier into their local workflow.
+
 ## Chrome Extension Setup
 
 1. Open Chrome and go to `chrome://extensions`

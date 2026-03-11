@@ -1,0 +1,11 @@
+node_modules/
+coverage/
+dist/
+build/
+outputs/
+artifacts/
+profiles/
+playwright-report/
+test-results/
+tmp/
+package-lock.json

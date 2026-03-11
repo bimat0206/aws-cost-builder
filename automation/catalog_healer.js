@@ -10,21 +10,12 @@
  * @module automation/catalog_healer
  */
 
-import { logEvent as sharedLogEvent } from '../core/index.js';
+import { createModuleLogger } from '../core/logger/index.js';
 
 // ─── Logging helpers ──────────────────────────────────────────────────────────
 
 const MODULE = 'automation/catalog_healer';
-
-/**
- * Format and print a structured log line.
- * @param {string} level
- * @param {string} eventType
- * @param {Object} fields
- */
-function logEvent(level, eventType, fields = {}) {
-  sharedLogEvent(level, MODULE, eventType, fields);
-}
+const logger = createModuleLogger(MODULE);
 
 // ─── Selector discovery ───────────────────────────────────────────────────────
 
@@ -193,6 +184,7 @@ export class CatalogHealer {
   constructor(page, serviceName) {
     this.page = page;
     this.serviceName = serviceName;
+    this.logger = logger.child({ service: serviceName });
     /** @type {Map<string, string>} */
     this.corrections = new Map();
     /** @type {string[]} */
@@ -206,7 +198,8 @@ export class CatalogHealer {
    * @returns {Promise<string | null>} - New selector or null if healing failed
    */
   async healDimension(dimensionKey, staleSelector) {
-    logEvent('INFO', 'EVT-HEL-01', {
+    this.logger.info('selector_heal_started', {
+      event_id: 'EVT-HEL-01',
       dimension: dimensionKey,
       old_selector: staleSelector,
       step: 'attempting_heal',
@@ -227,7 +220,8 @@ export class CatalogHealer {
           this.corrections.set(staleSelector, newSelector);
           this.healedDimensions.push(dimensionKey);
 
-          logEvent('INFO', 'EVT-HEL-02', {
+          this.logger.info('selector_healed', {
+            event_id: 'EVT-HEL-02',
             dimension: dimensionKey,
             new_selector: newSelector,
             status: 'healed',
@@ -240,8 +234,10 @@ export class CatalogHealer {
       }
     }
 
-    logEvent('WARN', 'EVT-HEL-03', {
+    this.logger.warn('selector_heal_failed', {
+      event_id: 'EVT-HEL-03',
       dimension: dimensionKey,
+      old_selector: staleSelector,
       status: 'heal_failed',
     });
 

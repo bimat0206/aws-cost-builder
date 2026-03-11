@@ -1,7 +1,7 @@
 /**
  * Tests for main.js startup UI — pure render helpers.
  *
- * Exercises the exported/testable UI surface of main.js:
+ * Exercises the exported/testable UI surface of the extracted CLI UI modules:
  *   - statusLine    — coloured [✓/i/!/✗] prefix output
  *   - printModeStart — mode banner output
  *   - MODE_OPTIONS   — completeness and shape of the mode definitions
@@ -13,6 +13,8 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { MODE_OPTIONS } from '../../cli/mode_options.js';
+import { printModeStart, statusLine } from '../../cli/ui.js';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -55,122 +57,105 @@ afterEach(() => {
   delete process.env.FORCE_COLOR;
 });
 
-import { fg, bold, dim } from '../../builder/layout/components.js';
 import {
-  COL_CYAN, COL_ORANGE, COL_YELLOW, COL_GREEN, COL_MUTED, COL_DIM,
+  COL_CYAN, COL_ORANGE, COL_YELLOW, COL_GREEN,
 } from '../../builder/layout/colors.js';
-
-// Mirror the MODE_OPTIONS from main.js for testing
-const MODE_DEFINITIONS = [
-  { id: 'run',           label: 'Runner',         badge: 'Mode B', color: COL_GREEN },
-  { id: 'dryRun',        label: 'Dry Run',         badge: 'Mode C', color: COL_YELLOW },
-  { id: 'promote',       label: 'Promoter',        badge: 'Mode D', color: COL_ORANGE },
-  { id: 'exportArchive', label: 'Export Archive',  badge: 'Mode E', color: COL_CYAN },
-];
-
-function makeStatusLine(level, text) {
-  const icons  = { ok: '✓', info: 'i', warn: '!', error: '✗' };
-  const colors = { ok: COL_GREEN, info: COL_CYAN, warn: COL_YELLOW, error: '#e06c75' };
-  const icon = fg(`[${icons[level] ?? '·'}]`, colors[level] ?? COL_MUTED);
-  return `  ${icon} ${text}\n`;
-}
-
-function renderModeStart(modeId) {
-  const opt = MODE_DEFINITIONS.find((m) => m.id === modeId);
-  if (!opt) return '';
-  return [
-    '',
-    `  ${bold(fg('◆', COL_ORANGE))} ${bold(fg(opt.label, opt.color ?? COL_MUTED))} ${dim(`(${opt.badge})`)}`,
-    dim('  ' + '─'.repeat(56)),
-    '',
-  ].join('\n');
-}
 
 // ─── statusLine tests ─────────────────────────────────────────────────────────
 
 describe('statusLine()', () => {
   it('ok level uses ✓ icon', () => {
-    expect(strip(makeStatusLine('ok', 'done'))).toContain('[✓]');
+    statusLine('ok', 'done');
+    expect(strip(errBuf)).toContain('[✓]');
   });
 
   it('info level uses i icon', () => {
-    expect(strip(makeStatusLine('info', 'note'))).toContain('[i]');
+    statusLine('info', 'note');
+    expect(strip(errBuf)).toContain('[i]');
   });
 
   it('warn level uses ! icon', () => {
-    expect(strip(makeStatusLine('warn', 'caution'))).toContain('[!]');
+    statusLine('warn', 'caution');
+    expect(strip(errBuf)).toContain('[!]');
   });
 
   it('error level uses ✗ icon', () => {
-    expect(strip(makeStatusLine('error', 'fail'))).toContain('[✗]');
+    statusLine('error', 'fail');
+    expect(strip(errBuf)).toContain('[✗]');
   });
 
   it('includes the message text', () => {
-    expect(strip(makeStatusLine('ok', 'operation complete'))).toContain('operation complete');
+    statusLine('ok', 'operation complete');
+    expect(strip(errBuf)).toContain('operation complete');
   });
 
   it('ok uses COL_GREEN colour', () => {
-    expect(hasFg(makeStatusLine('ok', 'x'), COL_GREEN)).toBe(true);
+    statusLine('ok', 'x');
+    expect(hasFg(errBuf, COL_GREEN)).toBe(true);
   });
 
   it('info uses COL_CYAN colour', () => {
-    expect(hasFg(makeStatusLine('info', 'x'), COL_CYAN)).toBe(true);
+    statusLine('info', 'x');
+    expect(hasFg(errBuf, COL_CYAN)).toBe(true);
   });
 
   it('warn uses COL_YELLOW colour', () => {
-    expect(hasFg(makeStatusLine('warn', 'x'), COL_YELLOW)).toBe(true);
+    statusLine('warn', 'x');
+    expect(hasFg(errBuf, COL_YELLOW)).toBe(true);
   });
 
   it('all levels produce output ending with newline', () => {
     for (const level of ['ok', 'info', 'warn', 'error']) {
-      expect(makeStatusLine(level, 'x').endsWith('\n')).toBe(true);
+      errBuf = '';
+      statusLine(level, 'x');
+      expect(errBuf.endsWith('\n')).toBe(true);
     }
   });
 });
 
-// ─── MODE_DEFINITIONS completeness ───────────────────────────────────────────
+// ─── MODE_OPTIONS completeness ───────────────────────────────────────────────
 
-describe('MODE_DEFINITIONS', () => {
+describe('MODE_OPTIONS', () => {
   it('has exactly 4 mode entries (no build or explore mode)', () => {
-    expect(MODE_DEFINITIONS).toHaveLength(4);
+    expect(MODE_OPTIONS).toHaveLength(4);
   });
 
   it('does NOT contain build mode', () => {
-    const ids = MODE_DEFINITIONS.map((m) => m.id);
+    const ids = MODE_OPTIONS.map((m) => m.id);
     expect(ids).not.toContain('build');
   });
 
   it('contains all expected mode ids', () => {
-    const ids = MODE_DEFINITIONS.map((m) => m.id);
+    const ids = MODE_OPTIONS.map((m) => m.id);
     for (const id of ['run', 'dryRun', 'promote', 'exportArchive']) {
       expect(ids).toContain(id);
     }
   });
 
   it('every mode has a non-empty label', () => {
-    for (const m of MODE_DEFINITIONS) {
+    for (const m of MODE_OPTIONS) {
       expect(m.label.length).toBeGreaterThan(0);
     }
   });
 
   it('every mode has a badge in format "Mode X"', () => {
-    for (const m of MODE_DEFINITIONS) {
+    for (const m of MODE_OPTIONS) {
       expect(m.badge).toMatch(/^Mode [B-E]$/);
     }
   });
 
   it('mode ids are unique', () => {
-    const ids = MODE_DEFINITIONS.map((m) => m.id);
+    const ids = MODE_OPTIONS.map((m) => m.id);
     expect(new Set(ids).size).toBe(ids.length);
   });
 
   it('run mode uses COL_GREEN', () => {
-    const run = MODE_DEFINITIONS.find((m) => m.id === 'run');
+    const run = MODE_OPTIONS.find((m) => m.id === 'run');
     expect(run?.color).toBe(COL_GREEN);
   });
 
   it('exportArchive mode uses COL_CYAN', () => {
-    const m = MODE_DEFINITIONS.find((m) => m.id === 'exportArchive');
+    const m = MODE_OPTIONS.find((m) => m.id === 'exportArchive');
     expect(m?.color).toBe(COL_CYAN);
   });
 });
@@ -179,32 +164,40 @@ describe('MODE_DEFINITIONS', () => {
 
 describe('printModeStart()', () => {
   it('contains the mode label for run', () => {
-    expect(strip(renderModeStart('run'))).toContain('Runner');
+    printModeStart('run');
+    expect(strip(outBuf)).toContain('Runner');
   });
 
   it('contains the badge for run', () => {
-    expect(strip(renderModeStart('run'))).toContain('Mode B');
+    printModeStart('run');
+    expect(strip(outBuf)).toContain('Mode B');
   });
 
   it('contains the ◆ diamond glyph', () => {
-    expect(strip(renderModeStart('run'))).toContain('◆');
+    printModeStart('run');
+    expect(strip(outBuf)).toContain('◆');
   });
 
   it('applies COL_ORANGE to the ◆ glyph', () => {
-    expect(hasFg(renderModeStart('run'), COL_ORANGE)).toBe(true);
+    printModeStart('run');
+    expect(hasFg(outBuf, COL_ORANGE)).toBe(true);
   });
 
   it('returns empty string for unknown mode id', () => {
-    expect(renderModeStart('unknown')).toBe('');
+    printModeStart('unknown');
+    expect(outBuf).toBe('');
   });
 
   it('contains separator dashes', () => {
-    expect(strip(renderModeStart('promote'))).toContain('──');
+    printModeStart('promote');
+    expect(strip(outBuf)).toContain('──');
   });
 
   it('all valid mode ids produce non-empty output', () => {
-    for (const m of MODE_DEFINITIONS) {
-      expect(renderModeStart(m.id).length).toBeGreaterThan(0);
+    for (const m of MODE_OPTIONS) {
+      outBuf = '';
+      printModeStart(m.id);
+      expect(outBuf.length).toBeGreaterThan(0);
     }
   });
 });

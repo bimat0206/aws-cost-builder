@@ -14,24 +14,18 @@
  * @module automation/locator/find_in_page_locator
  */
 
+import { getAutomationRuntimeConfig } from '../../config/runtime/index.js';
 import { getSelectionBoundingRect, queryControlsInBand, scrollToPosition } from './cdp_helper.js';
 import { withRetry } from '../../core/retry/retry_wrapper.js';
 import { buildScreenshotPath } from '../../core/emitter/screenshot_manager.js';
-import { logEvent as sharedLogEvent } from '../../core/index.js';
+import { createModuleLogger } from '../../core/logger/index.js';
 
 // ─── Logging helpers ──────────────────────────────────────────────────────────
 
 const MODULE = 'automation/locator/find_in_page_locator';
-
-/**
- * Format and print a structured log line.
- * @param {string} level
- * @param {string} eventType
- * @param {Object} fields
- */
-function logEvent(level, eventType, fields = {}) {
-  sharedLogEvent(level, MODULE, eventType, fields);
-}
+const automationConfig = getAutomationRuntimeConfig();
+const locatorConfig = automationConfig.locator.findInPage;
+const logger = createModuleLogger(MODULE);
 
 // ─── Error types ──────────────────────────────────────────────────────────────
 
@@ -154,7 +148,7 @@ export async function triggerFindInPage(page) {
     await page.keyboard.up(modifier);
   }
 
-  await page.waitForTimeout(300);
+  await page.waitForTimeout(locatorConfig.openDelayMs);
 }
 
 /**
@@ -164,7 +158,7 @@ export async function triggerFindInPage(page) {
  */
 export async function closeFindInPage(page) {
   await page.keyboard.press('Escape');
-  await page.waitForTimeout(200);
+  await page.waitForTimeout(locatorConfig.closeDelayMs);
 }
 
 // ─── Fallback strategy helpers ────────────────────────────────────────────────
@@ -185,7 +179,7 @@ async function tryCssStrategy(page, cssSelector, disambiguationIndex) {
     const selected = await candidates.nth(disambiguationIndex).elementHandle();
     if (!selected) return null;
 
-    await selected.waitForElementState('visible', { timeout: 2000 });
+    await selected.waitForElementState('visible', { timeout: locatorConfig.elementVisibleTimeoutMs });
     return { element: selected, strategy: 'css' };
   } catch {
     return null;
@@ -209,7 +203,7 @@ async function tryAriaLabelStrategy(page, labelText, disambiguationIndex) {
     const selected = await candidates.nth(disambiguationIndex).elementHandle();
     if (!selected) return null;
 
-    await selected.waitForElementState('visible', { timeout: 2000 });
+    await selected.waitForElementState('visible', { timeout: locatorConfig.elementVisibleTimeoutMs });
     return { element: selected, strategy: 'aria-label' };
   } catch {
     return null;
@@ -251,7 +245,7 @@ async function tryLabelledByStrategy(page, labelText, disambiguationIndex) {
         const selected = await candidates.nth(disambiguationIndex).elementHandle();
         if (!selected) continue;
 
-        await selected.waitForElementState('visible', { timeout: 2000 });
+        await selected.waitForElementState('visible', { timeout: locatorConfig.elementVisibleTimeoutMs });
         return { element: selected, strategy: 'aria-labelledby' };
       } catch {
         continue;
@@ -272,7 +266,7 @@ async function tryLabelForStrategy(page, labelText, disambiguationIndex) {
     const selected = await candidates.nth(disambiguationIndex).elementHandle();
     if (!selected) return null;
 
-    await selected.waitForElementState('visible', { timeout: 2000 });
+    await selected.waitForElementState('visible', { timeout: locatorConfig.elementVisibleTimeoutMs });
     return { element: selected, strategy: 'label-for' };
   } catch {
     return null;
@@ -298,7 +292,7 @@ async function tryRoleStrategy(page, labelText, disambiguationIndex) {
       const selected = await candidates.nth(disambiguationIndex).elementHandle();
       if (!selected) continue;
 
-      await selected.waitForElementState('visible', { timeout: 2000 });
+      await selected.waitForElementState('visible', { timeout: locatorConfig.elementVisibleTimeoutMs });
       return { element: selected, strategy: `role-${role}` };
     } catch {
       continue;
@@ -354,7 +348,15 @@ export async function findElement(page, dimensionKey, opts = {}) {
   // Disambiguation currently hardcoded to 0 for Playwright .nth()
   const disambiguationIndex = opts.disambiguationIndex || 0;
 
-  logEvent('INFO', 'EVT-FND-01', { label: dimensionKey, step: 'locating_with_fallbacks' });
+  logger.info('locator_search_started', {
+    event_id: 'EVT-FND-01',
+    label: dimensionKey,
+    fallback_label: fallbackLabel,
+    primary_css: primaryCss,
+    disambiguation_index: disambiguationIndex,
+    required,
+    step: 'locating_with_fallbacks',
+  });
 
   // Helper for capturing screenshots on failure
   const captureFail = async () => {
@@ -368,10 +370,19 @@ export async function findElement(page, dimensionKey, opts = {}) {
       );
       try {
         await page.screenshot({ path: screenshotPath });
-        logEvent('INFO', 'EVT-SCR-01', { path: screenshotPath });
+        logger.info('failure_screenshot_captured', {
+          event_id: 'EVT-SCR-01',
+          label: dimensionKey,
+          path: screenshotPath,
+        });
         return screenshotPath;
       } catch (err) {
-        logEvent('ERROR', 'EVT-SCR-02', { error: err.message });
+        logger.error('failure_screenshot_failed', {
+          event_id: 'EVT-SCR-02',
+          label: dimensionKey,
+          path: screenshotPath,
+          error: err,
+        });
       }
     }
     return null;
@@ -387,10 +398,16 @@ export async function findElement(page, dimensionKey, opts = {}) {
         if (primaryCss) {
           const cssResult = await tryCssStrategy(page, primaryCss, disambiguationIndex);
           if (cssResult) {
-            logEvent('INFO', 'EVT-FND-01', { label: dimensionKey, strategy: 'css' });
+            const fieldType = await getFieldType(cssResult.element);
+            logger.info('locator_match_found', {
+              event_id: 'EVT-FND-01',
+              label: dimensionKey,
+              strategy: 'css',
+              field_type: fieldType,
+            });
             return {
               ...cssResult,
-              fieldType: await getFieldType(cssResult.element),
+              fieldType,
               status: 'success',
               matchTop: 0
             };
@@ -410,10 +427,17 @@ export async function findElement(page, dimensionKey, opts = {}) {
           for (const strategyFn of strategies) {
             const result = await strategyFn(page, label, disambiguationIndex);
             if (result) {
-              logEvent('INFO', 'EVT-FND-01', { label: dimensionKey, strategy: result.strategy });
+              const fieldType = await getFieldType(result.element);
+              logger.info('locator_match_found', {
+                event_id: 'EVT-FND-01',
+                label: dimensionKey,
+                matched_label: label,
+                strategy: result.strategy,
+                field_type: fieldType,
+              });
               return {
                 ...result,
-                fieldType: await getFieldType(result.element),
+                fieldType,
                 status: 'success',
                 matchTop: 0
               };
@@ -425,7 +449,7 @@ export async function findElement(page, dimensionKey, opts = {}) {
         for (const label of labels) {
           const textLocator = page.getByText(label, { exact: false }).first();
           try {
-            await textLocator.waitFor({ state: 'visible', timeout: 3000 });
+            await textLocator.waitFor({ state: 'visible', timeout: locatorConfig.textVisibleTimeoutMs });
             // Find nearest input control
             const nearbyInputs = page.locator('input, select, textarea, [role="combobox"], [role="spinbutton"]');
             const count = await nearbyInputs.count();
@@ -440,7 +464,7 @@ export async function findElement(page, dimensionKey, opts = {}) {
                 if (box && textBox) {
                   // Must be roughly in the same vertical band (±100px)
                   const dy = box.y - textBox.y;
-                  if (Math.abs(dy) < 100) {
+                  if (Math.abs(dy) < locatorConfig.proximityVerticalThresholdPx) {
                      candidates.push({ 
                        input, 
                        box, 
@@ -469,11 +493,18 @@ export async function findElement(page, dimensionKey, opts = {}) {
                
                const element = await candidates[0].input.elementHandle();
                if (element) {
-                 logEvent('INFO', 'EVT-FND-01', { label: dimensionKey, strategy: 'text-proximity' });
+                 const fieldType = await getFieldType(element);
+                 logger.info('locator_match_found', {
+                   event_id: 'EVT-FND-01',
+                   label: dimensionKey,
+                   matched_label: label,
+                   strategy: 'text-proximity',
+                   field_type: fieldType,
+                 });
                  return {
                    element,
                    strategy: 'text-proximity',
-                   fieldType: await getFieldType(element),
+                   fieldType,
                    status: 'success',
                    matchTop: 0
                  };
@@ -489,7 +520,7 @@ export async function findElement(page, dimensionKey, opts = {}) {
       {
         stepName: `find-element-${dimensionKey}`,
         maxRetries,
-        delayMs: 1500,
+        delayMs: locatorConfig.retryDelayMs,
       }
     );
 
@@ -499,9 +530,21 @@ export async function findElement(page, dimensionKey, opts = {}) {
     const status = required ? 'failed' : 'skipped';
 
     if (error instanceof LocatorNotFoundError) {
-      logEvent('WARNING', 'EVT-FND-02', { label: dimensionKey, error: 'not_found', status });
+      logger.warn('locator_not_found', {
+        event_id: 'EVT-FND-02',
+        label: dimensionKey,
+        status,
+        screenshot_path: screenshotPath,
+        error: 'not_found',
+      });
     } else {
-      logEvent('ERROR', 'EVT-FND-02', { label: dimensionKey, error: error.message, status });
+      logger.error('locator_search_failed', {
+        event_id: 'EVT-FND-02',
+        label: dimensionKey,
+        status,
+        screenshot_path: screenshotPath,
+        error,
+      });
     }
 
     return {
@@ -523,5 +566,5 @@ export async function findElement(page, dimensionKey, opts = {}) {
  */
 export async function scrollElementIntoView(page, element) {
   await element.scrollIntoViewIfNeeded();
-  await page.waitForTimeout(300);
+  await page.waitForTimeout(locatorConfig.scrollPauseMs);
 }

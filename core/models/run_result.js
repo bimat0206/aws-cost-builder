@@ -17,6 +17,10 @@
  *     - else → "success"
  */
 
+import { getAppRuntimeConfig } from '../../config/runtime/index.js';
+
+const appConfig = getAppRuntimeConfig();
+
 /**
  * DimensionResult model - represents the result of filling a single dimension.
  */
@@ -321,7 +325,7 @@ export class RunResult {
      * @param {'success'|'partial_success'|'failed'} [params.status='success']
      * @param {string} params.timestamp_start
      * @param {string} params.timestamp_end
-     * @param {string} [params.calculator_url='https://calculator.aws/#/estimate']
+     * @param {string} [params.calculator_url]
      * @param {GroupResult[]} [params.groups=[]]
      */
     constructor({
@@ -331,7 +335,7 @@ export class RunResult {
         status = 'success',
         timestamp_start,
         timestamp_end,
-        calculator_url = 'https://calculator.aws/#/estimate',
+        calculator_url = appConfig.calculator.baseUrl,
         groups = []
     }) {
         this.schema_version = schema_version;
@@ -358,7 +362,7 @@ export class RunResult {
             status: obj.status ?? 'success',
             timestamp_start: obj.timestamp_start,
             timestamp_end: obj.timestamp_end,
-            calculator_url: obj.calculator_url ?? 'https://calculator.aws/#/estimate',
+            calculator_url: obj.calculator_url ?? appConfig.calculator.baseUrl,
             groups
         });
     }

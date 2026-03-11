@@ -2,6 +2,11 @@
  * TOGGLE/RADIO click strategies.
  */
 
+import { getAutomationRuntimeConfig } from '../../../config/runtime/index.js';
+
+const automationConfig = getAutomationRuntimeConfig();
+const toggleConfig = automationConfig.interactor.toggleRadio;
+
 /**
  * Read toggle state across checkbox/switch/button implementations.
  * @param {import('playwright').ElementHandle} locator
@@ -21,8 +26,8 @@ async function readToggleState(locator) {
       if (raw === null) continue;
 
       const normalized = raw.trim().toLowerCase();
-      if (['true', '1', 'on', 'yes', 'mixed'].includes(normalized)) return true;
-      if (['false', '0', 'off', 'no'].includes(normalized)) return false;
+      if (toggleConfig.truthyValues.includes(normalized)) return true;
+      if (toggleConfig.falsyValues.includes(normalized)) return false;
     } catch {
       continue;
     }
@@ -79,10 +84,10 @@ async function resolveToggleTarget(page, locator, dimensionKey) {
   for (const selector of selectors) {
     try {
       const child = page.locator(selector).first();
-      await child.waitFor({ state: 'attached', timeout: 500 }).catch(() => {});
+      await child.waitFor({ state: 'attached', timeout: toggleConfig.attachedTimeoutMs }).catch(() => {});
       const count = await child.count().catch(() => 0);
       if (count > 0) {
-        await child.waitFor({ state: 'visible', timeout: 1000 }).catch(() => {});
+        await child.waitFor({ state: 'visible', timeout: toggleConfig.controlVisibleTimeoutMs }).catch(() => {});
         return await child.elementHandle() || locator;
       }
     } catch {}
@@ -97,10 +102,10 @@ async function resolveToggleTarget(page, locator, dimensionKey) {
       button[aria-pressed][aria-label*="${escapedKey}" i], 
       button[aria-expanded][aria-label*="${escapedKey}" i]
     `).first();
-    await direct.waitFor({ state: 'attached', timeout: 500 }).catch(() => {});
+    await direct.waitFor({ state: 'attached', timeout: toggleConfig.attachedTimeoutMs }).catch(() => {});
     const count = await direct.count().catch(() => 0);
     if (count > 0) {
-      await direct.waitFor({ state: 'visible', timeout: 1000 }).catch(() => {});
+      await direct.waitFor({ state: 'visible', timeout: toggleConfig.controlVisibleTimeoutMs }).catch(() => {});
       return await direct.elementHandle() || locator;
     }
   } catch {}
@@ -117,7 +122,7 @@ async function resolveToggleTarget(page, locator, dimensionKey) {
  * @returns {Promise<void>}
  */
 export async function fillToggle(page, element, dimensionKey, value) {
-  const wantChecked = ['true', 'yes', '1', 'on', 'enabled'].includes(String(value ?? '').toLowerCase());
+  const wantChecked = toggleConfig.truthyValues.includes(String(value ?? '').toLowerCase());
 
   const target = await resolveToggleTarget(page, element, dimensionKey);
   const current = await readToggleState(target);
@@ -156,10 +161,10 @@ export async function fillRadio(page, dimensionKey, value) {
   for (const selector of selectors) {
     try {
       const node = page.locator(selector).first();
-      await node.waitFor({ state: 'attached', timeout: 500 }).catch(() => {});
+      await node.waitFor({ state: 'attached', timeout: toggleConfig.attachedTimeoutMs }).catch(() => {});
       const count = await node.count().catch(() => 0);
       if (count > 0) {
-        await node.waitFor({ state: 'visible', timeout: 1500 }).catch(() => {});
+        await node.waitFor({ state: 'visible', timeout: toggleConfig.radioVisibleTimeoutMs }).catch(() => {});
         await node.scrollIntoViewIfNeeded().catch(() => {});
         await node.click();
         return;
@@ -170,7 +175,7 @@ export async function fillRadio(page, dimensionKey, value) {
   // Final fallback using getByText proximity up tree
   try {
     const node = page.getByText(text, { exact: false }).first();
-    await node.waitFor({ state: 'visible', timeout: 1000 }).catch(() => {});
+    await node.waitFor({ state: 'visible', timeout: toggleConfig.textFallbackVisibleTimeoutMs }).catch(() => {});
     const radio = node.locator('xpath=./ancestor-or-self::label//input[type="radio"] | ./ancestor-or-self::*[@role="radio"]').first();
     const count = await radio.count().catch(() => 0);
     if (count > 0) {

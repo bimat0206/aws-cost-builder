@@ -7,20 +7,15 @@
  * @module automation/navigation/group_manager
  */
 
+import { getAppRuntimeConfig, getAutomationRuntimeConfig } from '../../config/runtime/index.js';
 import { withRetry } from '../../core/retry/retry_wrapper.js';
-import { logEvent as sharedLogEvent } from '../../core/index.js';
+import { createModuleLogger } from '../../core/logger/index.js';
 
 const MODULE = 'automation/navigation/group_manager';
-
-/**
- * Format and print a structured log line.
- * @param {string} level
- * @param {string} eventType
- * @param {Object} fields
- */
-function logEvent(level, eventType, fields = {}) {
-  sharedLogEvent(level, MODULE, eventType, fields);
-}
+const appConfig = getAppRuntimeConfig();
+const automationConfig = getAutomationRuntimeConfig();
+const groupConfig = automationConfig.groupManager;
+const logger = createModuleLogger(MODULE);
 
 // ─── Group management ─────────────────────────────────────────────────────────
 
@@ -34,7 +29,7 @@ async function groupExists(page, groupName) {
   // Look for group element with matching name using text search
   try {
     const groupItem = page.getByText(groupName, { exact: true }).first();
-    await groupItem.waitFor({ state: 'visible', timeout: 1500 });
+    await groupItem.waitFor({ state: 'visible', timeout: groupConfig.groupLookupVisibleTimeoutMs });
     return true;
   } catch {
     return false;
@@ -48,13 +43,13 @@ async function groupExists(page, groupName) {
  */
 async function selectRootEstimate(page) {
   const selectors = [
-    page.getByText('My Estimate', { exact: false }).first(),
-    page.getByRole('treeitem', { name: /^My Estimate$/i }).first(),
+    page.getByText(groupConfig.rootEstimate.text, { exact: false }).first(),
+    page.getByRole('treeitem', { name: new RegExp(groupConfig.rootEstimate.rolePattern, 'i') }).first(),
   ];
 
   for (const locator of selectors) {
     try {
-      await locator.waitFor({ state: 'visible', timeout: 1200 });
+      await locator.waitFor({ state: 'visible', timeout: groupConfig.rootEstimate.visibleTimeoutMs });
       await locator.click();
       return true;
     } catch {
@@ -73,11 +68,11 @@ async function selectRootEstimate(page) {
 async function findCreateGroupButton(page) {
   // Use text-based search like Python's find_button
   try {
-    const button = page.getByRole('button', { name: /Create group/i }).first();
-    await button.waitFor({ state: 'visible', timeout: 3000 });
+    const button = page.getByRole('button', { name: new RegExp(groupConfig.create.buttonLabel, 'i') }).first();
+    await button.waitFor({ state: 'visible', timeout: groupConfig.create.buttonVisibleTimeoutMs });
     return button;
   } catch (error) {
-    throw new Error(`"Create group" button not found: ${error.message}`);
+    throw new Error(`"${groupConfig.create.buttonLabel}" button not found: ${error.message}`);
   }
 }
 
@@ -88,11 +83,10 @@ async function findCreateGroupButton(page) {
  */
 async function findGroupNameInput(page) {
   // Try label-based search first
-  const labels = ['Group name', 'Group name e.g., "My service group"'];
-  for (const label of labels) {
+  for (const label of groupConfig.create.fieldLabels) {
     try {
       const input = page.getByLabel(label, { exact: false }).first();
-      await input.waitFor({ state: 'visible', timeout: 1000 });
+      await input.waitFor({ state: 'visible', timeout: groupConfig.create.fieldVisibleTimeoutMs });
       return input;
     } catch {
       continue;
@@ -100,11 +94,10 @@ async function findGroupNameInput(page) {
   }
 
   // Fallback to placeholder-based search
-  const placeholders = ['e.g., "My service group"', 'Group name'];
-  for (const placeholder of placeholders) {
+  for (const placeholder of groupConfig.create.fieldPlaceholders) {
     try {
       const input = page.getByPlaceholder(placeholder).first();
-      await input.waitFor({ state: 'visible', timeout: 1000 });
+      await input.waitFor({ state: 'visible', timeout: groupConfig.create.fieldVisibleTimeoutMs });
       return input;
     } catch {
       continue;
@@ -122,7 +115,11 @@ async function findGroupNameInput(page) {
  * @returns {Promise<void>}
  */
 export async function createGroup(page, groupName) {
-  logEvent('INFO', 'EVT-GRP-01', { name: groupName, status: 'creating' });
+  logger.info('group_creation_started', {
+    event_id: 'EVT-GRP-01',
+    name: groupName,
+    status: 'creating',
+  });
 
   const name = (groupName || '').trim();
   if (!name) {
@@ -136,7 +133,11 @@ export async function createGroup(page, groupName) {
   const alreadyExists = await groupExists(page, name);
   if (alreadyExists) {
     await selectGroup(page, name);
-    logEvent('INFO', 'EVT-GRP-01', { name, status: 'already_exists' });
+    logger.info('group_already_exists', {
+      event_id: 'EVT-GRP-01',
+      name,
+      status: 'already_exists',
+    });
     return;
   }
 
@@ -147,11 +148,15 @@ export async function createGroup(page, groupName) {
     } catch (error) {
       // Recovery path: previous service might have failed and left us in
       // createCalculator route where group controls are unavailable.
-      logEvent('WARN', 'EVT-GRP-02', { name, error: 'Create group button not found, attempting recovery' });
+      logger.warn('group_creation_recovery_started', {
+        event_id: 'EVT-GRP-02',
+        name,
+        error: 'Create group button not found, attempting recovery',
+      });
       
       // Navigate back to estimate page
-      await page.goto('https://calculator.aws/#/estimate', { waitUntil: 'domcontentloaded' });
-      await page.waitForTimeout(500);
+      await page.goto(appConfig.calculator.baseUrl, { waitUntil: automationConfig.browser.navigationWaitUntil });
+      await page.waitForTimeout(groupConfig.create.recoveryWaitMs);
       
       // Re-select root estimate
       await selectRootEstimate(page);
@@ -159,7 +164,11 @@ export async function createGroup(page, groupName) {
       // Check if group exists now (might have been created by previous attempt)
       if (await groupExists(page, name)) {
         await selectGroup(page, name);
-        logEvent('INFO', 'EVT-GRP-01', { name, status: 'selected_after_recovery' });
+        logger.info('group_selected_after_recovery', {
+          event_id: 'EVT-GRP-01',
+          name,
+          status: 'selected_after_recovery',
+        });
         return;
       }
       
@@ -169,31 +178,35 @@ export async function createGroup(page, groupName) {
 
     // Click create group button
     await createGroupButton.click();
-    await page.waitForTimeout(250);
+    await page.waitForTimeout(groupConfig.create.afterOpenWaitMs);
 
     // Enter group name
     const nameInput = await findGroupNameInput(page);
     await nameInput.fill(name);
-    await page.waitForTimeout(300);
+    await page.waitForTimeout(groupConfig.create.afterFillWaitMs);
 
     // Find and click confirm button
     // Prefer modal/dialog action button; fallback to last visible match
     let submitButton = null;
     try {
       const dialog = page.getByRole('dialog').first();
-      await dialog.waitFor({ state: 'visible', timeout: 1000 });
-      submitButton = dialog.getByRole('button', { name: /Create group/i }).first();
-      await submitButton.waitFor({ state: 'visible', timeout: 1000 });
+      await dialog.waitFor({ state: 'visible', timeout: groupConfig.create.submitVisibleTimeoutMs });
+      submitButton = dialog.getByRole('button', { name: new RegExp(groupConfig.create.buttonLabel, 'i') }).first();
+      await submitButton.waitFor({ state: 'visible', timeout: groupConfig.create.submitVisibleTimeoutMs });
     } catch {
       // Fallback to last visible match
-      submitButton = page.getByRole('button', { name: /Create group/i }).last();
-      await submitButton.waitFor({ state: 'visible', timeout: 1000 });
+      submitButton = page.getByRole('button', { name: new RegExp(groupConfig.create.buttonLabel, 'i') }).last();
+      await submitButton.waitFor({ state: 'visible', timeout: groupConfig.create.submitVisibleTimeoutMs });
     }
 
     await submitButton.click();
-    await page.waitForTimeout(600);
+    await page.waitForTimeout(groupConfig.create.afterSubmitWaitMs);
   } catch (error) {
-    logEvent('ERROR', 'EVT-GRP-02', { name, error: error.message });
+    logger.error('group_creation_failed', {
+      event_id: 'EVT-GRP-02',
+      name,
+      error,
+    });
     throw new Error(`Could not create group '${name}': ${error.message}`);
   }
 
@@ -203,7 +216,11 @@ export async function createGroup(page, groupName) {
   }
 
   await selectGroup(page, name);
-  logEvent('INFO', 'EVT-GRP-01', { name, status: 'created' });
+  logger.info('group_created', {
+    event_id: 'EVT-GRP-01',
+    name,
+    status: 'created',
+  });
 }
 
 /**
@@ -213,16 +230,24 @@ export async function createGroup(page, groupName) {
  * @returns {Promise<void>}
  */
 async function selectGroup(page, groupName) {
-  logEvent('INFO', 'EVT-GRP-01', { name: groupName, status: 'selecting' });
+  logger.info('group_selection_started', {
+    event_id: 'EVT-GRP-01',
+    name: groupName,
+    status: 'selecting',
+  });
 
   // Click on the group to select it using text search
   try {
     const groupElement = page.getByText(groupName, { exact: true }).first();
-    await groupElement.waitFor({ state: 'visible', timeout: 1500 });
+    await groupElement.waitFor({ state: 'visible', timeout: groupConfig.groupLookupVisibleTimeoutMs });
     await groupElement.click();
-    await page.waitForTimeout(300);
+    await page.waitForTimeout(groupConfig.selection.afterSelectWaitMs);
 
-    logEvent('INFO', 'EVT-GRP-01', { name: groupName, status: 'selected' });
+    logger.info('group_selected', {
+      event_id: 'EVT-GRP-01',
+      name: groupName,
+      status: 'selected',
+    });
   } catch (error) {
     throw new Error(`Group not found: ${groupName}`);
   }
@@ -252,8 +277,8 @@ export async function ensureGroup(page, groupName) {
     },
     {
       stepName: 'ensure-group',
-      maxRetries: 2,
-      delayMs: 1500,
+      maxRetries: groupConfig.retry.maxRetries,
+      delayMs: groupConfig.retry.delayMs,
     }
   );
 }
@@ -275,7 +300,10 @@ export async function getCurrentGroup(page) {
     }
     return null;
   } catch (error) {
-    logEvent('ERROR', 'EVT-GRP-02', { error: error.message });
+    logger.error('current_group_lookup_failed', {
+      event_id: 'EVT-GRP-02',
+      error,
+    });
     return null;
   }
 }
@@ -287,14 +315,22 @@ export async function getCurrentGroup(page) {
  * @returns {Promise<void>}
  */
 export async function deleteGroup(page, groupName) {
-  logEvent('INFO', 'EVT-GRP-03', { name: groupName, status: 'deleting' });
+  logger.info('group_deletion_started', {
+    event_id: 'EVT-GRP-03',
+    name: groupName,
+    status: 'deleting',
+  });
 
   try {
     // Find the group
     const groupSelector = `[data-testid="group-item"]:has-text("${groupName}")`;
     const groupElement = await page.$(groupSelector);
     if (!groupElement) {
-      logEvent('ERROR', 'EVT-GRP-03', { name: groupName, error: 'not_found' });
+      logger.error('group_deletion_failed', {
+        event_id: 'EVT-GRP-03',
+        name: groupName,
+        error: 'not_found',
+      });
       return;
     }
 
@@ -319,9 +355,17 @@ export async function deleteGroup(page, groupName) {
       }
     }
 
-    logEvent('INFO', 'EVT-GRP-03', { name: groupName, status: 'deleted' });
+    logger.info('group_deleted', {
+      event_id: 'EVT-GRP-03',
+      name: groupName,
+      status: 'deleted',
+    });
   } catch (error) {
-    logEvent('ERROR', 'EVT-GRP-03', { name: groupName, error: error.message });
+    logger.error('group_deletion_failed', {
+      event_id: 'EVT-GRP-03',
+      name: groupName,
+      error,
+    });
     throw error;
   }
 }

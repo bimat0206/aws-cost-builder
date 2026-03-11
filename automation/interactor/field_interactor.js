@@ -8,11 +8,15 @@
  * - Return detailed result object
  */
 
+import { getAutomationRuntimeConfig } from '../../config/runtime/index.js';
 import { withRetry } from '../../core/retry/retry_wrapper.js';
 import { fillNumberText } from './field_strategies/number_text.js';
 import { fillSelect, fillCombobox } from './field_strategies/select_combobox.js';
 import { fillToggle, fillRadio } from './field_strategies/toggle_radio.js';
 import { fillInstanceSearch } from './field_strategies/instance_search.js';
+
+const automationConfig = getAutomationRuntimeConfig();
+const interactorConfig = automationConfig.interactor;
 
 /**
  * @typedef {Object} DimensionFillResult
@@ -188,7 +192,7 @@ export async function fillDimension(element, fieldType, value, opts = {}) {
       {
         stepName: `fill-dimension-${dimensionKey}`,
         maxRetries,
-        delayMs: 1500,
+        delayMs: interactorConfig.fieldInteraction.retryDelayMs,
         required,
       },
     );

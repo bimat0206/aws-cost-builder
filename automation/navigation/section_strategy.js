@@ -14,21 +14,12 @@
  */
 
 import { withRetry } from '../../core/retry/retry_wrapper.js';
-import { logEvent as sharedLogEvent } from '../../core/logger/logger.js';
+import { createModuleLogger } from '../../core/logger/index.js';
 
 // ─── Logging helpers ──────────────────────────────────────────────────────────
 
 const MODULE = 'automation/section_strategy';
-
-/**
- * Format and print a structured log line.
- * @param {string} level
- * @param {string} eventType
- * @param {Object} fields
- */
-function logEvent(level, eventType, fields = {}) {
-  sharedLogEvent(level, MODULE, eventType, fields);
-}
+const logger = createModuleLogger(MODULE);
 
 // ─── Strategy types ───────────────────────────────────────────────────────────
 
@@ -76,7 +67,9 @@ export class SectionStrategyHintStore {
       expanded: true,
     });
     this.expandedSections.add(sectionLabel);
-    logEvent('INFO', 'EVT-SEC-01', {
+    logger.info('section_hint_recorded', {
+      event_id: 'EVT-SEC-01',
+      service: this.serviceName,
       section: sectionLabel,
       strategy,
       status: 'recorded',
@@ -213,9 +206,11 @@ export async function expandAllSections(page, hintStore, opts = {}) {
   const expanded = [];
   const failed = [];
 
-  logEvent('INFO', 'EVT-SEC-02', {
+  logger.info('section_expansion_started', {
+    event_id: 'EVT-SEC-02',
+    service: hintStore.serviceName,
     step: 'starting',
-    catalog_triggers: catalogTriggers.length,
+    catalog_trigger_count: catalogTriggers.length,
   });
 
   // Phase 1: Apply catalog triggers first (if provided)
@@ -241,9 +236,12 @@ export async function expandAllSections(page, hintStore, opts = {}) {
       hintStore.recordSuccess(label, strategy);
       expanded.push(label);
     } else if (required) {
-      logEvent('ERROR', 'EVT-SEC-03', {
+      logger.error('section_catalog_trigger_failed', {
+        event_id: 'EVT-SEC-03',
+        service: hintStore.serviceName,
         section: label,
         strategy,
+        required,
         error: 'Required catalog trigger failed',
       });
       failed.push(label);
@@ -312,24 +310,31 @@ export async function expandAllSections(page, hintStore, opts = {}) {
     if (success) {
       hintStore.recordSuccess(sectionLabel, 'accordion_button');
       expanded.push(sectionLabel);
-      logEvent('INFO', 'EVT-SEC-01', {
+      logger.info('section_expanded', {
+        event_id: 'EVT-SEC-01',
+        service: hintStore.serviceName,
         section: sectionLabel,
         strategy: 'accordion_button',
         status: 'expanded',
       });
     } else {
       failed.push(sectionLabel);
-      logEvent('WARN', 'EVT-SEC-03', {
+      logger.warn('section_expansion_failed', {
+        event_id: 'EVT-SEC-03',
+        service: hintStore.serviceName,
         section: sectionLabel,
+        step: 'discover_triggers',
         error: 'Could not expand section',
       });
     }
   }
 
-  logEvent('INFO', 'EVT-SEC-02', {
+  logger.info('section_expansion_completed', {
+    event_id: 'EVT-SEC-02',
+    service: hintStore.serviceName,
     step: 'complete',
-    expanded: expanded.length,
-    failed: failed.length,
+    expanded_count: expanded.length,
+    failed_count: failed.length,
   });
 
   return { expanded, sections: expanded };
@@ -399,7 +404,9 @@ export async function expandSection(page, hintStore, sectionLabel) {
     return true;
   }
 
-  logEvent('ERROR', 'EVT-SEC-03', {
+  logger.error('section_expand_failed', {
+    event_id: 'EVT-SEC-03',
+    service: hintStore.serviceName,
     section: sectionLabel,
     error: 'Could not find or expand section',
   });

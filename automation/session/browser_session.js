@@ -10,30 +10,14 @@
  */
 
 import { chromium } from 'playwright';
-import { logEvent as sharedLogEvent } from '../../core/index.js';
-
-const LOG_LEVELS = {
-  INFO: 'INFO',
-  WARNING: 'WARNING',
-  ERROR: 'ERROR',
-  CRITICAL: 'CRITICAL',
-};
-
-// ─── Logging helpers ──────────────────────────────────────────────────────────
+import { getAppRuntimeConfig, getAutomationRuntimeConfig } from '../../config/runtime/index.js';
+import { createModuleLogger } from '../../core/logger/index.js';
 
 const MODULE = 'automation/session/browser_session';
-
-/**
- * Structured logger with key=value fields.
- *
- * @param {'INFO'|'WARNING'|'ERROR'|'CRITICAL'} level
- * @param {string} eventId
- * @param {string} eventType
- * @param {Record<string, unknown>} [fields]
- */
-function logEvent(level, eventId, eventType, fields = {}) {
-  sharedLogEvent(level, MODULE, eventType, { event_id: eventId, ...fields });
-}
+const appConfig = getAppRuntimeConfig();
+const automationConfig = getAutomationRuntimeConfig();
+const browserConfig = automationConfig.browser;
+const logger = createModuleLogger(MODULE);
 
 // ─── Error types ──────────────────────────────────────────────────────────────
 
@@ -80,7 +64,7 @@ export class BrowserSession {
       : (optsOrHeadless ?? {});
 
     this._headless = opts.headless ?? false;
-    this._timeout = opts.timeout ?? 30000;
+    this._timeout = opts.timeout ?? browserConfig.defaultTimeoutMs;
     this._browser = null;
     this._page = null;
     this._context = null;
@@ -99,15 +83,12 @@ export class BrowserSession {
     try {
       this._browser = await chromium.launch({
         headless: this._headless,
-        args: [
-          '--disable-gpu',
-          '--disable-dev-shm-usage',
-        ],
+        args: browserConfig.launchArgs,
       });
 
       this._context = await this._browser.newContext({
-        viewport: { width: 1920, height: 1080 },
-        userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        viewport: browserConfig.viewport,
+        userAgent: browserConfig.userAgent,
       });
 
       this._page = await this._context.newPage();
@@ -120,15 +101,20 @@ export class BrowserSession {
         dialog.dismiss().catch(() => {});
       });
 
-      logEvent(LOG_LEVELS.INFO, 'EVT-BRW-01', 'browser_launched', {
+      logger.info('browser_launched', {
+        event_id: 'EVT-BRW-01',
         mode: this._headless ? 'headless' : 'headed',
+        timeout_ms: this._timeout,
+        viewport: browserConfig.viewport,
       });
     } catch (error) {
-      const message = `Failed to launch browser: ${error.message}`;
-      logEvent(LOG_LEVELS.CRITICAL, 'EVT-BRW-02', 'browser_launch_failed', {
-        error: message,
+      logger.critical('browser_launch_failed', {
+        event_id: 'EVT-BRW-02',
+        mode: this._headless ? 'headless' : 'headed',
+        timeout_ms: this._timeout,
+        error,
       });
-      throw new AutomationFatalError(message, error);
+      throw new AutomationFatalError(`Failed to launch browser: ${error.message}`, error);
     }
   }
 
@@ -154,8 +140,9 @@ export class BrowserSession {
         this._browser = null;
       }
     } catch (error) {
-      logEvent(LOG_LEVELS.ERROR, 'EVT-BRW-03', 'browser_stop_failed', {
-        error: error.message,
+      logger.error('browser_stop_failed', {
+        event_id: 'EVT-BRW-03',
+        error,
       });
       // Don't throw on shutdown errors - we're cleaning up anyway
     }
@@ -188,7 +175,7 @@ export class BrowserSession {
    * @returns {Promise<void>}
    * @throws {AutomationFatalError} If navigation fails
    */
-  async openCalculator(url = 'https://calculator.aws/#/estimate') {
+  async openCalculator(url = appConfig.calculator.baseUrl) {
     if (!this._page) {
       throw new AutomationFatalError('Browser session not started. Call start() first.');
     }
@@ -196,7 +183,7 @@ export class BrowserSession {
     try {
       // Use domcontentloaded — networkidle never resolves on AWS Calculator
       // due to continuous background requests (analytics, polling)
-      await this._page.goto(url, { waitUntil: 'domcontentloaded', timeout: this._timeout });
+      await this._page.goto(url, { waitUntil: browserConfig.navigationWaitUntil, timeout: this._timeout });
 
       // Auto-dismiss any consent / cookie dialogs before they block clicks
       await this._dismissDialogs().catch(() => {});
@@ -204,13 +191,21 @@ export class BrowserSession {
       // Wait for the React SPA to hydrate — poll for a stable interactive element
       await this._waitForSpaReady().catch(() => {});
 
-      logEvent(LOG_LEVELS.INFO, 'EVT-NAV-01', 'page_navigated', { url });
-    } catch (error) {
-      const message = `Failed to navigate to calculator: ${error.message}`;
-      logEvent(LOG_LEVELS.ERROR, 'EVT-NAV-02', 'page_load_failed', {
-        error: message,
+      logger.info('page_navigated', {
+        event_id: 'EVT-NAV-01',
+        url,
+        wait_until: browserConfig.navigationWaitUntil,
+        timeout_ms: this._timeout,
       });
-      throw new AutomationFatalError(message, error);
+    } catch (error) {
+      logger.error('page_load_failed', {
+        event_id: 'EVT-NAV-02',
+        url,
+        wait_until: browserConfig.navigationWaitUntil,
+        timeout_ms: this._timeout,
+        error,
+      });
+      throw new AutomationFatalError(`Failed to navigate to calculator: ${error.message}`, error);
     }
   }
 
@@ -222,23 +217,13 @@ export class BrowserSession {
    */
   async _dismissDialogs() {
     if (!this._page) return;
-    const dismissSelectors = [
-      // AWS cookie consent
-      "button#awsccc-cb-btn-accept",
-      "button[data-id='awsccc-cb-btn-accept']",
-      // Generic accept / close patterns
-      "button:has-text('Accept')",
-      "button:has-text('Accept all')",
-      "button:has-text('I agree')",
-      "button[aria-label='Close']",
-      "[data-testid='cookie-accept-btn']",
-    ];
-    for (const sel of dismissSelectors) {
+    for (const selector of browserConfig.dialogDismiss.selectors) {
       try {
-        const btn = this._page.locator(sel).first();
-        if ((await btn.count()) > 0 && await btn.isVisible({ timeout: 1000 }).catch(() => false)) {
-          await btn.click({ timeout: 2000, force: true }).catch(() => {});
-          await this._page.waitForTimeout(300);
+        const button = this._page.locator(selector).first();
+        if ((await button.count()) > 0
+          && await button.isVisible({ timeout: browserConfig.dialogDismiss.visibleTimeoutMs }).catch(() => false)) {
+          await button.click({ timeout: browserConfig.dialogDismiss.clickTimeoutMs, force: true }).catch(() => {});
+          await this._page.waitForTimeout(browserConfig.dialogDismiss.pauseMs);
         }
       } catch {
         // Ignore — dialog may not be present
@@ -256,27 +241,14 @@ export class BrowserSession {
    */
   async _waitForSpaReady() {
     if (!this._page) return;
-    // Any of these signals means the SPA is ready enough to interact with
-    const readySelectors = [
-      // Estimate page ready
-      "button:has-text('Add service')",
-      "button:has-text('Add a service')",
-      // Add-service page ready
-      "input[placeholder*='search' i]",
-      "input[aria-label*='search' i]",
-      "input[type='search']",
-      // Generic calculator content loaded
-      "[data-testid='calculator-header']",
-      "[class*='awsui_app-layout']",
-    ];
-    const combined = readySelectors.join(', ');
+    const combined = browserConfig.spaReady.selectors.join(', ');
     await this._page
-      .waitForSelector(combined, { timeout: 15000, state: 'visible' })
+      .waitForSelector(combined, { timeout: browserConfig.spaReady.visibleTimeoutMs, state: 'visible' })
       .catch(() => {
         // Timeout is acceptable — SPA may just be slow; continue anyway
       });
     // Brief pause to let React finish re-renders after selector appeared
-    await this._page.waitForTimeout(500);
+    await this._page.waitForTimeout(browserConfig.spaReady.pauseMs);
   }
 
   /**
@@ -315,11 +287,18 @@ export class BrowserSession {
 
     try {
       await this._page.screenshot({ path: outputPath, fullPage: false });
-      logEvent(LOG_LEVELS.INFO, 'EVT-SCR-01', 'screenshot_captured', { path: outputPath });
+      logger.info('screenshot_captured', {
+        event_id: 'EVT-SCR-01',
+        path: outputPath,
+        full_page: false,
+      });
     } catch (error) {
-      const message = `Failed to take screenshot: ${error.message}`;
-      logEvent(LOG_LEVELS.ERROR, 'EVT-SCR-02', 'screenshot_failed', { error: message });
-      throw new AutomationFatalError(message, error);
+      logger.error('screenshot_failed', {
+        event_id: 'EVT-SCR-02',
+        path: outputPath,
+        error,
+      });
+      throw new AutomationFatalError(`Failed to take screenshot: ${error.message}`, error);
     }
   }
 }

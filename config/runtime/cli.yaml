@@ -1,0 +1,83 @@
+# CLI parser options, flag help text, and validation messages.
+parser:
+  scriptName: "aws-cost-builder"
+  usage: "$0 <mode> [options]"
+  descriptions:
+    run: "Run browser automation using a profile (Mode B)"
+    dryRun: "Validate and resolve profile without opening a browser (Mode C)"
+    promote: "Promote a draft catalog entry to the service catalog (Mode D)"
+    exportArchive: "Package all HCL profiles into a .tar.gz archive (Mode E). Optionally specify output path."
+    profile: "Path to the profile file (.json or .hcl) — required for --run and --dry-run"
+    headless: "Run browser automation without a visible browser window"
+    set: "Override a dimension value: \"<group>.<service>.<dimension>=<value>\""
+  errors:
+    multipleModes: "Only one mode may be specified at a time. Got: {modes}"
+    profileRequired: "--profile <path> is required when using --run or --dry-run."
+    headlessOnlyWithRun: "--headless can only be used with --run."
+
+# Shared CLI rendering settings such as separators, glyphs, and status markers.
+ui:
+  separatorWidth: 60
+  modeChoiceLabelWidth: 16
+  modeStartGlyph: "◆"
+  status:
+    icons:
+      ok: "✓"
+      info: "i"
+      warn: "!"
+      error: "✗"
+      default: "·"
+    colors:
+      ok: "COL_GREEN"
+      info: "COL_CYAN"
+      warn: "COL_YELLOW"
+      errorHex: "#e06c75"
+
+# Mode cards shown in the interactive selector and mode banner.
+modes:
+  - id: "run"
+    label: "Runner"
+    badge: "Mode B"
+    description: "Execute browser automation against a saved profile"
+    colorKey: "COL_GREEN"
+  - id: "dryRun"
+    label: "Dry Run"
+    badge: "Mode C"
+    description: "Validate and resolve a profile without opening a browser"
+    colorKey: "COL_YELLOW"
+  - id: "promote"
+    label: "Promoter"
+    badge: "Mode D"
+    description: "Promote a draft catalog entry to the validated service catalog"
+    colorKey: "COL_ORANGE"
+  - id: "exportArchive"
+    label: "Export Archive"
+    badge: "Mode E"
+    description: "Package all HCL profiles into a compressed .tar.gz archive"
+    colorKey: "COL_CYAN"
+
+# Interactive prompt labels and default prompt choices.
+prompts:
+  nonInteractiveModeError: "No mode specified in non-interactive environment. Use --run --profile <path>, --dry-run --profile <path>, --promote, or --export-archive."
+  modeSelectLabel: "◆ Select a mode to begin"
+  profileSelectLabel: "Select a profile"
+  profilePromptLabel: "Profile path (.json or .hcl)"
+  profileRequiredError: "Profile path is required."
+  headlessSelectLabel: "Open a browser window?"
+  headlessOptions:
+    - label: "Yes, open browser  (headless: false)"
+      headless: false
+    - label: "No, run headless   (headless: true)"
+      headless: true
+
+# User-facing status and workflow messages grouped by feature.
+messages:
+  promote:
+    title: "Draft service id to promote"
+    requiredError: "Service id is required for promote mode."
+  exportArchive:
+    scan: "Scanning {profilesDir} for .hcl profiles..."
+    noProfiles: "No .hcl profile files found in profiles/ directory."
+    noProfilesHint: "Use the Chrome Extension to capture profiles and export them as .hcl files."
+    archived: "Archived {count} profile(s): {files}"
+    output: "Output: {outputPath}"

@@ -2,6 +2,11 @@
  * EC2 Instance search option selection strategy.
  */
 
+import { getAutomationRuntimeConfig } from '../../../config/runtime/index.js';
+
+const automationConfig = getAutomationRuntimeConfig();
+const instanceSearchConfig = automationConfig.interactor.instanceSearch;
+
 /**
  * Click, type, and click the correct radio button in the instance table.
  * @param {import('playwright').Page} page
@@ -16,12 +21,12 @@ export async function fillInstanceSearch(page, element, value) {
   await element.fill(text);
   
   // Wait for the table to filter down
-  await page.waitForTimeout(2000);
+  await page.waitForTimeout(instanceSearchConfig.filterWaitMs);
   
   // Try to find the row containing the text and click its radio button
   const row = page.locator(`tr:has-text('${text}')`).first();
   const radio = row.locator("input[type='radio']").first();
   
-  await radio.waitFor({ state: 'visible', timeout: 3000 });
+  await radio.waitFor({ state: 'visible', timeout: instanceSearchConfig.radioVisibleTimeoutMs });
   await radio.click();
 }

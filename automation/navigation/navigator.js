@@ -9,25 +9,19 @@
  * @module automation/navigation/navigator
  */
 
+import { getAutomationRuntimeConfig } from '../../config/runtime/index.js';
 import { ensureGroup } from './group_manager.js';
 import { expandAllSections, SectionStrategyHintStore } from './section_strategy.js';
 import { withRetry } from '../../core/retry/retry_wrapper.js';
 import { buildScreenshotPath } from '../../core/emitter/screenshot_manager.js';
-import { logEvent as sharedLogEvent } from '../../core/index.js';
+import { createModuleLogger } from '../../core/logger/index.js';
 
 // ─── Logging helpers ──────────────────────────────────────────────────────────
 
 const MODULE = 'automation/navigation/navigator';
-
-/**
- * Format and print a structured log line.
- * @param {string} level
- * @param {string} eventType
- * @param {Object} fields
- */
-function logEvent(level, eventType, fields = {}) {
-  sharedLogEvent(level, MODULE, eventType, fields);
-}
+const automationConfig = getAutomationRuntimeConfig();
+const navigatorConfig = automationConfig.navigator;
+const logger = createModuleLogger(MODULE);
 
 // ─── Service search ───────────────────────────────────────────────────────────
 
@@ -60,10 +54,10 @@ export function buildServiceSearchTerms(catalogEntry) {
 
   // Add database-related fallbacks if service looks like a database
   const allText = Array.from(terms).join(' ').toLowerCase();
-  const dbKeywords = ['rds', 'aurora', 'database', 'mysql', 'postgresql', 'oracle', 'dynamodb'];
-  if (dbKeywords.some(kw => allText.includes(kw))) {
-    terms.add('RDS');
-    terms.add('Database');
+  if (navigatorConfig.databaseKeywords.some((keyword) => allText.includes(keyword))) {
+    for (const term of navigatorConfig.databaseFallbackTerms) {
+      terms.add(term);
+    }
   }
 
   return Array.from(terms);
@@ -76,26 +70,29 @@ export function buildServiceSearchTerms(catalogEntry) {
  * @returns {Promise<void>}
  */
 async function clickAddService(page) {
-  logEvent('INFO', 'EVT-SVC-01', { step: 'clicking_add_service' });
+  logger.info('add_service_click_started', { event_id: 'EVT-SVC-01', step: 'clicking_add_service' });
 
   try {
     // CONFIRMED from live discovery: aria-label is exactly "Add service"
     // The primary button is variant-primary (top-right). The secondary is in the estimate table.
     // Use the primary variant first.
-    let button = page.locator('button[aria-label="Add service"]').first();
+    let button = page.locator(navigatorConfig.addService.primarySelector).first();
     try {
-      await button.waitFor({ state: 'visible', timeout: 3000 });
+      await button.waitFor({ state: 'visible', timeout: navigatorConfig.addService.primaryVisibleTimeoutMs });
     } catch {
       // fallback to text-based
-      button = page.getByRole('button', { name: 'Add service', exact: true }).first();
-      await button.waitFor({ state: 'visible', timeout: 5000 });
+      button = page.getByRole('button', { name: navigatorConfig.addService.fallbackButtonLabel, exact: true }).first();
+      await button.waitFor({ state: 'visible', timeout: navigatorConfig.addService.fallbackVisibleTimeoutMs });
     }
     await button.click();
     // Wait for search panel to appear (aria-label='Find Service' input)
-    await page.waitForSelector('input[aria-label="Find Service"]', { state: 'visible', timeout: 10000 });
-    logEvent('INFO', 'EVT-SVC-01', { step: 'panel_opened' });
+    await page.waitForSelector(navigatorConfig.addService.panelVisibleSelector, {
+      state: 'visible',
+      timeout: navigatorConfig.addService.panelVisibleTimeoutMs,
+    });
+    logger.info('add_service_panel_opened', { event_id: 'EVT-SVC-01', step: 'panel_opened' });
   } catch (error) {
-    logEvent('ERROR', 'EVT-SVC-01', { error: error.message });
+    logger.error('add_service_click_failed', { event_id: 'EVT-SVC-01', error });
     throw new Error(`Could not click 'Add service' button: ${error.message}`);
   }
 }
@@ -111,16 +108,10 @@ async function clickAddService(page) {
 async function findSearchInput(page) {
   // CONFIRMED from live discovery: aria-label is "Find Service", placeholder is "Search for a service"
   // Try aria-label first (most reliable)
-  const selectors = [
-    'input[aria-label="Find Service"]',
-    'input[placeholder="Search for a service"]',
-    'input[type="search"]',
-  ];
-
-  for (const selector of selectors) {
+  for (const selector of navigatorConfig.searchInput.selectors) {
     try {
       const input = page.locator(selector).first();
-      await input.waitFor({ state: 'visible', timeout: 2000 });
+      await input.waitFor({ state: 'visible', timeout: navigatorConfig.searchInput.visibleTimeoutMs });
       return input;
     } catch {
       continue;
@@ -145,10 +136,16 @@ async function clickBestMatchingResult(page, expectedTitles, activeTerm) {
   for (const title of expectedTitles) {
     try {
       // Match by aria-label with the exact or partial service name
-      const btn = page.locator(`button[aria-label*="Configure ${title}"]`).first();
-      await btn.waitFor({ state: 'visible', timeout: 1500 });
+      const btn = page.locator(`button[aria-label*="${navigatorConfig.configure.ariaLabelPrefix} ${title}"]`).first();
+      await btn.waitFor({ state: 'visible', timeout: navigatorConfig.configure.resultVisibleTimeoutMs });
       await btn.click();
-      logEvent('INFO', 'EVT-SVC-03', { service: title, step: 'selected_by_aria_label' });
+      logger.info('service_result_selected', {
+        event_id: 'EVT-SVC-03',
+        service: title,
+        active_term: activeTerm,
+        expected_titles: expectedTitles,
+        selection_strategy: 'aria_label',
+      });
       return true;
     } catch {
       // Fall through to role-based
@@ -156,10 +153,18 @@ async function clickBestMatchingResult(page, expectedTitles, activeTerm) {
 
     try {
       // Role-based with accessible name pattern
-      const btn = page.getByRole('button', { name: new RegExp(`Configure ${title}`, 'i') }).first();
-      await btn.waitFor({ state: 'visible', timeout: 1500 });
+      const btn = page.getByRole('button', {
+        name: new RegExp(`${navigatorConfig.configure.ariaLabelPrefix} ${title}`, 'i'),
+      }).first();
+      await btn.waitFor({ state: 'visible', timeout: navigatorConfig.configure.resultVisibleTimeoutMs });
       await btn.click();
-      logEvent('INFO', 'EVT-SVC-03', { service: title, step: 'selected_by_role_name' });
+      logger.info('service_result_selected', {
+        event_id: 'EVT-SVC-03',
+        service: title,
+        active_term: activeTerm,
+        expected_titles: expectedTitles,
+        selection_strategy: 'role_name',
+      });
       return true;
     } catch {
       continue;
@@ -168,19 +173,30 @@ async function clickBestMatchingResult(page, expectedTitles, activeTerm) {
 
   // Priority 2: Match by active search term
   try {
-    const btn = page.locator(`button[aria-label*="Configure"]`).filter({ hasText: activeTerm }).first();
-    await btn.waitFor({ state: 'visible', timeout: 1500 });
+    const btn = page.locator(`button[aria-label*="${navigatorConfig.configure.ariaLabelPrefix}"]`).filter({ hasText: activeTerm }).first();
+    await btn.waitFor({ state: 'visible', timeout: navigatorConfig.configure.resultVisibleTimeoutMs });
     await btn.click();
-    logEvent('INFO', 'EVT-SVC-03', { service: activeTerm, step: 'selected_by_term' });
+    logger.info('service_result_selected', {
+      event_id: 'EVT-SVC-03',
+      service: activeTerm,
+      active_term: activeTerm,
+      expected_titles: expectedTitles,
+      selection_strategy: 'term_match',
+    });
     return true;
   } catch {}
 
   // Priority 3: First Configure button on page
   try {
-    const btn = page.locator('button[aria-label*="Configure"]').first();
-    await btn.waitFor({ state: 'visible', timeout: 1500 });
+    const btn = page.locator(`button[aria-label*="${navigatorConfig.configure.ariaLabelPrefix}"]`).first();
+    await btn.waitFor({ state: 'visible', timeout: navigatorConfig.configure.resultVisibleTimeoutMs });
     await btn.click();
-    logEvent('INFO', 'EVT-SVC-03', { step: 'selected_first_configure' });
+    logger.info('service_result_selected', {
+      event_id: 'EVT-SVC-03',
+      active_term: activeTerm,
+      expected_titles: expectedTitles,
+      selection_strategy: 'first_configure_button',
+    });
     return true;
   } catch {
     return false;
@@ -206,13 +222,20 @@ async function searchAndSelectService(page, searchTerms, expectedTitles) {
   const searchInput = await findSearchInput(page);
 
   // Try each search term
-  for (const term of terms) {
+  for (const [index, term] of terms.entries()) {
+    logger.info('service_search_attempted', {
+      event_id: 'EVT-SVC-02',
+      active_term: term,
+      term_index: index,
+      term_count: terms.length,
+      expected_titles: expectedTitles,
+    });
     await searchInput.fill(term);
-    await page.waitForTimeout(900); // Allow filtered results to render
+    await page.waitForTimeout(navigatorConfig.searchInput.searchSettleMs);
 
     if (await clickBestMatchingResult(page, expectedTitles, term)) {
       // After clicking the Configure button, handle any immediate modal (e.g., EC2 workloads)
-      await page.waitForTimeout(1000);
+      await page.waitForTimeout(navigatorConfig.configure.afterClickWaitMs);
       await handleOptionalWorkloadsModal(page);
       return;
     }
@@ -228,17 +251,24 @@ async function searchAndSelectService(page, searchTerms, expectedTitles) {
  * @returns {Promise<void>}
  */
 export async function clickConfigure(page, serviceName = null) {
-  logEvent('INFO', 'EVT-SVC-03', { step: 'clicking_configure', service: serviceName });
+  logger.info('configure_click_started', {
+    event_id: 'EVT-SVC-03',
+    service: serviceName,
+  });
   try {
     // CONFIRMED from live discovery: aria-label is "Configure <ServiceName>" or "Configure <ServiceName> " (trailing space)
     // Try the most specific selector first if we know the service name
     if (serviceName) {
       try {
-        const specificBtn = page.locator(`button[aria-label*="Configure ${serviceName}"]`).first();
-        await specificBtn.waitFor({ state: 'visible', timeout: 3000 });
+        const specificBtn = page.locator(`button[aria-label*="${navigatorConfig.configure.ariaLabelPrefix} ${serviceName}"]`).first();
+        await specificBtn.waitFor({ state: 'visible', timeout: navigatorConfig.configure.specificVisibleTimeoutMs });
         await specificBtn.click();
-        await page.waitForTimeout(1000);
-        logEvent('INFO', 'EVT-SVC-03', { step: 'configure_clicked_specific' });
+        await page.waitForTimeout(navigatorConfig.configure.afterClickWaitMs);
+        logger.info('configure_click_completed', {
+          event_id: 'EVT-SVC-03',
+          service: serviceName,
+          selection_strategy: 'specific_aria_label',
+        });
         await handleOptionalWorkloadsModal(page);
         return;
       } catch {
@@ -247,18 +277,26 @@ export async function clickConfigure(page, serviceName = null) {
     }
 
     // Generic fallback: any visible Configure button
-    const configureButton = page.getByRole('button', { name: /Configure/i })
-      .filter({ hasNot: page.locator('[aria-label*="Add service"]') })
+    const configureButton = page.getByRole('button', { name: new RegExp(navigatorConfig.configure.genericButtonPattern, 'i') })
+      .filter({ hasNot: page.locator(`[aria-label*="${navigatorConfig.configure.addServiceAriaFragment}"]`) })
       .first();
-    await configureButton.waitFor({ state: 'visible', timeout: 5000 });
+    await configureButton.waitFor({ state: 'visible', timeout: navigatorConfig.configure.genericVisibleTimeoutMs });
     await configureButton.click();
-    await page.waitForTimeout(1000);
-    logEvent('INFO', 'EVT-SVC-03', { step: 'configure_clicked' });
+    await page.waitForTimeout(navigatorConfig.configure.afterClickWaitMs);
+    logger.info('configure_click_completed', {
+      event_id: 'EVT-SVC-03',
+      service: serviceName,
+      selection_strategy: 'generic_button',
+    });
     
     // Gap 9: EC2 specific workload quick-start modal evasion
     await handleOptionalWorkloadsModal(page);
   } catch (error) {
-    logEvent('ERROR', 'EVT-SVC-03', { error: 'Could not click Configure button' });
+    logger.error('configure_click_failed', {
+      event_id: 'EVT-SVC-03',
+      service: serviceName,
+      error,
+    });
     throw new Error(`Could not click Configure button: ${error.message}`);
   }
 }
@@ -272,12 +310,15 @@ export async function clickConfigure(page, serviceName = null) {
 async function handleOptionalWorkloadsModal(page) {
   try {
     // If a modal pops up asking to "Choose a workload", find the Skip button
-    const skipButton = page.getByRole('button', { name: /Skip/i }).first();
+    const skipButton = page.getByRole('button', { name: new RegExp(navigatorConfig.workloadModal.skipButtonPattern, 'i') }).first();
     // Short timeout because it usually doesn't appear for most services
-    await skipButton.waitFor({ state: 'visible', timeout: 2000 });
+    await skipButton.waitFor({ state: 'visible', timeout: navigatorConfig.workloadModal.visibleTimeoutMs });
     await skipButton.click();
-    await page.waitForTimeout(500); // Allow modal to fade
-    logEvent('INFO', 'EVT-SVC-03', { step: 'workload_skipped' });
+    await page.waitForTimeout(navigatorConfig.workloadModal.afterSkipWaitMs);
+    logger.info('workload_modal_skipped', {
+      event_id: 'EVT-SVC-03',
+      step: 'workload_skipped',
+    });
   } catch {
     // Modal did not appear, safe to ignore
   }
@@ -290,16 +331,26 @@ async function handleOptionalWorkloadsModal(page) {
  * @param {string} label
  * @returns {Promise<void>}
  */
-export async function clickSave(page, label = 'Save and add service') {
-  logEvent('INFO', 'EVT-SVC-04', { step: 'clicking_save' });
+export async function clickSave(page, label = navigatorConfig.save.defaultLabel) {
+  logger.info('save_click_started', {
+    event_id: 'EVT-SVC-04',
+    label,
+  });
   try {
     const saveButton = page.getByRole('button', { name: new RegExp(label, 'i') }).first();
-    await saveButton.waitFor({ state: 'visible', timeout: 5000 });
+    await saveButton.waitFor({ state: 'visible', timeout: navigatorConfig.save.visibleTimeoutMs });
     await saveButton.click();
-    await page.waitForLoadState('domcontentloaded', { timeout: 15000 });
-    logEvent('INFO', 'EVT-SVC-04', { step: 'save_clicked' });
+    await page.waitForLoadState(navigatorConfig.save.loadState, { timeout: navigatorConfig.save.loadStateTimeoutMs });
+    logger.info('save_click_completed', {
+      event_id: 'EVT-SVC-04',
+      label,
+    });
   } catch (error) {
-    logEvent('ERROR', 'EVT-SVC-04', { error: `Could not click '${label}' button` });
+    logger.error('save_click_failed', {
+      event_id: 'EVT-SVC-04',
+      label,
+      error,
+    });
     throw new Error(`Could not click '${label}' button: ${error.message}`);
   }
 }
@@ -316,16 +367,24 @@ export async function clickSave(page, label = 'Save and add service') {
  */
 async function selectRegion(page, regionCode, catalogEntry = null) {
   // Skip if global
-  if (!regionCode || regionCode.toLowerCase() === 'global') {
-    logEvent('INFO', 'EVT-REG-01', { region: 'global', status: 'skipping' });
+  if (!regionCode || regionCode.toLowerCase() === navigatorConfig.region.globalValue) {
+    logger.info('region_selection_skipped', {
+      event_id: 'EVT-REG-01',
+      region: navigatorConfig.region.globalValue,
+      status: 'skipping',
+    });
     return;
   }
 
-  logEvent('INFO', 'EVT-REG-01', { region: regionCode, status: 'selecting' });
+  logger.info('region_selection_started', {
+    event_id: 'EVT-REG-01',
+    region: regionCode,
+    status: 'selecting',
+  });
 
   try {
-    const locLabel = catalogEntry?.ui_mapping?.location_type_label || 'Choose a location type';
-    const regLabel = catalogEntry?.ui_mapping?.region_picker_label || 'Choose a Region';
+    const locLabel = catalogEntry?.ui_mapping?.location_type_label || navigatorConfig.region.defaultLocationTypeLabel;
+    const regLabel = catalogEntry?.ui_mapping?.region_picker_label || navigatorConfig.region.defaultRegionPickerLabel;
 
     // Step 1: Ensure location type is set to "Region"
     // CONFIRMED from live discovery: dropdowns use aria-labelledby pointing to a label element
@@ -337,22 +396,24 @@ async function selectRegion(page, regionCode, catalogEntry = null) {
     // Fallback to getByLabel if above fails
     const locationDropdown = await (async () => {
       try {
-        await locDropdown.waitFor({ state: 'visible', timeout: 3000 });
+        await locDropdown.waitFor({ state: 'visible', timeout: navigatorConfig.region.labelVisibleTimeoutMs });
         return locDropdown;
       } catch {
         return page.getByLabel(new RegExp(locLabel, 'i')).first();
       }
     })();
     
-    await locationDropdown.waitFor({ state: 'visible', timeout: 8000 });
+    await locationDropdown.waitFor({ state: 'visible', timeout: navigatorConfig.region.dropdownVisibleTimeoutMs });
 
     const locationTypeText = await locationDropdown.textContent();
     if (!locationTypeText?.toLowerCase().includes('region')) {
       await locationDropdown.click();
-      const regionOption = page.getByRole('option', { name: /^Region$/i }).first();
-      await regionOption.waitFor({ state: 'visible', timeout: 5000 });
+      const regionOption = page.getByRole('option', {
+        name: new RegExp(`^${navigatorConfig.region.regionOptionLabel}$`, 'i'),
+      }).first();
+      await regionOption.waitFor({ state: 'visible', timeout: navigatorConfig.region.optionVisibleTimeoutMs });
       await regionOption.click();
-      await page.waitForTimeout(300);
+      await page.waitForTimeout(navigatorConfig.region.afterSelectWaitMs);
     }
 
     // Step 2: Select region by code (not display name)
@@ -361,24 +422,34 @@ async function selectRegion(page, regionCode, catalogEntry = null) {
         const d = page.locator(`button[aria-labelledby]`).filter({
           has: page.locator(`xpath=./ancestor::*[contains(@class, "awsui_form-field")]//*[contains(text(), "${regLabel}")]`)
         }).first();
-        await d.waitFor({ state: 'visible', timeout: 3000 });
+        await d.waitFor({ state: 'visible', timeout: navigatorConfig.region.labelVisibleTimeoutMs });
         return d;
       } catch {
         return page.getByLabel(new RegExp(regLabel, 'i')).first();
       }
     })();
-    await regionDropdown.waitFor({ state: 'visible', timeout: 8000 });
+    await regionDropdown.waitFor({ state: 'visible', timeout: navigatorConfig.region.dropdownVisibleTimeoutMs });
     await regionDropdown.click();
 
     // Find region option by code pattern (e.g., "us-east-1")
     const regionCodePattern = new RegExp(`\\b${regionCode}\\b`, 'i');
     const regionOption = page.getByRole('option', { name: regionCodePattern }).first();
-    await regionOption.waitFor({ state: 'visible', timeout: 5000 });
+    await regionOption.waitFor({ state: 'visible', timeout: navigatorConfig.region.optionVisibleTimeoutMs });
     await regionOption.click();
-    await page.waitForTimeout(300);
-    logEvent('INFO', 'EVT-REG-01', { region: regionCode, status: 'selected' });
+    await page.waitForTimeout(navigatorConfig.region.afterSelectWaitMs);
+    logger.info('region_selection_completed', {
+      event_id: 'EVT-REG-01',
+      region: regionCode,
+      location_label: locLabel,
+      region_label: regLabel,
+      status: 'selected',
+    });
   } catch (error) {
-    logEvent('ERROR', 'EVT-REG-02', { region: regionCode, error: error.message });
+    logger.error('region_selection_failed', {
+      event_id: 'EVT-REG-02',
+      region: regionCode,
+      error,
+    });
     throw new Error(`Could not select region '${regionCode}': ${error.message}`);
   }
 }
@@ -413,10 +484,12 @@ async function selectRegion(page, regionCode, catalogEntry = null) {
 export async function navigateToService(page, opts) {
   const { groupName, serviceName, searchTerms, region, context = {} } = opts;
 
-  logEvent('INFO', 'EVT-NAV-01', {
+  logger.info('service_navigation_started', {
+    event_id: 'EVT-NAV-01',
     service: serviceName,
     group: groupName,
     region,
+    search_terms: searchTerms,
     status: 'starting'
   });
 
@@ -432,9 +505,22 @@ export async function navigateToService(page, opts) {
       );
       try {
         await page.screenshot({ path: screenshotPath });
-        logEvent('INFO', 'EVT-SCR-01', { path: screenshotPath });
+        logger.info('failure_screenshot_captured', {
+          event_id: 'EVT-SCR-01',
+          path: screenshotPath,
+          step,
+          service: serviceName,
+          group: groupName,
+        });
       } catch (err) {
-        logEvent('ERROR', 'EVT-SCR-02', { error: err.message });
+        logger.error('failure_screenshot_failed', {
+          event_id: 'EVT-SCR-02',
+          path: screenshotPath,
+          step,
+          service: serviceName,
+          group: groupName,
+          error: err,
+        });
       }
     }
   };
@@ -447,8 +533,8 @@ export async function navigateToService(page, opts) {
       },
       {
         stepName: 'group-creation',
-        maxRetries: 2,
-        delayMs: 1500,
+        maxRetries: navigatorConfig.retry.maxRetries,
+        delayMs: navigatorConfig.retry.delayMs,
       }
     );
 
@@ -464,13 +550,13 @@ export async function navigateToService(page, opts) {
       },
       {
         stepName: 'open-service-panel',
-        maxRetries: 2,
-        delayMs: 1500,
+        maxRetries: navigatorConfig.retry.maxRetries,
+        delayMs: navigatorConfig.retry.delayMs,
       }
     );
 
     // Step 3: Select region (if not global) - MUST BE BEFORE SEARCH
-    if (region !== 'global') {
+    if (region !== navigatorConfig.region.globalValue) {
       await withRetry(
         async () => {
           try {
@@ -482,8 +568,8 @@ export async function navigateToService(page, opts) {
         },
         {
           stepName: 'region-selection',
-          maxRetries: 2,
-          delayMs: 1500,
+          maxRetries: navigatorConfig.retry.maxRetries,
+          delayMs: navigatorConfig.retry.delayMs,
         }
       );
     }
@@ -502,8 +588,8 @@ export async function navigateToService(page, opts) {
       },
       {
         stepName: 'service-search',
-        maxRetries: 2,
-        delayMs: 1500,
+        maxRetries: navigatorConfig.retry.maxRetries,
+        delayMs: navigatorConfig.retry.delayMs,
       }
     );
 
@@ -520,12 +606,30 @@ export async function navigateToService(page, opts) {
       }
     } catch (err) {
       // Non-fatal, just log and continue
-      logEvent('WARN', 'EVT-SEC-04', { error: err.message, step: 'expand-sections' });
+      logger.warn('optional_section_expansion_failed', {
+        event_id: 'EVT-SEC-04',
+        service: serviceName,
+        group: groupName,
+        step: 'expand-sections',
+        error: err,
+      });
     }
 
-    logEvent('INFO', 'EVT-NAV-02', { service: serviceName, group: groupName, status: 'complete' });
+    logger.info('service_navigation_completed', {
+      event_id: 'EVT-NAV-02',
+      service: serviceName,
+      group: groupName,
+      region,
+      status: 'complete',
+    });
   } catch (error) {
-    logEvent('ERROR', 'EVT-NAV-02', { service: serviceName, group: groupName, error: error.message });
+    logger.error('service_navigation_failed', {
+      event_id: 'EVT-NAV-02',
+      service: serviceName,
+      group: groupName,
+      region,
+      error,
+    });
     throw error;
   }
 }
@@ -541,12 +645,12 @@ export async function getCurrentService(page) {
     const selectors = [
       page.getByRole('heading', { level: 1 }).first(),
       page.getByRole('heading', { level: 2 }).first(),
-      page.getByText(/Amazon|CloudFront|Lambda|S3|EC2|RDS/i).first(),
+      page.getByText(new RegExp(navigatorConfig.currentService.textPattern, 'i')).first(),
     ];
 
     for (const selector of selectors) {
       try {
-        await selector.waitFor({ state: 'visible', timeout: 2000 });
+        await selector.waitFor({ state: 'visible', timeout: navigatorConfig.currentService.headingVisibleTimeoutMs });
         const text = await selector.textContent();
         if (text && text.trim()) {
           return text.trim();
@@ -558,7 +662,10 @@ export async function getCurrentService(page) {
 
     return null;
   } catch (error) {
-    logEvent('ERROR', 'EVT-NAV-03', { error: error.message });
+    logger.error('current_service_lookup_failed', {
+      event_id: 'EVT-NAV-03',
+      error,
+    });
     return null;
   }
 }

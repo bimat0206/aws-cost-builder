@@ -7,12 +7,13 @@
  * Emits EVT-RTY-01 (retry_attempt) and EVT-RTY-02 (retry_exhausted) log events.
  */
 
-import { logEvent as sharedLogEvent } from '../logger/logger.js';
+import { createModuleLogger } from '../logger/index.js';
 
 export const MAX_RETRIES = 2;
 export const RETRY_DELAY_MS = 1500;
 
 const MODULE = 'core/retry/retry_wrapper';
+const logger = createModuleLogger(MODULE);
 
 // ─── Non-retriable error names ────────────────────────────────────────────────
 
@@ -86,12 +87,6 @@ export function isRetriable(err) {
   return true;
 }
 
-// ─── Structured logger ────────────────────────────────────────────────────────
-
-function logEvent(level, eventType, fields) {
-  sharedLogEvent(level, MODULE, eventType, fields);
-}
-
 // ─── Default sleep ────────────────────────────────────────────────────────────
 
 function defaultSleep(ms) {
@@ -138,18 +133,23 @@ export async function withRetry(fn, opts = {}) {
 
       if (retriesLeft > 0) {
         // EVT-RTY-01
-        logEvent('WARNING', 'retry_attempt', {
+        logger.warn('retry_attempt', {
+          event_id: 'EVT-RTY-01',
           step: stepName,
           attempt: attempt + 1,
-          delay: delayMs,
+          delay_ms: delayMs,
           retries_left: retriesLeft,
+          required,
+          error: err,
         });
         await sleepFn(delayMs);
       } else {
-        // EVT-RTY-02
-        logEvent('ERROR', 'retry_exhausted', {
+        logger.error('retry_exhausted', {
+          event_id: 'EVT-RTY-02',
           step: stepName,
           max_attempts: maxRetries + 1,
+          required,
+          error: err,
         });
       }
     }

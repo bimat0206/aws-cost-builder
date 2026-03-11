@@ -1,0 +1,17 @@
+# AWS Calculator base URL and shared external endpoints.
+calculator:
+  baseUrl: "https://calculator.aws/#/estimate"
+
+# Project-relative paths used by the CLI/runtime.
+paths:
+  profilesDirName: "profiles"
+
+# Default filenames and runtime-only generated artifact names.
+runtime:
+  defaultArchiveName: "profiles.tar.gz"
+
+# Human-facing CLI branding shown in splash/header UI.
+branding:
+  splashVersion: "LOCAL CLI TOOL · v2.0"
+  title: "AWS Cost Builder"
+  subtitle: "Chrome Extension capture · Browser automation · HCL profiles · Git-friendly"

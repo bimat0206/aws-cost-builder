@@ -1,5 +1,7 @@
-import { logEvent } from '../../../core/logger/logger.js';
+import { createModuleLogger } from '../../../core/logger/index.js';
 import { categorizeError } from '../../../core/errors.js';
+
+const logger = createModuleLogger('automation/core/retry/retry_wrapper');
 
 /**
  * A wrapper to retry async operations that might fail due to transient UI issues.
@@ -25,15 +27,30 @@ export async function withRetry(asyncFn, opts = {}) {
 
       if (!isRetriable || attempt > maxRetries) {
         if (attempt > 1) {
-             logEvent('ERROR', 'EVT-RTY-02', { step: stepName, attempts: attempt, error: error.message });
+          logger.error('retry_exhausted', {
+            event_id: 'EVT-RTY-02',
+            step: stepName,
+            attempts: attempt,
+            max_retries: maxRetries,
+            category,
+            error,
+          });
         }
         throw error;
       }
 
-      logEvent('WARN', 'EVT-RTY-01', { step: stepName, attempt, max: maxRetries, error: error.message, category });
+      const delay = baseDelay * Math.pow(1.5, attempt - 1);
+      logger.warn('retry_attempt', {
+        event_id: 'EVT-RTY-01',
+        step: stepName,
+        attempt,
+        max_retries: maxRetries,
+        delay_ms: delay,
+        category,
+        error,
+      });
       
       // Exponential backoff
-      const delay = baseDelay * Math.pow(1.5, attempt - 1);
       await new Promise(resolve => setTimeout(resolve, delay));
       
       attempt++;
