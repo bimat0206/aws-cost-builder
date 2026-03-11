@@ -5,6 +5,23 @@ All notable changes to the AWS Cost Profile Builder project are documented in th
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.3.0] - 2026-03-11
+
+### Changed
+- **Schema version aligned to v7.0** — `ProfileDocument` constructor default, popup serializer, service worker session, and JSON schema metadata all emit `"7.0"` consistently; `hasValidSchemaVersion()` now accepts `"5.0"` and `"7.0"` alongside legacy versions
+- **HCL field keys preserve original labels** — serializer (both `hcl/serializer.js` and `popup.js`) now emits quoted original-label keys (`"Operating System" = "Linux"`) instead of lossy snake_case (`operating_system = "Linux"`); parser accepts both quoted-string and identifier attribute keys for backward compatibility
+- **Service matching uses normalized scoring** — `findMatchingCapturedService()` in popup.js replaced the fragile 8-character substring match with normalized matching that strips "Amazon"/"AWS" prefixes, tries exact match first, then scored containment with a 50% length-ratio threshold
+- **Auto-capture detects value changes** — content.js now builds a fingerprint from service name, region, and all dimension values; changing a field on the same service page triggers a re-capture instead of being silently skipped
+- **Service worker updates existing entries** — `serviceAutoCaptured` handler now updates dimensions and config_groups on existing service+region entries instead of dropping them as duplicates; capture log records `"updated"` events
+- **Estimate tree scanner supports nested groups** — `captureEstimateTree()` refactored with recursive `buildTreeNode()` to build multi-level group hierarchies from ARIA tree structures; label extraction scoped to node's own label (aria-label, direct children, own text) to prevent mislabeled groups
+
+### Fixed
+- **content.js pass-2 empty-value check** — added `TOGGLE` and `RADIO` to the awsui container pass so unchecked toggles/radios are not silently dropped (matching pass-1 behavior)
+- **Dead code removed** — deleted unused `buildConfigGroupsWithType()` function from content.js
+
+### Removed
+- **Mode D (Explorer)** — permanently removed from `main.js`, tests, and imports; only modes B, C, E, F remain
+
 ## [2.2.2] - 2026-03-11
 
 ### Added
