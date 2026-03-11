@@ -26,12 +26,11 @@ import { BrowserSession, AutomationFatalError } from './automation/session/brows
 import { navigateToService, clickSave } from './automation/navigation/navigator.js';
 import { findElement } from './automation/locator/find_in_page_locator.js';
 import { fillDimension } from './automation/interactor/field_interactor.js';
-import { runInteractiveExplorer } from './explorer/wizard/interactive_explorer.js';
-import { promoteDraft } from './explorer/draft/draft_promoter.js';
+import { promoteDraft } from './drafts/promoter.js';
 import { selectPrompt } from './builder/prompts/select_prompt.js';
 import {
   COL_CYAN, COL_ORANGE, COL_YELLOW, COL_GREEN, COL_MUTED,
-  COL_DIM, COL_BASE, COL_BORDER, COL_MAGENTA,
+  COL_DIM, COL_BASE, COL_BORDER,
 } from './builder/layout/colors.js';
 import { fg, bg, bold, dim, padEnd, visibleLength } from './builder/layout/components.js';
 
@@ -56,7 +55,7 @@ function statusLine(level, text) {
 
 /**
  * Print mode start banner.
- * @param {'run'|'dryRun'|'explore'|'promote'|'exportArchive'} mode
+ * @param {'run'|'dryRun'|'promote'|'exportArchive'} mode
  */
 function printModeStart(mode) {
   const opt = MODE_OPTIONS.find((m) => m.id === mode);
@@ -102,23 +101,16 @@ const MODE_OPTIONS = [
     color: COL_YELLOW,
   },
   {
-    id: 'explore',
-    label: 'Explorer',
-    badge: 'Mode D',
-    description: 'Discover service dimensions from a live AWS Calculator page',
-    color: COL_MAGENTA,
-  },
-  {
     id: 'promote',
     label: 'Promoter',
-    badge: 'Mode E',
+    badge: 'Mode D',
     description: 'Promote a draft catalog entry to the validated service catalog',
     color: COL_ORANGE,
   },
   {
     id: 'exportArchive',
     label: 'Export Archive',
-    badge: 'Mode F',
+    badge: 'Mode E',
     description: 'Package all HCL profiles into a compressed .tar.gz archive',
     color: COL_CYAN,
   },
@@ -133,7 +125,7 @@ const MODE_OPTIONS = [
 async function promptInteractiveModeSelection() {
   if (!process.stdin.isTTY || !process.stdout.isTTY) {
     throw new Error(
-      'No mode specified in non-interactive environment. Use --run --profile <path>, --dry-run --profile <path>, --explore, --promote, or --export-archive.',
+      'No mode specified in non-interactive environment. Use --run --profile <path>, --dry-run --profile <path>, --promote, or --export-archive.',
     );
   }
 
@@ -258,17 +250,13 @@ export function buildParser(rawArgv = process.argv) {
       type: 'boolean',
       description: 'Validate and resolve profile without opening a browser (Mode C)',
     })
-    .option('explore', {
-      type: 'boolean',
-      description: 'Discover new AWS service dimensions from a live calculator page (Mode D)',
-    })
     .option('promote', {
       type: 'boolean',
-      description: 'Promote a draft catalog entry to the service catalog (Mode E)',
+      description: 'Promote a draft catalog entry to the service catalog (Mode D)',
     })
     .option('export-archive', {
       type: 'string',
-      description: 'Package all HCL profiles into a .tar.gz archive (Mode F). Optionally specify output path.',
+      description: 'Package all HCL profiles into a .tar.gz archive (Mode E). Optionally specify output path.',
       nargs: '?',
       const: 'profiles.tar.gz',
     })
@@ -287,7 +275,7 @@ export function buildParser(rawArgv = process.argv) {
       default: [],
     })
     .check((argv) => {
-      const modes = ['run', 'dryRun', 'explore', 'promote', 'exportArchive'];
+      const modes = ['run', 'dryRun', 'promote', 'exportArchive'];
       const activeModes = modes.filter((m) => argv[m]);
       if (activeModes.length > 1) {
         throw new Error(`Only one mode may be specified at a time. Got: ${activeModes.join(', ')}`);
@@ -309,12 +297,11 @@ export function buildParser(rawArgv = process.argv) {
 
 /**
  * @param {any} parsed
- * @returns {'run'|'dryRun'|'explore'|'promote'|'exportArchive'|null}
+ * @returns {'run'|'dryRun'|'promote'|'exportArchive'|null}
  */
 function getActiveMode(parsed) {
   if (parsed.run) return 'run';
   if (parsed.dryRun) return 'dryRun';
-  if (parsed.explore) return 'explore';
   if (parsed.promote) return 'promote';
   if (parsed.exportArchive !== undefined && parsed.exportArchive !== null && parsed.exportArchive !== false) return 'exportArchive';
   return null;
@@ -634,16 +621,7 @@ export async function runDryRunMode(opts) {
 }
 
 /**
- * Discover new AWS service dimensions from a live calculator page (Mode D).
- * @returns {Promise<number>} exit code
- */
-export async function runExploreMode() {
-  const result = await runInteractiveExplorer({ root: process.cwd() });
-  return result ? 0 : 1;
-}
-
-/**
- * Promote a draft catalog entry to the validated service catalog (Mode E).
+ * Promote a draft catalog entry to the validated service catalog (Mode D).
  * @returns {Promise<number>} exit code
  */
 export async function runPromoteMode() {
@@ -657,7 +635,7 @@ export async function runPromoteMode() {
 }
 
 /**
- * Export all HCL profiles from profiles/ directory as a gzip archive (Mode F).
+ * Export all HCL profiles from profiles/ directory as a gzip archive (Mode E).
  * @param {{ outputPath: string }} opts
  * @returns {Promise<number>} exit code
  */
@@ -723,7 +701,6 @@ export async function main(argv) {
 
     if (mode === 'run')           return await runRunnerMode({ profile, headless, overrides });
     if (mode === 'dryRun')        return await runDryRunMode({ profile, overrides });
-    if (mode === 'explore')       return await runExploreMode();
     if (mode === 'promote')       return await runPromoteMode();
     if (mode === 'exportArchive') return await runExportArchiveMode({ outputPath: parsed.exportArchive });
   } catch (err) {

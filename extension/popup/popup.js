@@ -36,8 +36,9 @@ function showView(name) {
   indicator.style.display = name === "capturing" ? "flex" : "none";
 }
 
-// ─── HCL serializer (browser-side) ───────────────────────────────────────────
+// ─── HCL v7 serializer (browser-side) ───────────────────────────────────────
 
+/** Escape and quote a value for HCL. */
 function hclVal(v) {
   if (v === null || v === undefined) return "null";
   if (typeof v === "boolean") return v ? "true" : "false";
@@ -46,67 +47,195 @@ function hclVal(v) {
   return `"${s.replace(/\\/g, "\\\\").replace(/"/g, '\\"').replace(/\n/g, "\\n")}"`;
 }
 
-function serializeServiceHCL(svc, ind) {
-  const p = " ".repeat(ind);
-  const pp = " ".repeat(ind + 2);
-  const label = svc.human_label || svc.service_name;
-  const slug =
-    label
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "_")
-      .replace(/^_|_$/g, "") || "service";
-  const lines = [];
-  lines.push(`${p}service ${hclVal(svc.service_name)} ${hclVal(slug)} {`);
-  lines.push(`${pp}region      = ${hclVal(svc.region || "us-east-1")}`);
-  lines.push(`${pp}human_label = ${hclVal(label)}`);
-  const dims = svc.dimensions || {};
-  const keys = Object.keys(dims).sort();
-  if (keys.length > 0) {
-    lines.push("");
-    const maxLen = Math.max(...keys.map((k) => k.length));
-    for (const key of keys) {
-      const d = dims[key];
-      const val =
-        d.user_value !== null && d.user_value !== undefined
-          ? d.user_value
-          : d.default_value;
-      lines.push(
-        `${pp}dimension ${hclVal(key)}${" ".repeat(maxLen - key.length)} = ${hclVal(val)}`,
-      );
+/** Slugify a string for use as an HCL identifier. */
+function slugifyName(value, fallback = "group") {
+  const slug = String(value || "").trim().toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
+  return slug || fallback;
+}
+
+/** Strip trailing AWS UI-hint suffixes from a field label. */
+const LABEL_SUFFIX_RE = /\s+(?:Value|Enter\s+amount|Enter\s+the\s+percentage|Enter\s+percentage|Enter\s+number(?:\s+of\s+\w+)*|Field\s+value)$/i;
+function cleanLabel(raw) {
+  return String(raw || "").trim().replace(LABEL_SUFFIX_RE, "").trim();
+}
+
+/** Convert a field label to snake_case attr key, stripping section prefix. */
+function fieldToSnakeKey(fieldLabel, sectionLabel = "") {
+  let key = cleanLabel(fieldLabel);
+  if (sectionLabel) {
+    const esc = sectionLabel.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    key = key.replace(new RegExp(`^${esc}\\s*`, "i"), "").trim();
+  }
+  return key.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "") || "field";
+}
+
+/** If service has config_groups use them; otherwise wrap dimensions in a general group. */
+function normalizeConfigGroups(service) {
+  if (Array.isArray(service.config_groups) && service.config_groups.length > 0) {
+    return service.config_groups;
+  }
+  const dimensions = service.dimensions || {};
+  if (Object.keys(dimensions).length === 0) return [];
+  return [{ group_name: "general", label: null, fields: dimensions }];
+}
+
+/** Emit flat key = value attributes, with _unit pairing. */
+function serializeAttrs(fields, sectionLabel, ind) {
+  const pad = " ".repeat(ind);
+  const entries = Object.entries(fields || {});
+  if (!entries.length) return [];
+
+  // Build unit map: rawBaseKey → unit value
+  const unitMap = new Map();
+  const unitKeySet = new Set();
+  for (const [rawKey, field] of entries) {
+    if (/\s+Unit$/i.test(rawKey)) {
+      const base = rawKey.replace(/\s+Unit$/i, "").trim();
+      unitMap.set(base, field.user_value ?? field.default_value ?? null);
+      unitKeySet.add(rawKey);
     }
   }
+
+  // Compute alignment width
+  const snakeKeys = entries
+    .filter(([k]) => !unitKeySet.has(k))
+    .map(([k]) => fieldToSnakeKey(k, sectionLabel));
+  const unitSnakeKeys = snakeKeys.filter((_, i) => {
+    const rawKey = entries.filter(([k]) => !unitKeySet.has(k))[i]?.[0];
+    return rawKey && unitMap.has(rawKey);
+  }).map(k => k + "_unit");
+  const maxLen = Math.max(0, ...[...snakeKeys, ...unitSnakeKeys].map(k => k.length));
+
+  const lines = [];
+  for (const [rawKey, field] of entries) {
+    if (unitKeySet.has(rawKey)) continue;
+    const sk = fieldToSnakeKey(rawKey, sectionLabel);
+    const val = field.user_value !== null && field.user_value !== undefined
+      ? field.user_value : field.default_value;
+    lines.push(`${pad}${sk}${" ".repeat(Math.max(0, maxLen - sk.length))} = ${hclVal(val)}`);
+    if (unitMap.has(rawKey)) {
+      const uk = sk + "_unit";
+      lines.push(`${pad}${uk}${" ".repeat(Math.max(0, maxLen - uk.length))} = ${hclVal(unitMap.get(rawKey))}`);
+    }
+  }
+  return lines;
+}
+
+/** Serialize a section block (recursive, flat attrs). */
+function serializeSectionHCL(group, ind, parentLabel = "") {
+  const p = " ".repeat(ind);
+  const rawLabel = group.label || group.group_name;
+  const sectionLabel = rawLabel.replace(/\s+feature$/i, "").trim();
+  const lines = [`${p}section ${hclVal(sectionLabel)} {`];
+
+  const attrs = serializeAttrs(group.fields || {}, sectionLabel, ind + 2);
+  const children = group.groups || [];
+  if (attrs.length) {
+    lines.push(...attrs);
+    if (children.length) lines.push("");
+  }
+  children.forEach((child, idx) => {
+    lines.push(serializeSectionHCL(child, ind + 2, sectionLabel));
+    if (idx !== children.length - 1) lines.push("");
+  });
+
   lines.push(`${p}}`);
   return lines.join("\n");
 }
 
-function serializeGroupHCL(group, ind) {
+/** Serialize a feature block (toggle-gated). */
+function serializeFeatureHCL(group, ind) {
   const p = " ".repeat(ind);
+  const rawLabel = group.label || group.group_name;
+  const label = rawLabel.replace(/\s+feature$/i, "").trim();
+  const lines = [`${p}feature ${hclVal(label)} {`];
+
+  const ownAttrs = serializeAttrs(group.fields || {}, label, ind + 2);
+  const children = group.groups || [];
+  if (ownAttrs.length) {
+    lines.push(...ownAttrs);
+    if (children.length) lines.push("");
+  }
+  children.forEach((child, idx) => {
+    lines.push(serializeSectionHCL(child, ind + 2, label));
+    if (idx !== children.length - 1) lines.push("");
+  });
+
+  lines.push(`${p}}`);
+  return lines.join("\n");
+}
+
+/** Serialize a service block (v7). */
+function serializeServiceHCL(svc, ind) {
+  const p  = " ".repeat(ind);
   const pp = " ".repeat(ind + 2);
-  const lines = [];
-  lines.push(`${p}group ${hclVal(group.group_name)} {`);
+  const label = svc.human_label || svc.service_name;
+  const slug  = slugifyName(label, "service");
+  const lines = [
+    `${p}service ${hclVal(svc.service_name)} ${hclVal(slug)} {`,
+    `${pp}region      = ${hclVal(svc.region || "us-east-1")}`,
+    `${pp}human_label = ${hclVal(label)}`,
+  ];
+
+  const configGroups = normalizeConfigGroups(svc);
+  const generalGroup  = configGroups.find(g => g.group_name === "general" && !g.label);
+  const featureGroups = configGroups.filter(g => {
+    if (g.group_name === "general" && !g.label) return false;
+    return (g.label || g.group_name || "").toLowerCase().includes("feature");
+  });
+  const sectionGroups = configGroups.filter(g => {
+    if (g.group_name === "general" && !g.label) return false;
+    return !(g.label || g.group_name || "").toLowerCase().includes("feature");
+  });
+
+  if (generalGroup) {
+    const attrs = serializeAttrs(generalGroup.fields || {}, "", ind + 2);
+    if (attrs.length) { lines.push(""); lines.push(...attrs); }
+  }
+  if (sectionGroups.length) {
+    lines.push("");
+    sectionGroups.forEach((g, idx) => {
+      lines.push(serializeSectionHCL(g, ind + 2));
+      if (idx !== sectionGroups.length - 1) lines.push("");
+    });
+  }
+  if (featureGroups.length) {
+    lines.push("");
+    featureGroups.forEach((g, idx) => {
+      lines.push(serializeFeatureHCL(g, ind + 2));
+      if (idx !== featureGroups.length - 1) lines.push("");
+    });
+  }
+
+  lines.push(`${p}}`);
+  return lines.join("\n");
+}
+
+/** Serialize a top-level group block. */
+function serializeGroupHCL(group, ind) {
+  const p  = " ".repeat(ind);
+  const pp = " ".repeat(ind + 2);
+  const lines = [`${p}group ${hclVal(group.group_name)} {`];
   if (group.label) lines.push(`${pp}label = ${hclVal(group.label)}`);
+
   const children = group.groups || [];
   const services = group.services || [];
-  if (children.length > 0 || services.length > 0) lines.push("");
-  for (const child of children) {
-    lines.push(serializeGroupHCL(child, ind + 2));
-    lines.push("");
-  }
-  for (const svc of services) {
-    lines.push(serializeServiceHCL(svc, ind + 2));
-    lines.push("");
-  }
+  if (children.length || services.length) lines.push("");
+  for (const child of children) { lines.push(serializeGroupHCL(child, ind + 2)); lines.push(""); }
+  for (const svc of services)   { lines.push(serializeServiceHCL(svc, ind + 2)); lines.push(""); }
   if (lines[lines.length - 1] === "") lines.pop();
   lines.push(`${p}}`);
   return lines.join("\n");
 }
 
+/** Serialize a complete profile to HCL v7.0. */
 function serializeHCL(profile) {
-  const lines = [];
-  lines.push(`schema_version = ${hclVal(profile.schema_version || "3.0")}`);
-  lines.push(`project_name   = ${hclVal(profile.project_name || "unnamed")}`);
-  if (profile.description)
-    lines.push(`description    = ${hclVal(profile.description)}`);
+  const lines = [
+    `schema_version = ${hclVal("7.0")}`,
+    `project_name   = ${hclVal(profile.project_name || "unnamed")}`,
+  ];
+  if (profile.description) lines.push(`description    = ${hclVal(profile.description)}`);
   for (const g of profile.groups || []) {
     lines.push("");
     lines.push(serializeGroupHCL(g, 0));
@@ -124,90 +253,82 @@ function serializeHCL(profile) {
  */
 function buildProfile(session) {
   const { profile, capturedServices = [], estimateTree } = session;
-  const services = capturedServices.map((s) => ({
-    service_name: s.service_name,
-    human_label: s.service_name,
-    region: s.region || "us-east-1",
-    dimensions: s.dimensions || {},
-  }));
+
+  function materializeService(service) {
+    return {
+      service_name: service.service_name,
+      human_label: service.service_name,
+      region: service.region || "us-east-1",
+      config_groups: normalizeConfigGroups(service),
+    };
+  }
+
+  function findMatchingCapturedService(treeService, usedIds) {
+    return capturedServices.find(
+      (cs) =>
+        !usedIds.has(cs.id) &&
+        cs.service_name
+          .toLowerCase()
+          .includes(treeService.service_name.toLowerCase().substring(0, 8)),
+    );
+  }
+
+  function buildTreeGroup(treeGroup, usedIds) {
+    const services = [];
+    const groups = (treeGroup.groups || []).map((child) => buildTreeGroup(child, usedIds));
+
+    for (const treeService of treeGroup.services || []) {
+      const match = findMatchingCapturedService(treeService, usedIds);
+      if (match) {
+        usedIds.add(match.id);
+        services.push(materializeService(match));
+      }
+    }
+
+    for (const captured of capturedServices) {
+      if (!usedIds.has(captured.id) && captured.groupPath === treeGroup.group_name) {
+        usedIds.add(captured.id);
+        services.push(materializeService(captured));
+      }
+    }
+
+    return {
+      group_name: treeGroup.group_name,
+      label: treeGroup.label,
+      services,
+      groups,
+    };
+  }
 
   let groups;
 
   if (estimateTree && estimateTree.groups && estimateTree.groups.length > 0) {
-    // Map services into estimate tree groups by name matching
     const usedIds = new Set();
-    groups = estimateTree.groups.map((tg) => {
-      const tgServices = [];
-      for (const ts of tg.services || []) {
-        const match = capturedServices.find(
-          (cs) =>
-            !usedIds.has(cs.id) &&
-            cs.service_name
-              .toLowerCase()
-              .includes(ts.service_name.toLowerCase().substring(0, 8)),
-        );
-        if (match) {
-          usedIds.add(match.id);
-          tgServices.push({
-            service_name: match.service_name,
-            human_label: match.service_name,
-            region: match.region || "us-east-1",
-            dimensions: match.dimensions || {},
-          });
-        }
-      }
-      // Also add any services explicitly assigned to this group
-      for (const cs of capturedServices) {
-        if (!usedIds.has(cs.id) && cs.groupPath === tg.group_name) {
-          usedIds.add(cs.id);
-          tgServices.push({
-            service_name: cs.service_name,
-            human_label: cs.service_name,
-            region: cs.region || "us-east-1",
-            dimensions: cs.dimensions || {},
-          });
-        }
-      }
-      return {
-        group_name: tg.group_name,
-        label: tg.label,
-        services: tgServices,
-        groups: [],
-      };
-    });
+    groups = estimateTree.groups.map((tg) => buildTreeGroup(tg, usedIds));
 
-    // Any unmatched services go into a default group
     const unmatched = capturedServices.filter((cs) => !usedIds.has(cs.id));
     if (unmatched.length > 0) {
       groups.push({
         group_name: "captured",
         label: "Captured Services",
-        services: unmatched.map((cs) => ({
-          service_name: cs.service_name,
-          human_label: cs.service_name,
-          region: cs.region || "us-east-1",
-          dimensions: cs.dimensions || {},
-        })),
+        services: unmatched.map((cs) => materializeService(cs)),
         groups: [],
       });
     }
   } else {
-    // Single default group
-    const slug = (profile.project_name || "estimate")
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "_");
+    const slug = slugifyName(profile.project_name || "estimate", "estimate");
     groups = [
       {
         group_name: slug,
         label: profile.project_name || "Estimate",
-        services,
+        services: capturedServices.map((service) => materializeService(service)),
         groups: [],
       },
     ];
   }
 
   return {
-    schema_version: "3.0",
+    schema_version: "4.0",
     project_name: profile.project_name || "unnamed",
     description: profile.description || null,
     groups,
@@ -306,6 +427,20 @@ function downloadBlob(blob, filename) {
 
 // ─── Rendering helpers ────────────────────────────────────────────────────────
 
+function countServiceFields(service) {
+  function countGroups(groups) {
+    return (groups || []).reduce((sum, group) => {
+      const fieldCount = Object.keys(group.fields || {}).length;
+      return sum + fieldCount + countGroups(group.groups || []);
+    }, 0);
+  }
+
+  if (Array.isArray(service.config_groups) && service.config_groups.length > 0) {
+    return countGroups(service.config_groups);
+  }
+  return Object.keys(service.dimensions || {}).length;
+}
+
 function renderCapturedServicesList(containerId, services, removable) {
   const container = document.getElementById(containerId);
   if (!services || services.length === 0) {
@@ -316,7 +451,7 @@ function renderCapturedServicesList(containerId, services, removable) {
   for (const svc of services) {
     const el = document.createElement("div");
     el.className = "service-card";
-    const dimCount = Object.keys(svc.dimensions || {}).length;
+    const dimCount = countServiceFields(svc);
     el.innerHTML = `
       <div class="service-card-icon">⚙</div>
       <div class="service-card-body">

@@ -42,6 +42,7 @@ const testCatalog = [
         supported_regions: ['us-east-1'],
         dimensions: [
             { key: 'Storage amount', field_type: 'NUMBER', default_value: 10, required: true },
+            { key: 'Requests', field_type: 'NUMBER', default_value: 0, required: false },
         ],
     },
 ];
@@ -194,20 +195,22 @@ describe('Profile Loader — F-L2: JSON Parse Errors', () => {
 // ─── HCL & Sections Parsing ─────────────────────────────────────────────────
 describe('Profile Loader — HCL parsing with sections', () => {
     const filename = 'with_section.hcl';
-    const hclContent = `schema_version = "3.0"
+    const hclContent = `schema_version = "4.0"
 project_name = "HCL Test"
 
 group "g1" {
   label = "Group1"
 
-  service "s3" "bucket" {
+  service "Amazon S3" "bucket" {
     region = "us-east-1"
     human_label = "My Bucket"
 
-    dimension "Storage amount" = 100
+    config_group "Storage" {
+      field "Storage amount" = 100
+    }
 
-    section "Advanced" {
-      dimension "Requests" = 50
+    config_group "Advanced" {
+      field "Requests" = 50
     }
   }
 }
@@ -221,13 +224,13 @@ group "g1" {
         await removeFixture(filename);
     });
 
-    it('successfully loads HCL with section and populates dimensions', async () => {
+    it('successfully loads HCL with config groups and exposes leaf dimensions', async () => {
         const filePath = path.join(FIXTURES_DIR, filename);
         const profile = await loadProfile(filePath, testCatalog, testRegionMap);
         expect(profile.project_name).toBe('HCL Test');
         expect(profile.groups[0].services[0].dimensions['Storage amount'].user_value).toBe(100);
-        // the section value should also be merged into dimensions by loader / model
         expect(profile.groups[0].services[0].dimensions['Requests'].user_value).toBe(50);
+        expect(profile.groups[0].services[0].config_groups).toHaveLength(2);
     });
 });
 

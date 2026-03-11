@@ -8,7 +8,7 @@
  * {
  *   isCapturing: boolean,
  *   profile: { project_name, description, schema_version },
- *   capturedServices: [{ id, service_name, region, dimensions, capturedAt, groupPath }],
+ *   capturedServices: [{ id, service_name, region, dimensions, config_groups, capturedAt, groupPath }],
  *   estimateTree: { groups: [...] } | null
  * }
  */
@@ -85,7 +85,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         profile: {
           project_name: projectName || 'unnamed',
           description: description || null,
-          schema_version: '3.0',
+          schema_version: '4.0',
         },
         capturedServices: [],
         estimateTree: null,
@@ -155,7 +155,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       await mutateSession((session) => {
         if (!session.isCapturing) return false;
 
-        const { service_name, region, dimensions } = message.data;
+        const { service_name, region, dimensions, config_groups } = message.data;
         const dim_count = Object.keys(dimensions || {}).length;
         const now = Date.now();
 
@@ -170,6 +170,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             service_name,
             region,
             dimensions,
+            config_groups: config_groups || [],
             capturedAt: now,
             groupPath: null,
           });
@@ -293,7 +294,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         return;
       }
 
-      const { service_name, region, dimensions } = result.data;
+      const { service_name, region, dimensions, config_groups } = result.data;
       const dimCount = Object.keys(dimensions || {}).length;
 
       if (dimCount === 0) {
@@ -313,6 +314,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         );
         if (existing) {
           existing.dimensions = dimensions;
+          existing.config_groups = config_groups || [];
           existing.capturedAt = now;
         }
         session.captureLog.push({ timestamp: now, event: 'updated', service_name, dim_count: dimCount });
@@ -322,6 +324,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           service_name,
           region,
           dimensions,
+          config_groups: config_groups || [],
           capturedAt: now,
           groupPath: null,
         });

@@ -153,6 +153,12 @@ export async function loadProfile(profilePath, catalog, regionMap) {
         } catch (err) {
             throw new ProfileHCLParseError(profilePath, err);
         }
+
+        try {
+            validateSchema(profileData);
+        } catch (err) {
+            throw new ProfileSchemaValidationError(profilePath, err.errors || [err.message]);
+        }
     } else {
         try {
             profileData = JSON.parse(raw);

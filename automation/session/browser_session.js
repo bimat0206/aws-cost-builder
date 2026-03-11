@@ -11,7 +11,13 @@
 
 import { chromium } from 'playwright';
 import { logEvent as sharedLogEvent } from '../../core/index.js';
-import { LOG_LEVELS } from '../../explorer/constants.js';
+
+const LOG_LEVELS = {
+  INFO: 'INFO',
+  WARNING: 'WARNING',
+  ERROR: 'ERROR',
+  CRITICAL: 'CRITICAL',
+};
 
 // ─── Logging helpers ──────────────────────────────────────────────────────────
 

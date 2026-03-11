@@ -3,6 +3,15 @@
  * @module core/models/profile
  */
 
+function slugifyName(value, fallback = 'group') {
+    const slug = String(value ?? '')
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '_')
+        .replace(/^_+|_+$/g, '');
+    return slug || fallback;
+}
+
 /**
  * @typedef {'resolved'|'skipped'|'unresolved'} ResolutionStatus
  */
@@ -103,43 +112,119 @@ export class Dimension {
 }
 
 /**
- * Section model - groups dimensions logically (mirrors UI sections).
+ * ServiceConfigGroup model - recursive grouping for service configuration.
  */
-export class Section {
+export class ServiceConfigGroup {
     /**
      * @param {Object} params
-     * @param {string} params.section_name
-     * @param {Object.<string, Dimension>} [params.dimensions={}] 
+     * @param {string} params.group_name
+     * @param {string|null} [params.label=null]
+     * @param {Object.<string, Dimension>} [params.fields={}]
+     * @param {ServiceConfigGroup[]} [params.groups=[]]
      */
-    constructor({ section_name, dimensions = {} }) {
-        this.section_name = section_name;
-        this.dimensions = dimensions;
+    constructor({ group_name, label = null, fields = {}, groups = [] }) {
+        this.group_name = group_name;
+        this.label = label;
+        this.fields = fields;
+        this.groups = groups;
     }
 
     /**
-     * Creates a Section from a plain object.
+     * Creates a ServiceConfigGroup from a plain object.
      * @param {Object} obj
-     * @returns {Section}
+     * @returns {ServiceConfigGroup}
      */
     static fromObject(obj) {
-        const dims = {};
-        for (const [k, v] of Object.entries(obj.dimensions || {})) {
-            dims[k] = Dimension.fromObject({ key: k, ...v });
+        const fields = {};
+        for (const [k, v] of Object.entries(obj.fields || {})) {
+            fields[k] = Dimension.fromObject({ key: k, ...v });
         }
-        return new Section({ section_name: obj.section_name, dimensions: dims });
+        const groups = (obj.groups || []).map(group => ServiceConfigGroup.fromObject(group));
+        return new ServiceConfigGroup({
+            group_name: obj.group_name || slugifyName(obj.label, 'group'),
+            label: obj.label ?? null,
+            fields,
+            groups,
+        });
     }
 
     /**
-     * Convert the section to a plain object.
+     * Convert the config group to a plain object.
      * @returns {Object}
      */
     toObject() {
-        const out = { section_name: this.section_name, dimensions: {} };
-        for (const [k, v] of Object.entries(this.dimensions)) {
-            out.dimensions[k] = v.toObject();
+        const out = {
+            group_name: this.group_name,
+            fields: {},
+        };
+        if (this.label !== null) out.label = this.label;
+        for (const [k, v] of Object.entries(this.fields)) {
+            out.fields[k] = v.toObject();
+        }
+        if (this.groups && this.groups.length > 0) {
+            out.groups = this.groups.map(group => group.toObject());
         }
         return out;
     }
+
+    /**
+     * Get all fields recursively from this group and child groups.
+     * @returns {Dimension[]}
+     */
+    getAllFieldsRecursive() {
+        const fields = Object.values(this.fields);
+        for (const child of this.groups || []) {
+            fields.push(...child.getAllFieldsRecursive());
+        }
+        return fields;
+    }
+}
+
+function normalizeDimensionMap(dimensions = {}) {
+    const out = Object.create(null);
+    for (const [key, dimObj] of Object.entries(dimensions)) {
+        if (!Object.hasOwn(dimensions, key)) continue;
+        if (key === '__proto__' || key === 'constructor' || key === 'prototype') continue;
+        out[key] = dimObj instanceof Dimension
+            ? dimObj
+            : Dimension.fromObject({ key, ...dimObj });
+    }
+    return Object.assign({}, out);
+}
+
+function buildFieldIndex(configGroups = []) {
+    const dimensions = {};
+    for (const group of configGroups) {
+        for (const field of group.getAllFieldsRecursive()) {
+            dimensions[field.key] = field;
+        }
+    }
+    return dimensions;
+}
+
+function legacyConfigGroupsFromService(dimensions = {}, sections = []) {
+    const groups = [];
+    const normalizedDimensions = normalizeDimensionMap(dimensions);
+    if (Object.keys(normalizedDimensions).length > 0) {
+        groups.push(new ServiceConfigGroup({
+            group_name: 'general',
+            label: 'General',
+            fields: normalizedDimensions,
+        }));
+    }
+
+    for (const section of sections || []) {
+        if (!section) continue;
+        const label = section.section_name || section.label || section.group_name || 'Section';
+        groups.push(new ServiceConfigGroup({
+            group_name: section.group_name || slugifyName(label, 'section'),
+            label,
+            fields: normalizeDimensionMap(section.dimensions || section.fields || {}),
+            groups: (section.groups || []).map(group => ServiceConfigGroup.fromObject(group)),
+        }));
+    }
+
+    return groups;
 }
 
 /**
@@ -152,47 +237,36 @@ export class Service {
      * @param {string} params.human_label
      * @param {string} params.region
      * @param {Object.<string, Dimension>} [params.dimensions={}]
-     * @param {Section[]} [params.sections=[]]  Optional sections grouping dimensions
+     * @param {Array<object|ServiceConfigGroup>} [params.config_groups=[]]
+     * @param {Array<object>} [params.sections=[]]  Legacy input only
+     * @param {Array<object>} [params.gates=[]]
      */
-    constructor({ service_name, human_label, region, dimensions = {}, sections = [] }) {
+    constructor({ service_name, human_label, region, dimensions = {}, config_groups = [], sections = [], gates = [] }) {
         this.service_name = service_name;
         this.human_label = human_label;
         this.region = region;
-        // merge any section dims into top‑level dimensions for backwards compatibility
-        this.dimensions = { ...dimensions };
-        for (const sec of sections || []) {
-            for (const [key, dim] of Object.entries(sec.dimensions || {})) {
-                // if duplicate keys exist we'll let later code catch it during validation
-                this.dimensions[key] = dim;
-            }
-        }
-        // store raw sections as well in case callers want to inspect structured data
-        this.sections = sections;
+        this.gates = gates;
+
+        const normalizedGroups = Array.isArray(config_groups) && config_groups.length > 0
+            ? config_groups.map(group => (
+                group instanceof ServiceConfigGroup ? group : ServiceConfigGroup.fromObject(group)
+            ))
+            : legacyConfigGroupsFromService(dimensions, sections);
+
+        this.config_groups = normalizedGroups;
+        // Derived compatibility view used by existing resolver/runner code.
+        this.dimensions = buildFieldIndex(this.config_groups);
     }
 
     static fromObject(obj) {
-        const dimensions = Object.create(null);
-        if (obj.dimensions) {
-            for (const [key, dimObj] of Object.entries(obj.dimensions)) {
-                if (!Object.hasOwn(obj.dimensions, key)) continue;
-                if (key === '__proto__' || key === 'constructor' || key === 'prototype') continue;
-                dimensions[key] = Dimension.fromObject({ key, ...dimObj });
-            }
-        }
-        const sections = (obj.sections || []).map(sec => {
-            const secDims = Object.create(null);
-            for (const [k, v] of Object.entries(sec.dimensions || {})) {
-                secDims[k] = Dimension.fromObject({ key: k, ...v });
-            }
-            return { section_name: sec.section_name, dimensions: secDims };
-        });
-
         return new Service({
             service_name: obj.service_name,
             human_label: obj.human_label,
             region: obj.region,
-            dimensions: Object.assign({}, dimensions),
-            sections,
+            dimensions: normalizeDimensionMap(obj.dimensions || {}),
+            config_groups: (obj.config_groups || []).map(group => ServiceConfigGroup.fromObject(group)),
+            sections: obj.sections || [],
+            gates: obj.gates || [],
         });
     }
 
@@ -201,25 +275,13 @@ export class Service {
      * @returns {Object}
      */
     toObject() {
-        const dimensionsObj = {};
-        for (const [key, dim] of Object.entries(this.dimensions)) {
-            dimensionsObj[key] = dim.toObject();
-        }
         const obj = {
             service_name: this.service_name,
             human_label: this.human_label,
             region: this.region,
-            dimensions: dimensionsObj
+            gates: this.gates,
+            config_groups: this.config_groups.map(group => group.toObject()),
         };
-        if (this.sections && this.sections.length > 0) {
-            obj.sections = this.sections.map(sec => {
-                const dims = {};
-                for (const [k, v] of Object.entries(sec.dimensions || {})) {
-                    dims[k] = v.toObject();
-                }
-                return { section_name: sec.section_name, dimensions: dims };
-            });
-        }
         return obj;
     }
 
@@ -228,7 +290,7 @@ export class Service {
      * @returns {Dimension[]}
      */
     getDimensions() {
-        return Object.values(this.dimensions);
+        return this.config_groups.flatMap(group => group.getAllFieldsRecursive());
     }
 
     /**
@@ -238,6 +300,14 @@ export class Service {
      */
     getDimension(key) {
         return this.dimensions[key];
+    }
+
+    /**
+     * Gets top-level config groups for this service.
+     * @returns {ServiceConfigGroup[]}
+     */
+    getConfigGroups() {
+        return this.config_groups;
     }
 }
 
@@ -342,12 +412,12 @@ export class Group {
 export class ProfileDocument {
     /**
      * @param {Object} params
-     * @param {string} [params.schema_version='3.0']
+     * @param {string} [params.schema_version='4.0']
      * @param {string} params.project_name
      * @param {string|null} [params.description=null]
      * @param {Group[]} [params.groups=[]]
      */
-    constructor({ schema_version = '3.0', project_name, description = null, groups = [] }) {
+    constructor({ schema_version = '4.0', project_name, description = null, groups = [] }) {
         this.schema_version = schema_version;
         this.project_name = project_name;
         this.description = description;
@@ -407,10 +477,13 @@ export class ProfileDocument {
     }
 
     /**
-     * Validates that schema_version is '3.0' or '2.0' (backwards compat).
+     * Validates that schema_version is a supported profile schema version.
      * @returns {boolean}
      */
     hasValidSchemaVersion() {
-        return this.schema_version === '3.0' || this.schema_version === '2.0';
+        return this.schema_version === '5.0'
+            || this.schema_version === '4.0'
+            || this.schema_version === '3.0'
+            || this.schema_version === '2.0';
     }
 }

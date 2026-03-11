@@ -84,6 +84,36 @@ function collectServicesFromGroups(groups, parentPath = '') {
     return result;
 }
 
+function collectServiceDimensionEntries(service, baseLoc) {
+    const entries = [];
+
+    for (const dimKey of Object.keys(service.dimensions || {})) {
+        entries.push({ key: dimKey, loc: `${baseLoc}.dimensions["${dimKey}"]` });
+    }
+
+    if (service.sections && Array.isArray(service.sections)) {
+        service.sections.forEach((sec, idx) => {
+            for (const dimKey of Object.keys(sec.dimensions || {})) {
+                entries.push({ key: dimKey, loc: `${baseLoc}.sections[${idx}].dimensions["${dimKey}"]` });
+            }
+        });
+    }
+
+    function walkConfigGroups(groups, path = []) {
+        for (const [idx, group] of (groups || []).entries()) {
+            const nextPath = [...path, group.group_name || group.label || String(idx)];
+            const groupLoc = `${baseLoc}.config_groups[${nextPath.join('.')}]`;
+            for (const dimKey of Object.keys(group.fields || {})) {
+                entries.push({ key: dimKey, loc: `${groupLoc}.fields["${dimKey}"]` });
+            }
+            walkConfigGroups(group.groups || [], nextPath);
+        }
+    }
+
+    walkConfigGroups(service.config_groups || []);
+    return entries;
+}
+
 /**
  * Cross-field validation: service names, regions, and dimension keys must all
  * exist in the catalog / region map. All violations are aggregated before throwing.
@@ -116,21 +146,10 @@ export function validateCrossFields(profileData, catalog, regionMap) {
 
         // F-L4-03: each dimension key must be defined for this service
         const catalogKeys = new Set(catalogEntry.dimensions.map(d => d.key));
-        // validate top-level dimensions
-        for (const dimKey of Object.keys(service.dimensions || {})) {
+        for (const { key: dimKey, loc: dimLoc } of collectServiceDimensionEntries(service, loc)) {
             if (!catalogKeys.has(dimKey)) {
-                errors.push(`  [cross-field] ${loc}.dimensions["${dimKey}"]: key not defined for service "${service.service_name}"`);
+                errors.push(`  [cross-field] ${dimLoc}: key not defined for service "${service.service_name}"`);
             }
-        }
-        // validate section dimensions if present
-        if (service.sections && Array.isArray(service.sections)) {
-            service.sections.forEach((sec, idx) => {
-                for (const dimKey of Object.keys(sec.dimensions || {})) {
-                    if (!catalogKeys.has(dimKey)) {
-                        errors.push(`  [cross-field] ${loc}.sections[${idx}].dimensions["${dimKey}"]: key not defined for service "${service.service_name}"`);
-                    }
-                }
-            });
         }
     }
 

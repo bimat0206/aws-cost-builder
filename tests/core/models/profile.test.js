@@ -115,6 +115,7 @@ describe('Profile Models', () => {
             expect(service.service_name).toBe('Amazon EC2');
             expect(service.region).toBe('us-east-1');
             expect(service.getDimensions().length).toBe(1);
+            expect(service.getConfigGroups()).toHaveLength(1);
         });
 
         it('should convert service to object and back (round-trip)', () => {
@@ -173,12 +174,12 @@ describe('Profile Models', () => {
     });
 
     describe('ProfileDocument', () => {
-        it('should create a profile with default schema version 3.0', () => {
+        it('should create a profile with default schema version 4.0', () => {
             const profile = new ProfileDocument({
                 project_name: 'Test Project'
             });
             
-            expect(profile.schema_version).toBe('3.0');
+            expect(profile.schema_version).toBe('4.0');
             expect(profile.project_name).toBe('Test Project');
             expect(profile.hasValidSchemaVersion()).toBe(true);
         });

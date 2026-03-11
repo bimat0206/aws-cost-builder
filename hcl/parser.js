@@ -1,39 +1,66 @@
 /**
- * HCL Parser — converts an HCL DSL string to a plain ProfileDocument object.
+ * HCL Parser — converts an HCL v7.0 DSL string to a plain ProfileDocument object.
+ *
+ * v7.0 grammar:
+ *   schema_version = "7.0"
+ *   project_name   = "..."
+ *
+ *   group "name" {
+ *     label = "..."
+ *
+ *     service "Amazon S3" "amazon_s3" {
+ *       region      = "us-east-1"
+ *       human_label = "Amazon S3"
+ *
+ *       # top-level flat attributes (ungrouped fields)
+ *       description = "..."
+ *
+ *       # named section (non-toggle sub-panel)
+ *       section "S3 Standard" {
+ *         storage      = 500
+ *         storage_unit = "GB per month"
+ *
+ *         section "Nested" { ... }  # recursive
+ *       }
+ *
+ *       # toggle-gated feature
+ *       feature "S3 Standard" {
+ *         section "S3 Standard" {
+ *           storage      = 500
+ *           storage_unit = "GB per month"
+ *         }
+ *       }
+ *     }
+ *
+ *     group "nested" { ... }
+ *   }
+ *
  * @module hcl/parser
- *
- * Hand-written recursive descent parser. No external dependencies.
- *
- * Grammar (simplified):
- *   file         := assignment* group*
- *   assignment   := IDENT "=" value
- *   group        := "group" STRING "{" (label_stmt | group | service)* "}"
- *   label_stmt   := "label" "=" STRING
- *   service      := "service" STRING STRING "{" (region_stmt | human_label_stmt | dimension | section)* "}"
- *   section      := "section" STRING "{" dimension* "}"
- *   dimension    := "dimension" STRING padding? "=" value
- *   value        := STRING | NUMBER | BOOL | "null"
  */
-
-// ─── Tokeniser ────────────────────────────────────────────────────────────────
 
 const TK = {
-    IDENT: 'IDENT',
+    IDENT:  'IDENT',
     STRING: 'STRING',
     NUMBER: 'NUMBER',
-    BOOL: 'BOOL',
-    NULL: 'NULL',
-    EQ: 'EQ',
+    BOOL:   'BOOL',
+    NULL:   'NULL',
+    EQ:     'EQ',
     LBRACE: 'LBRACE',
     RBRACE: 'RBRACE',
-    EOF: 'EOF',
+    EOF:    'EOF',
 };
 
-/**
- * Tokenise an HCL source string.
- * @param {string} src
- * @returns {Array<{type: string, value: *, line: number}>}
- */
+function slugifyName(value, fallback = 'group') {
+    const slug = String(value ?? '').trim().toLowerCase()
+        .replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+    return slug || fallback;
+}
+
+// ─── Tokenizer ────────────────────────────────────────────────────────────────
+
+function isAlpha(ch)    { return (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || ch === '_'; }
+function isAlphaNum(ch) { return isAlpha(ch) || (ch >= '0' && ch <= '9'); }
+
 function tokenize(src) {
     const tokens = [];
     let i = 0;
@@ -42,7 +69,6 @@ function tokenize(src) {
     while (i < src.length) {
         const ch = src[i];
 
-        // Whitespace
         if (ch === '\n') { line++; i++; continue; }
         if (ch === '\r' || ch === '\t' || ch === ' ') { i++; continue; }
 
@@ -63,7 +89,7 @@ function tokenize(src) {
             continue;
         }
 
-        // Quoted string
+        // Strings
         if (ch === '"') {
             let str = '';
             i++;
@@ -84,38 +110,32 @@ function tokenize(src) {
                 }
                 i++;
             }
-            i++; // closing quote
+            i++;
             tokens.push({ type: TK.STRING, value: str, line });
             continue;
         }
 
-        // Equals
-        if (ch === '=') { tokens.push({ type: TK.EQ, value: '=', line }); i++; continue; }
-
-        // Braces
+        if (ch === '=') { tokens.push({ type: TK.EQ,     value: '=', line }); i++; continue; }
         if (ch === '{') { tokens.push({ type: TK.LBRACE, value: '{', line }); i++; continue; }
         if (ch === '}') { tokens.push({ type: TK.RBRACE, value: '}', line }); i++; continue; }
 
-        // Number (optional leading minus)
+        // Numbers (including negatives)
         if ((ch >= '0' && ch <= '9') || (ch === '-' && src[i + 1] >= '0' && src[i + 1] <= '9')) {
-            let num = ch;
-            i++;
-            while (i < src.length && (src[i] >= '0' && src[i] <= '9' || src[i] === '.')) {
+            let num = ch; i++;
+            while (i < src.length && ((src[i] >= '0' && src[i] <= '9') || src[i] === '.')) {
                 num += src[i++];
             }
             tokens.push({ type: TK.NUMBER, value: Number(num), line });
             continue;
         }
 
-        // Identifier / keyword
+        // Identifiers / keywords
         if (isAlpha(ch)) {
             let word = '';
-            while (i < src.length && isAlphaNum(src[i])) {
-                word += src[i++];
-            }
-            if (word === 'true')  { tokens.push({ type: TK.BOOL, value: true, line }); continue; }
+            while (i < src.length && isAlphaNum(src[i])) word += src[i++];
+            if (word === 'true')  { tokens.push({ type: TK.BOOL, value: true,  line }); continue; }
             if (word === 'false') { tokens.push({ type: TK.BOOL, value: false, line }); continue; }
-            if (word === 'null')  { tokens.push({ type: TK.NULL, value: null, line }); continue; }
+            if (word === 'null')  { tokens.push({ type: TK.NULL, value: null,  line }); continue; }
             tokens.push({ type: TK.IDENT, value: word, line });
             continue;
         }
@@ -127,36 +147,33 @@ function tokenize(src) {
     return tokens;
 }
 
-function isAlpha(ch) {
-    return (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || ch === '_';
-}
-function isAlphaNum(ch) {
-    return isAlpha(ch) || (ch >= '0' && ch <= '9');
-}
-
 // ─── Parser ───────────────────────────────────────────────────────────────────
 
 class Parser {
     constructor(tokens) {
         this.tokens = tokens;
-        this.pos = 0;
+        this.pos    = 0;
     }
 
-    peek() { return this.tokens[this.pos]; }
+    peek()    { return this.tokens[this.pos]; }
     advance() { return this.tokens[this.pos++]; }
 
     expect(type) {
         const tok = this.advance();
         if (tok.type !== type) {
-            throw new SyntaxError(`Expected ${type} but got ${tok.type} (${JSON.stringify(tok.value)}) at line ${tok.line}`);
-    }
+            throw new SyntaxError(
+                `Expected token ${type} but got ${tok.type} (${JSON.stringify(tok.value)}) at line ${tok.line}`
+            );
+        }
         return tok;
     }
 
     expectValue(value) {
         const tok = this.advance();
         if (tok.value !== value) {
-            throw new SyntaxError(`Expected ${JSON.stringify(value)} but got ${JSON.stringify(tok.value)} at line ${tok.line}`);
+            throw new SyntaxError(
+                `Expected ${JSON.stringify(value)} but got ${JSON.stringify(tok.value)} at line ${tok.line}`
+            );
         }
         return tok;
     }
@@ -166,114 +183,221 @@ class Parser {
         return tok.type === TK.IDENT && tok.value === value;
     }
 
-    /**
-     * Parse a scalar value: string, number, bool, or null.
-     */
+    isAtRBrace() { return this.peek().type === TK.RBRACE; }
+    isAtEOF()    { return this.peek().type === TK.EOF; }
+
     parseValue() {
         const tok = this.peek();
-        if (tok.type === TK.STRING || tok.type === TK.NUMBER || tok.type === TK.BOOL || tok.type === TK.NULL) {
+        if ([TK.STRING, TK.NUMBER, TK.BOOL, TK.NULL].includes(tok.type)) {
             this.advance();
             return tok.value;
         }
-        throw new SyntaxError(`Expected a value (string, number, bool, null) at line ${tok.line}`);
+        throw new SyntaxError(`Expected literal value at line ${tok.line}`);
+    }
+
+    /** Skip an unknown ident = value pair (forward compat). */
+    skipUnknown() {
+        this.advance(); // ident
+        if (this.peek().type === TK.EQ) {
+            this.advance();
+            this.parseValue();
+        }
     }
 
     /**
-     * Parse a dimension statement:
-     *   dimension "Key Name" = value
-     * Returns { key, value }
+     * Parse a block of flat attributes + nested blocks.
+     * Returns { attrs: { key: value }, subBlocks: [...] }
+     *
+     * @param {function} blockParsers - map of keyword → parser function
      */
-    parseDimension() {
-        this.expectValue('dimension');
-        const keyTok = this.expect(TK.STRING);
-        this.expect(TK.EQ);
-        const value = this.parseValue();
-        return { key: keyTok.value, value };
-    }
-
-    /**
-     * Parse a section block inside a service:
-     *   section "Section Name" {
-     *       dimension "..." = ...
-     *   }
-     * Returns { section_name, dimensions }
-     */
-    parseSection() {
-        this.expectValue('section');
-        const nameTok = this.expect(TK.STRING);
+    parseBlock(blockParsers = {}) {
         this.expect(TK.LBRACE);
-        const section = { section_name: nameTok.value, dimensions: {} };
+        const attrs     = {};
+        const subBlocks = [];
 
         while (!this.isAtRBrace()) {
             const tok = this.peek();
-            if (tok.type === TK.IDENT && tok.value === 'dimension') {
-                const { key, value } = this.parseDimension();
-                section.dimensions[key] = {
-                    user_value: value,
-                    default_value: null,
-                };
-            } else {
-                // skip unknown or assignments inside section
-                this.advance();
+
+            if (tok.type === TK.IDENT && blockParsers[tok.value]) {
+                subBlocks.push(blockParsers[tok.value]());
+
+            } else if (tok.type === TK.IDENT) {
+                // Flat attribute: ident = value
+                const key = this.advance().value;
                 if (this.peek().type === TK.EQ) {
                     this.advance();
-                    this.parseValue();
+                    attrs[key] = this.parseValue();
+                } else if (this.peek().type === TK.LBRACE) {
+                    // Unnamed block with no keyword match — skip it
+                    this.skipBlock();
                 }
+            } else {
+                this.skipUnknown();
             }
         }
 
         this.expect(TK.RBRACE);
-        return section;
+        return { attrs, subBlocks };
     }
 
-    /**
-     * Parse a service block:
-     *   service "service_name" "slug" {
-     *     region      = "..."
-     *     human_label = "..."
-     *     dimension "..." = ...
-     *   }
-     */
+    skipBlock() {
+        this.expect(TK.LBRACE);
+        let depth = 1;
+        while (!this.isAtEOF() && depth > 0) {
+            const t = this.advance();
+            if (t.type === TK.LBRACE) depth++;
+            if (t.type === TK.RBRACE) depth--;
+        }
+    }
+
+    // ── section "Name" { attrs + nested section blocks } ─────────────────────
+
+    parseSection() {
+        this.expectValue('section');
+        const nameTok = this.expect(TK.STRING);
+        const label = nameTok.value;
+
+        const group = {
+            group_name: slugifyName(label, 'section'),
+            label,
+            fields: {},
+            groups: [],
+        };
+
+        const { attrs, subBlocks } = this.parseBlock({
+            section: () => this.parseSection(),
+        });
+
+        // Each flat attr becomes a synthetic "field" in group.fields
+        for (const [key, value] of Object.entries(attrs)) {
+            if (key.endsWith('_unit')) {
+                // Pair with base field
+                const baseKey = key.slice(0, -5); // strip "_unit"
+                if (group.fields[baseKey]) {
+                    group.fields[baseKey].unit = value;
+                } else {
+                    // Unit arrived before base — store temporarily
+                    group.fields[key] = { key, user_value: value, default_value: null };
+                }
+            } else {
+                group.fields[key] = {
+                    key,
+                    user_value:    value,
+                    default_value: null,
+                    field_type:    null,
+                    unit:          null,
+                };
+            }
+        }
+
+        // Reconcile units that arrived before their base key
+        for (const [key] of Object.entries(group.fields)) {
+            if (key.endsWith('_unit')) {
+                const baseKey = key.slice(0, -5);
+                if (group.fields[baseKey]) {
+                    group.fields[baseKey].unit = group.fields[key].user_value;
+                    delete group.fields[key];
+                }
+            }
+        }
+
+        group.groups = subBlocks;
+        if (group.groups.length === 0) delete group.groups;
+        return group;
+    }
+
+    // ── feature "Name" { section blocks + direct attrs } ─────────────────────
+    //   Maps to a config_group with label "Name feature" so the serializer
+    //   can identify it as a feature block.
+
+    parseFeature() {
+        this.expectValue('feature');
+        const nameTok = this.expect(TK.STRING);
+        const label = nameTok.value;
+
+        const group = {
+            group_name: slugifyName(`${label}_feature`, 'feature'),
+            label:      `${label} feature`,  // keep " feature" suffix for roundtrip
+            fields:     {},
+            groups:     [],
+        };
+
+        const { attrs, subBlocks } = this.parseBlock({
+            section: () => this.parseSection(),
+        });
+
+        // Direct attrs inside feature (if any) become top-level fields on the feature group
+        for (const [key, value] of Object.entries(attrs)) {
+            group.fields[key] = { key, user_value: value, default_value: null, field_type: null, unit: null };
+        }
+
+        group.groups = subBlocks;
+        if (group.groups.length === 0) delete group.groups;
+        return group;
+    }
+
+    // ── service "Name" "slug" { ... } ─────────────────────────────────────────
+
     parseService() {
         this.expectValue('service');
         const serviceNameTok = this.expect(TK.STRING);
-        const slugTok = this.expect(TK.STRING);
+        const slugTok        = this.expect(TK.STRING);
         this.expect(TK.LBRACE);
 
         const service = {
-            service_name: serviceNameTok.value,
-            human_label: slugTok.value,
-            region: 'global',
-            dimensions: {},
-            sections: [],
+            service_name:  serviceNameTok.value,
+            human_label:   slugTok.value,
+            region:        'us-east-1',
+            config_groups: [],
+        };
+
+        const ensureGeneral = () => {
+            let g = service.config_groups.find(cg => cg.group_name === 'general');
+            if (!g) {
+                g = { group_name: 'general', label: null, fields: {}, groups: [] };
+                service.config_groups.unshift(g);
+            }
+            return g;
         };
 
         while (!this.isAtRBrace()) {
             const tok = this.peek();
-            if (tok.type === TK.IDENT && tok.value === 'dimension') {
-                const { key, value } = this.parseDimension();
-                service.dimensions[key] = {
-                    user_value: value,
-                    default_value: null,
-                };
+
+            if (tok.type === TK.IDENT && tok.value === 'section') {
+                service.config_groups.push(this.parseSection());
+
+            } else if (tok.type === TK.IDENT && tok.value === 'feature') {
+                service.config_groups.push(this.parseFeature());
+
             } else if (tok.type === TK.IDENT && tok.value === 'region') {
-                this.advance();
-                this.expect(TK.EQ);
+                this.advance(); this.expect(TK.EQ);
                 service.region = this.parseValue();
+
             } else if (tok.type === TK.IDENT && tok.value === 'human_label') {
-                this.advance();
-                this.expect(TK.EQ);
+                this.advance(); this.expect(TK.EQ);
                 service.human_label = this.parseValue();
-            } else if (tok.type === TK.IDENT && tok.value === 'section') {
-                const sec = this.parseSection();
-                if (sec) service.sections.push(sec);
-            } else {
-                // Unknown statement — skip
-                this.advance();
+
+            } else if (tok.type === TK.IDENT) {
+                // Flat top-level attribute → general group
+                const key = this.advance().value;
                 if (this.peek().type === TK.EQ) {
                     this.advance();
-                    this.parseValue();
+                    const value = this.parseValue();
+                    const g = ensureGeneral();
+
+                    if (key.endsWith('_unit')) {
+                        const baseKey = key.slice(0, -5);
+                        if (g.fields[baseKey]) {
+                            g.fields[baseKey].unit = value;
+                        } else {
+                            g.fields[key] = { key, user_value: value, default_value: null };
+                        }
+                    } else {
+                        g.fields[key] = { key, user_value: value, default_value: null, field_type: null, unit: null };
+                    }
                 }
+            } else {
+                this.skipUnknown();
             }
         }
 
@@ -281,14 +405,8 @@ class Parser {
         return service;
     }
 
-    /**
-     * Parse a group block (recursively handles nested groups):
-     *   group "name" {
-     *     label = "..."
-     *     group "child" { ... }
-     *     service "..." "..." { ... }
-     *   }
-     */
+    // ── group "name" { label = ...; service ...; group ...; } ─────────────────
+
     parseGroup() {
         this.expectValue('group');
         const nameTok = this.expect(TK.STRING);
@@ -296,70 +414,55 @@ class Parser {
 
         const group = {
             group_name: nameTok.value,
-            label: null,
-            services: [],
-            groups: [],
+            label:      null,
+            services:   [],
+            groups:     [],
         };
 
         while (!this.isAtRBrace()) {
             const tok = this.peek();
             if (tok.type === TK.IDENT && tok.value === 'label') {
-                this.advance();
-                this.expect(TK.EQ);
+                this.advance(); this.expect(TK.EQ);
                 group.label = this.parseValue();
-            } else if (tok.type === TK.IDENT && tok.value === 'group') {
-                group.groups.push(this.parseGroup());
             } else if (tok.type === TK.IDENT && tok.value === 'service') {
                 group.services.push(this.parseService());
+            } else if (tok.type === TK.IDENT && tok.value === 'group') {
+                group.groups.push(this.parseGroup());
             } else {
-                // Unknown — skip assignment
-                this.advance();
-                if (this.peek().type === TK.EQ) {
-                    this.advance();
-                    this.parseValue();
-                }
+                this.skipUnknown();
             }
         }
 
         this.expect(TK.RBRACE);
-
-        // Clean up empty arrays / null label
-        if (group.groups.length === 0) delete group.groups;
-        if (group.label === null) delete group.label;
-
+        if (!group.label)          delete group.label;
+        if (!group.groups.length)  delete group.groups;
         return group;
     }
 
-    isAtRBrace() {
-        return this.peek().type === TK.RBRACE || this.peek().type === TK.EOF;
-    }
+    // ── Root ──────────────────────────────────────────────────────────────────
 
-    /**
-     * Parse the entire HCL file.
-     * @returns {object} plain ProfileDocument-compatible object
-     */
-    parseFile() {
+    parseProfile() {
         const profile = {
-            schema_version: '3.0',
-            project_name: '',
-            description: null,
-            groups: [],
+            schema_version: '7.0',
+            project_name:   'unnamed',
+            description:    null,
+            groups:         [],
         };
 
-        while (this.peek().type !== TK.EOF) {
-            const tok = this.peek();
-
-            if (tok.type === TK.IDENT && tok.value === 'group') {
+        while (!this.isAtEOF()) {
+            if (this.isIdent('schema_version')) {
+                this.advance(); this.expect(TK.EQ);
+                profile.schema_version = this.parseValue();
+            } else if (this.isIdent('project_name')) {
+                this.advance(); this.expect(TK.EQ);
+                profile.project_name = this.parseValue();
+            } else if (this.isIdent('description')) {
+                this.advance(); this.expect(TK.EQ);
+                profile.description = this.parseValue();
+            } else if (this.isIdent('group')) {
                 profile.groups.push(this.parseGroup());
-            } else if (tok.type === TK.IDENT) {
-                const key = this.advance().value;
-                this.expect(TK.EQ);
-                const value = this.parseValue();
-                if (Object.prototype.hasOwnProperty.call(profile, key)) {
-                    profile[key] = value;
-                }
             } else {
-                throw new SyntaxError(`Unexpected token ${tok.type} at line ${tok.line}`);
+                this.skipUnknown();
             }
         }
 
@@ -368,13 +471,12 @@ class Parser {
 }
 
 /**
- * Parse an HCL profile string into a plain ProfileDocument-compatible object.
- * @param {string} src - HCL source text
- * @returns {object} plain object compatible with ProfileDocument.fromObject()
- * @throws {SyntaxError} on parse errors
+ * Parse an HCL v7.0 string into a plain profile object.
+ * @param {string} src
+ * @returns {object}
  */
 export function parseHCL(src) {
     const tokens = tokenize(src);
     const parser = new Parser(tokens);
-    return parser.parseFile();
+    return parser.parseProfile();
 }

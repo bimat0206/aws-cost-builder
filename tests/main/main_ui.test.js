@@ -57,16 +57,15 @@ afterEach(() => {
 
 import { fg, bold, dim } from '../../builder/layout/components.js';
 import {
-  COL_CYAN, COL_ORANGE, COL_YELLOW, COL_GREEN, COL_MUTED, COL_DIM, COL_MAGENTA,
+  COL_CYAN, COL_ORANGE, COL_YELLOW, COL_GREEN, COL_MUTED, COL_DIM,
 } from '../../builder/layout/colors.js';
 
 // Mirror the MODE_OPTIONS from main.js for testing
 const MODE_DEFINITIONS = [
   { id: 'run',           label: 'Runner',         badge: 'Mode B', color: COL_GREEN },
   { id: 'dryRun',        label: 'Dry Run',         badge: 'Mode C', color: COL_YELLOW },
-  { id: 'explore',       label: 'Explorer',        badge: 'Mode D', color: COL_MAGENTA },
-  { id: 'promote',       label: 'Promoter',        badge: 'Mode E', color: COL_ORANGE },
-  { id: 'exportArchive', label: 'Export Archive',  badge: 'Mode F', color: COL_CYAN },
+  { id: 'promote',       label: 'Promoter',        badge: 'Mode D', color: COL_ORANGE },
+  { id: 'exportArchive', label: 'Export Archive',  badge: 'Mode E', color: COL_CYAN },
 ];
 
 function makeStatusLine(level, text) {
@@ -132,8 +131,8 @@ describe('statusLine()', () => {
 // ─── MODE_DEFINITIONS completeness ───────────────────────────────────────────
 
 describe('MODE_DEFINITIONS', () => {
-  it('has exactly 5 mode entries (no build mode)', () => {
-    expect(MODE_DEFINITIONS).toHaveLength(5);
+  it('has exactly 4 mode entries (no build or explore mode)', () => {
+    expect(MODE_DEFINITIONS).toHaveLength(4);
   });
 
   it('does NOT contain build mode', () => {
@@ -143,7 +142,7 @@ describe('MODE_DEFINITIONS', () => {
 
   it('contains all expected mode ids', () => {
     const ids = MODE_DEFINITIONS.map((m) => m.id);
-    for (const id of ['run', 'dryRun', 'explore', 'promote', 'exportArchive']) {
+    for (const id of ['run', 'dryRun', 'promote', 'exportArchive']) {
       expect(ids).toContain(id);
     }
   });
@@ -156,7 +155,7 @@ describe('MODE_DEFINITIONS', () => {
 
   it('every mode has a badge in format "Mode X"', () => {
     for (const m of MODE_DEFINITIONS) {
-      expect(m.badge).toMatch(/^Mode [B-F]$/);
+      expect(m.badge).toMatch(/^Mode [B-E]$/);
     }
   });
 
@@ -200,7 +199,7 @@ describe('printModeStart()', () => {
   });
 
   it('contains separator dashes', () => {
-    expect(strip(renderModeStart('explore'))).toContain('──');
+    expect(strip(renderModeStart('promote'))).toContain('──');
   });
 
   it('all valid mode ids produce non-empty output', () => {

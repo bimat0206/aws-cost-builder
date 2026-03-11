@@ -1,24 +1,14 @@
 /**
  * Draft artifact writer.
- *
- * Writes explorer draft output only to:
- * - config/data/services/generated/<service_id>_draft.json
- * - artifacts/<service_id>/exploration_report.json
- * - artifacts/<service_id>/REVIEW_NOTES.md
- * - artifacts/<service_id>/screenshots/*.png
- *
- * NEVER writes to config/data/services/<service_id>.json.
- *
- * @module explorer/draft/draft_writer
+ * @module drafts/writer
  */
 
 import { writeFile, mkdir, readFile } from 'node:fs/promises';
 import { join, dirname, resolve } from 'node:path';
-import { slugifyServiceId } from '../utils.js';
-import { takeStateScreenshots } from '../core/output.js';
+import { slugifyServiceId } from './utils.js';
 
 /**
- * Resolve explorer output paths.
+ * Resolve draft output paths.
  *
  * @param {string} rawServiceId
  * @param {string} baseDir
@@ -31,7 +21,7 @@ import { takeStateScreenshots } from '../core/output.js';
  *   forbiddenValidatedCatalogPath: string,
  * }}
  */
-export function resolveExplorerOutputPaths(rawServiceId, baseDir) {
+export function resolveDraftOutputPaths(rawServiceId, baseDir) {
   const serviceId = slugifyServiceId(rawServiceId);
   const servicesRoot = resolve(baseDir, 'config', 'data', 'services');
   const generatedRoot = resolve(servicesRoot, 'generated');
@@ -47,10 +37,6 @@ export function resolveExplorerOutputPaths(rawServiceId, baseDir) {
   };
 }
 
-/**
- * @param {any[]} sections
- * @returns {any[]}
- */
 function flattenSectionDimensions(sections) {
   const out = [];
   for (const section of sections || []) {
@@ -65,13 +51,6 @@ function flattenSectionDimensions(sections) {
   return out;
 }
 
-/**
- * Normalize draft payload while preserving richer phased fields when available.
- *
- * @param {string} serviceId
- * @param {object} draft
- * @returns {object}
- */
 function normalizeDraftPayload(serviceId, draft) {
   const dimensions = Array.isArray(draft?.dimensions)
     ? draft.dimensions
@@ -85,7 +64,7 @@ function normalizeDraftPayload(serviceId, draft) {
     supported_regions: Array.isArray(draft?.supported_regions) ? draft.supported_regions : [],
     schema_version: draft?.schema_version || '2.0',
     generated_at: draft?.generated_at || new Date().toISOString(),
-    source: draft?.source || 'explorer_dom_v2',
+    source: draft?.source || 'draft_capture_v1',
     region_used: draft?.region_used || 'UNKNOWN',
     status: draft?.status || 'draft',
     ui_mapping: draft?.ui_mapping || {},
@@ -99,16 +78,8 @@ function normalizeDraftPayload(serviceId, draft) {
   };
 }
 
-/**
- * Write draft catalog JSON.
- *
- * @param {string} serviceId
- * @param {object} draft
- * @param {string} baseDir
- * @returns {Promise<string>}
- */
 export async function writeDraftCatalog(serviceId, draft, baseDir) {
-  const paths = resolveExplorerOutputPaths(serviceId, baseDir);
+  const paths = resolveDraftOutputPaths(serviceId, baseDir);
   await mkdir(dirname(paths.draftPath), { recursive: true });
 
   const payload = normalizeDraftPayload(paths.serviceId, draft || {});
@@ -116,13 +87,6 @@ export async function writeDraftCatalog(serviceId, draft, baseDir) {
   return paths.draftPath;
 }
 
-/**
- * Build a state-aware exploration report.
- *
- * @param {string} serviceId
- * @param {object} report
- * @returns {object}
- */
 function normalizeReportPayload(serviceId, report) {
   if (report?.states && report?.service_id) {
     return {
@@ -150,16 +114,8 @@ function normalizeReportPayload(serviceId, report) {
   };
 }
 
-/**
- * Write exploration report.
- *
- * @param {string} serviceId
- * @param {object} report
- * @param {string} baseDir
- * @returns {Promise<string>}
- */
-export async function writeExplorationReport(serviceId, report, baseDir) {
-  const paths = resolveExplorerOutputPaths(serviceId, baseDir);
+export async function writeDraftReport(serviceId, report, baseDir) {
+  const paths = resolveDraftOutputPaths(serviceId, baseDir);
   await mkdir(dirname(paths.reportPath), { recursive: true });
 
   const payload = normalizeReportPayload(paths.serviceId, report || {});
@@ -167,10 +123,6 @@ export async function writeExplorationReport(serviceId, report, baseDir) {
   return paths.reportPath;
 }
 
-/**
- * @param {object} report
- * @returns {any[]}
- */
 function getReportDimensions(report) {
   if (Array.isArray(report?.dimensions)) return report.dimensions;
   if (Array.isArray(report?.fields)) return report.fields;
@@ -180,16 +132,8 @@ function getReportDimensions(report) {
   return [];
 }
 
-/**
- * Write REVIEW_NOTES.md.
- *
- * @param {string} serviceId
- * @param {object} report
- * @param {string} baseDir
- * @returns {Promise<string>}
- */
-export async function writeReviewNotes(serviceId, report, baseDir) {
-  const paths = resolveExplorerOutputPaths(serviceId, baseDir);
+export async function writeDraftReviewNotes(serviceId, report, baseDir) {
+  const paths = resolveDraftOutputPaths(serviceId, baseDir);
   await mkdir(dirname(paths.reviewNotesPath), { recursive: true });
 
   const dimensions = getReportDimensions(report);
@@ -243,15 +187,8 @@ export async function writeReviewNotes(serviceId, report, baseDir) {
   return paths.reviewNotesPath;
 }
 
-/**
- * Check whether a draft exists.
- *
- * @param {string} serviceId
- * @param {string} baseDir
- * @returns {Promise<boolean>}
- */
 export async function draftExists(serviceId, baseDir) {
-  const paths = resolveExplorerOutputPaths(serviceId, baseDir);
+  const paths = resolveDraftOutputPaths(serviceId, baseDir);
   try {
     await readFile(paths.draftPath, 'utf-8');
     return true;
@@ -260,99 +197,11 @@ export async function draftExists(serviceId, baseDir) {
   }
 }
 
-/**
- * Load a draft JSON payload.
- *
- * @param {string} serviceId
- * @param {string} baseDir
- * @returns {Promise<object|null>}
- */
 export async function loadDraft(serviceId, baseDir) {
-  const paths = resolveExplorerOutputPaths(serviceId, baseDir);
+  const paths = resolveDraftOutputPaths(serviceId, baseDir);
   try {
     return JSON.parse(await readFile(paths.draftPath, 'utf-8'));
   } catch {
     return null;
   }
-}
-
-/**
- * Convenience writer for all draft artifacts.
- *
- * @param {object} draft
- * @param {{ states?: object[], gate_controls_status?: object[], budget_hit?: boolean }} stateTracker
- * @param {string} baseDir
- * @param {{ page?: import('playwright').Page }} [runtime]
- * @returns {Promise<{ catalogPath: string, reportPath: string, notesPath: string, screenshotsDir: string }>} 
- */
-export async function writeAllDraftArtifacts(draft, stateTracker, baseDir, runtime = {}) {
-  const serviceId = draft?.service_id || draft?.service_name || 'unknown_service';
-  const paths = resolveExplorerOutputPaths(serviceId, baseDir);
-
-  await mkdir(dirname(paths.draftPath), { recursive: true });
-  await mkdir(dirname(paths.reportPath), { recursive: true });
-  await mkdir(dirname(paths.reviewNotesPath), { recursive: true });
-  await mkdir(paths.screenshotsDir, { recursive: true });
-
-  const normalizedDraft = normalizeDraftPayload(paths.serviceId, draft || {});
-  const dimensions = normalizedDraft.dimensions || [];
-
-  let screenshotMap = {};
-  const replaySequence = typeof runtime.replaySequence === 'function' ? runtime.replaySequence : null;
-  if (runtime.page && Array.isArray(stateTracker?.states) && stateTracker.states.length > 0) {
-    screenshotMap = await takeStateScreenshots(
-      runtime.page,
-      paths.screenshotsDir,
-      stateTracker.states,
-      replaySequence,
-    );
-  }
-
-  const dimensionsByState = new Map();
-  for (const dim of dimensions) {
-    const stateId = dim.discovered_in_state || 'S0';
-    if (!dimensionsByState.has(stateId)) {
-      dimensionsByState.set(stateId, []);
-    }
-    dimensionsByState.get(stateId).push(dim);
-  }
-
-  const states = (stateTracker?.states || []).map((state) => {
-    const stateId = state.state_id || 'S0';
-    return {
-      state_id: stateId,
-      entered_via: state.entered_via || { gate_control: null, action: null, from_state: null },
-      fingerprint: state.fingerprint || null,
-      screenshot_path: screenshotMap[stateId] || null,
-      fields: (dimensionsByState.get(stateId) || []).map((dim) => ({
-        ...dim,
-        section_heading: dim.section || 'UNKNOWN',
-      })),
-    };
-  });
-
-  const report = {
-    service_id: paths.serviceId,
-    explored_at: new Date().toISOString(),
-    region_used: normalizedDraft.region_used || 'UNKNOWN',
-    calculator_page_title: normalizedDraft.calculator_page_title,
-    total_states: states.length,
-    budget_hit: Boolean(stateTracker?.budget_hit),
-    gate_controls: stateTracker?.gate_controls_status || [],
-    states,
-    dimensions,
-    fields: dimensions,
-    conflicts: dimensions.filter((dim) => dim.status === 'CONFLICT'),
-  };
-
-  const catalogPath = await writeDraftCatalog(paths.serviceId, normalizedDraft, baseDir);
-  const reportPath = await writeExplorationReport(paths.serviceId, report, baseDir);
-  const notesPath = await writeReviewNotes(paths.serviceId, report, baseDir);
-
-  return {
-    catalogPath,
-    reportPath,
-    notesPath,
-    screenshotsDir: paths.screenshotsDir,
-  };
 }

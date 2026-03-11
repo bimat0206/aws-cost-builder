@@ -16,7 +16,8 @@ import { ProfileDocument } from '../models/profile.js';
 // Canonical key order for each object type
 const PROFILE_KEY_ORDER = ['schema_version', 'project_name', 'description', 'groups'];
 const GROUP_KEY_ORDER   = ['group_name', 'label', 'services', 'groups'];
-const SERVICE_KEY_ORDER = ['service_name', 'human_label', 'region', 'dimensions', 'sections'];
+const SERVICE_KEY_ORDER = ['service_name', 'human_label', 'region', 'config_groups'];
+const CONFIG_GROUP_KEY_ORDER = ['group_name', 'label', 'fields', 'groups'];
 const DIM_KEY_ORDER     = ['user_value', 'default_value', 'unit', 'prompt_message',
                            'required', 'resolved_value', 'resolution_source', 'resolution_status'];
 
@@ -42,6 +43,24 @@ function reorder(obj, order) {
     return result;
 }
 
+function stableConfigGroup(group) {
+    const sortedFieldKeys = Object.keys(group.fields || {}).sort();
+    const fields = {};
+    for (const key of sortedFieldKeys) {
+        fields[key] = reorder(group.fields[key], DIM_KEY_ORDER);
+    }
+
+    const out = reorder({
+        ...group,
+        fields,
+        groups: (group.groups || []).map(child => stableConfigGroup(child)),
+    }, CONFIG_GROUP_KEY_ORDER);
+
+    if (!out.label && out.label !== null) delete out.label;
+    if (!out.groups || out.groups.length === 0) delete out.groups;
+    return out;
+}
+
 /**
  * Produce a stable plain-object representation of a group (recursively).
  * @param {object} g
@@ -49,22 +68,8 @@ function reorder(obj, order) {
  */
 function stableGroup(g) {
     const services = (g.services || []).map(s => {
-        const sortedDimKeys = Object.keys(s.dimensions || {}).sort();
-        const dimensions = {};
-        for (const k of sortedDimKeys) {
-            dimensions[k] = reorder(s.dimensions[k], DIM_KEY_ORDER);
-        }
-        const out = reorder({ ...s, dimensions }, SERVICE_KEY_ORDER);
-        if (s.sections && s.sections.length > 0) {
-            // ensure section dimensions are sorted as well
-            out.sections = s.sections.map(sec => {
-                const keys = Object.keys(sec.dimensions || {}).sort();
-                const dims = {};
-                for (const k of keys) dims[k] = reorder(sec.dimensions[k], DIM_KEY_ORDER);
-                return { section_name: sec.section_name, dimensions: dims };
-            });
-        }
-        return out;
+        const configGroups = (s.config_groups || []).map(group => stableConfigGroup(group));
+        return reorder({ ...s, config_groups: configGroups }, SERVICE_KEY_ORDER);
     });
 
     const obj = { ...g, services };

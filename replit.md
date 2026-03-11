@@ -4,7 +4,7 @@
 
 A Chrome Extension + CLI runner for the [AWS Pricing Calculator](https://calculator.aws/).
 
-Use the Chrome Extension to capture live AWS Calculator pages and build cost profiles with nested groups. Export profiles as HCL files or a gzip-compressed archive. Run the CLI to replay profiles against the live calculator with Playwright-powered browser automation.
+Use the Chrome Extension to capture live AWS Calculator pages and build cost profiles with nested groups and structured service config groups. Export profiles as HCL files or a gzip-compressed archive. Run the CLI to replay profiles against the live calculator with Playwright-powered browser automation.
 
 ## Architecture
 
@@ -13,7 +13,7 @@ Use the Chrome Extension to capture live AWS Calculator pages and build cost pro
 - **Package manager**: npm
 - **Test framework**: Vitest + fast-check (property-based testing)
 - **Browser automation**: Playwright (Chromium)
-- **Profile format**: HCL DSL (`.hcl`) or JSON (`.json`), schema v3.0 (backwards-compatible with v2.0)
+- **Profile format**: HCL DSL (`.hcl`) or JSON (`.json`), schema v4.0 (backwards-compatible with v2.0/v3.0)
 
 ## Project Structure
 
@@ -21,10 +21,10 @@ Use the Chrome Extension to capture live AWS Calculator pages and build cost pro
 aws-cost-builder/
 ├── main.js                  # CLI entry point & mode dispatch
 ├── automation/              # Playwright browser automation
-├── builder/                 # Layout components, prompts (used by explorer & CLI UI)
+├── builder/                 # Layout components, prompts (used by CLI UI)
 ├── config/                  # Service catalogs & schemas
 ├── core/                    # Shared domain logic
-├── explorer/                # Service dimension discovery
+├── drafts/                  # Draft catalog generation & promotion
 ├── extension/               # Chrome Extension (Manifest V3)
 │   ├── manifest.json
 │   ├── popup/               # Extension popup UI
@@ -41,9 +41,8 @@ aws-cost-builder/
 
 - **Mode B (Runner)** — Browser automation against a saved profile
 - **Mode C (Dry Run)** — Validate and resolve profile without a browser
-- **Mode D (Explorer)** — Discover service dimensions from the live AWS Calculator
-- **Mode E (Promoter)** — Promote draft catalog entries to the service catalog
-- **Mode F (Export Archive)** — Export `profiles/` directory as a gzip-compressed `.tar.gz`
+- **Mode D (Promoter)** — Promote draft catalog entries to the service catalog
+- **Mode E (Export Archive)** — Export `profiles/` directory as a gzip-compressed `.tar.gz`
 
 ## Running
 
@@ -51,9 +50,8 @@ aws-cost-builder/
 npm start                                              # Interactive mode picker
 node main.js --run --profile profiles/my_project.hcl  # Mode B
 node main.js --dry-run --profile profiles/my_project.hcl  # Mode C
-node main.js --explore                                 # Mode D
-node main.js --promote                                 # Mode E
-node main.js --export-archive profiles.tar.gz          # Mode F
+node main.js --promote                                 # Mode D
+node main.js --export-archive profiles.tar.gz          # Mode E
 ```
 
 ## HCL Profile Format
@@ -61,7 +59,7 @@ node main.js --export-archive profiles.tar.gz          # Mode F
 Profiles can be written in HCL DSL (`.hcl`) or JSON (`.json`). HCL is preferred for readability:
 
 ```hcl
-schema_version = "3.0"
+schema_version = "4.0"
 project_name   = "Production Stack"
 description    = "Multi-tier AWS infrastructure estimate"
 
@@ -75,9 +73,11 @@ group "web_tier" {
       region      = "us-east-1"
       human_label = "Frontend Servers"
 
-      dimension "Operating System"    = "Linux"
-      dimension "Number of instances" = 3
-      dimension "Instance type"       = "t3.medium"
+      config_group "Compute" {
+        field "Operating System"    = "Linux"
+        field "Number of instances" = 3
+        field "Instance type"       = "t3.medium"
+      }
     }
   }
 
@@ -85,8 +85,10 @@ group "web_tier" {
     region      = "us-east-1"
     human_label = "Static Assets Bucket"
 
-    dimension "S3 Standard storage"      = 500
-    dimension "S3 Standard storage Unit" = "GB"
+    config_group "Storage" {
+      field "S3 Standard storage"      = 500
+      field "S3 Standard storage Unit" = "GB"
+    }
   }
 }
 ```

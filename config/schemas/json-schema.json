@@ -15,7 +15,8 @@
             "type": "string",
             "enum": [
                 "2.0",
-                "3.0"
+                "3.0",
+                "4.0"
             ]
         },
         "project_name": {
@@ -74,8 +75,19 @@
             "required": [
                 "service_name",
                 "human_label",
-                "region",
-                "dimensions"
+                "region"
+            ],
+            "anyOf": [
+                {
+                    "required": [
+                        "dimensions"
+                    ]
+                },
+                {
+                    "required": [
+                        "config_groups"
+                    ]
+                }
             ],
             "additionalProperties": false,
             "properties": {
@@ -101,6 +113,12 @@
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/Section"
+                    }
+                },
+                "config_groups": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/ConfigGroup"
                     }
                 }
             }
@@ -194,6 +212,38 @@
                     "type": "object",
                     "additionalProperties": {
                         "$ref": "#/definitions/Dimension"
+                    }
+                }
+            }
+        },
+        "ConfigGroup": {
+            "type": "object",
+            "required": [
+                "group_name",
+                "fields"
+            ],
+            "additionalProperties": false,
+            "properties": {
+                "group_name": {
+                    "type": "string",
+                    "minLength": 1
+                },
+                "label": {
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "fields": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "$ref": "#/definitions/Dimension"
+                    }
+                },
+                "groups": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/ConfigGroup"
                     }
                 }
             }

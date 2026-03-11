@@ -1,4 +1,4 @@
-// Feature: aws-cost-profile-builder, Property 20: Explorer Write Isolation
+// Feature: aws-cost-profile-builder, Property 20: Draft Write Isolation
 // Validates: Requirements 13.5
 
 import { access, mkdtemp, rm } from 'node:fs/promises';
@@ -9,11 +9,11 @@ import { describe, it, expect } from 'vitest';
 import fc from 'fast-check';
 
 import {
-  resolveExplorerOutputPaths,
+  resolveDraftOutputPaths,
   writeDraftCatalog,
-  writeExplorationReport,
-  writeReviewNotes,
-} from '../../explorer/draft/draft_writer.js';
+  writeDraftReport,
+  writeDraftReviewNotes,
+} from '../../drafts/writer.js';
 
 /**
  * Returns true when file exists.
@@ -29,9 +29,8 @@ async function exists(path) {
   }
 }
 
-describe('Property 20: Explorer Write Isolation', () => {
-  // Feature: aws-cost-profile-builder, Property 20: Explorer Write Isolation
-  it('resolved explorer paths always target generated/ or artifacts/ (never direct services/)', () => {
+describe('Property 20: Draft Write Isolation', () => {
+  it('resolved draft paths always target generated/ or artifacts/ (never direct services/)', () => {
     fc.assert(
       fc.property(
         fc.string({ minLength: 1, maxLength: 80 }),
@@ -40,7 +39,7 @@ describe('Property 20: Explorer Write Isolation', () => {
           fc.pre(/[a-z0-9]/i.test(rawServiceId));
           const safeSuffix = suffix.replace(/[^a-zA-Z0-9_-]/g, 'x') || 'x';
           const baseDir = `/tmp/aws-cost-p20-${safeSuffix}`;
-          const paths = resolveExplorerOutputPaths(rawServiceId, baseDir);
+          const paths = resolveDraftOutputPaths(rawServiceId, baseDir);
 
           const servicesRoot = resolve(baseDir, 'config', 'data', 'services');
           const generatedRoot = resolve(servicesRoot, 'generated');
@@ -88,9 +87,9 @@ describe('Property 20: Explorer Write Isolation', () => {
       };
 
       const draftPath = await writeDraftCatalog(serviceId, draft, baseDir);
-      const reportPath = await writeExplorationReport(serviceId, report, baseDir);
-      const notesPath = await writeReviewNotes(serviceId, report, baseDir);
-      const paths = resolveExplorerOutputPaths(serviceId, baseDir);
+      const reportPath = await writeDraftReport(serviceId, report, baseDir);
+      const notesPath = await writeDraftReviewNotes(serviceId, report, baseDir);
+      const paths = resolveDraftOutputPaths(serviceId, baseDir);
 
       expect(await exists(draftPath)).toBe(true);
       expect(await exists(reportPath)).toBe(true);

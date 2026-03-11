@@ -1,0 +1,38 @@
+{
+  "schema_version": "2.0",
+  "project_name": "Test Project",
+  "description": "Test Description",
+  "groups": [
+    {
+      "group_name": "Production",
+      "services": [
+        {
+          "service_name": "Amazon EC2",
+          "human_label": "Web Servers",
+          "region": "us-east-1",
+          "dimensions": {
+            "Operating System": {
+              "user_value": "Linux",
+              "default_value": null
+            },
+            "Instance type": {
+              "user_value": "t2.micro",
+              "default_value": null
+            }
+          },
+          "sections": [
+            {
+              "section_name": "Sec",
+              "dimensions": {
+                "BadKey": {
+                  "user_value": 1,
+                  "default_value": null
+                }
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

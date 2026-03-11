@@ -198,13 +198,106 @@ function classifyField(el) {
   return 'TEXT';
 }
 
+function normalizeHeadingText(value) {
+  return String(value || '').trim().replace(/\s+/g, ' ');
+}
+
+function extractSectionHeading(container) {
+  if (!container || container === document.body) return '';
+  const selectors = [
+    ':scope > legend',
+    ':scope > [role="heading"]',
+    ':scope > h1, :scope > h2, :scope > h3, :scope > h4, :scope > h5, :scope > h6',
+    ':scope > summary',
+    ':scope > button[aria-expanded]',
+    ':scope > [class*="section"][class*="title"]',
+    ':scope > [class*="section"][class*="header"]',
+    ':scope > [class*="accordion"][class*="header"]',
+    ':scope > [class*="panel"][class*="header"]',
+  ];
+
+  for (const selector of selectors) {
+    const el = container.querySelector(selector);
+    const text = normalizeHeadingText(el?.textContent);
+    if (text && text.length >= 2 && text.length <= 120) return text;
+  }
+  return '';
+}
+
+function inferSectionPath(el, label) {
+  const parts = [];
+  const seen = new Set();
+
+  let parent = el?.parentElement || null;
+  for (let depth = 0; depth < 6 && parent; depth++, parent = parent.parentElement) {
+    const heading = extractSectionHeading(parent);
+    const normalized = heading.toLowerCase();
+    if (heading && !seen.has(normalized)) {
+      seen.add(normalized);
+      parts.unshift(heading);
+    }
+  }
+
+  if (parts.length === 0 && label.includes(':')) {
+    const prefix = normalizeHeadingText(label.split(':')[0]);
+    if (prefix) parts.push(prefix);
+  }
+
+  return parts.length > 0 ? parts : ['General'];
+}
+
+function slugifyName(value, fallback = 'group') {
+  const slug = String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '');
+  return slug || fallback;
+}
+
+function buildConfigGroups(rawFields) {
+  const groups = [];
+
+  function ensureGroup(levelGroups, label, fallback = 'group') {
+    const groupName = slugifyName(label, fallback);
+    let group = levelGroups.find((item) => item.group_name === groupName);
+    if (!group) {
+      group = { group_name: groupName, label, fields: {}, groups: [] };
+      levelGroups.push(group);
+    }
+    return group;
+  }
+
+  for (const field of rawFields) {
+    const path = Array.isArray(field.sectionPath) && field.sectionPath.length > 0
+      ? field.sectionPath
+      : ['General'];
+
+    let currentGroups = groups;
+    let currentGroup = null;
+    for (const segment of path) {
+      currentGroup = ensureGroup(currentGroups, segment, 'section');
+      currentGroups = currentGroup.groups;
+    }
+
+    currentGroup.fields[field.key] = {
+      user_value: field.value,
+      default_value: null,
+    };
+  }
+
+  return groups;
+}
+
 function scanFields() {
   const dimensions = [];
   const seen = new Set();
 
   // ── Pass 1: standard field selectors (all frameworks) ──────────────────────
   const fieldSelectors = [
-    'input:not([type="hidden"]):not([type="submit"]):not([type="button"]):not([type="search"]):not([type="reset"])',
+    'input:not([type="hidden"]):not([type="submit"]):not([type="button"]):not([type="search"]):not([type="reset"]):not([type="checkbox"]):not([type="radio"])',
+    'input[type="checkbox"]',
+    'input[type="radio"]',
     'select',
     'textarea',
     '[role="combobox"]',
@@ -224,10 +317,16 @@ function scanFields() {
       const value = readFieldValue(el);
       const fieldType = classifyField(el);
       // Allow empty value only for select, number, spinbutton, slider (0 is valid)
-      if (!value && !['SELECT', 'NUMBER', 'SLIDER'].includes(fieldType)) continue;
+      // Also allow TOGGLE and RADIO (false is a valid state for a checkbox)
+      if (!value && !['SELECT', 'NUMBER', 'SLIDER', 'TOGGLE', 'RADIO'].includes(fieldType)) continue;
 
       seen.add(label);
-      dimensions.push({ key: label, value, fieldType });
+      dimensions.push({
+        key: label,
+        value,
+        fieldType,
+        sectionPath: inferSectionPath(el, label),
+      });
     }
   }
 
@@ -265,7 +364,12 @@ function scanFields() {
     if (!value && !['SELECT', 'NUMBER', 'SLIDER'].includes(fieldType)) continue;
 
     seen.add(label);
-    dimensions.push({ key: label, value, fieldType });
+    dimensions.push({
+      key: label,
+      value,
+      fieldType,
+      sectionPath: inferSectionPath(control, label),
+    });
   }
 
   return dimensions;
@@ -282,7 +386,44 @@ function captureCurrentPage() {
   for (const f of rawFields) {
     if (f.key) dimensions[f.key] = { user_value: f.value, default_value: null };
   }
-  return { service_name, region, dimensions };
+  const config_groups = buildConfigGroups(rawFields);
+  return { service_name, region, dimensions, config_groups };
+}
+
+// Also expose fieldType in config_groups for the popup serializer
+function buildConfigGroupsWithType(rawFields) {
+  const groups = [];
+
+  function ensureGroup(levelGroups, label, fallback = 'group') {
+    const groupName = slugifyName(label, fallback);
+    let group = levelGroups.find((item) => item.group_name === groupName);
+    if (!group) {
+      group = { group_name: groupName, label, fields: {}, groups: [] };
+      levelGroups.push(group);
+    }
+    return group;
+  }
+
+  for (const field of rawFields) {
+    const path = Array.isArray(field.sectionPath) && field.sectionPath.length > 0
+      ? field.sectionPath
+      : ['General'];
+
+    let currentGroups = groups;
+    let currentGroup = null;
+    for (const segment of path) {
+      currentGroup = ensureGroup(currentGroups, segment, 'section');
+      currentGroups = currentGroup.groups;
+    }
+
+    currentGroup.fields[field.key] = {
+      user_value: field.value,
+      default_value: null,
+      fieldType: field.fieldType || null,
+    };
+  }
+
+  return groups;
 }
 
 // ─── Estimate tree scanner ────────────────────────────────────────────────────

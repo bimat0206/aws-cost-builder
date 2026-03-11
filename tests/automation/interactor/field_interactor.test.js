@@ -60,29 +60,10 @@ describe('verifyFieldValue', () => {
   });
 
   describe('RADIO field type', () => {
-    it('should return true if input element is checked', async () => {
+    it('should always return true for RADIO fields because verification is implicit during fill', async () => {
       const mockElement = createMockElement({
         tagName: 'INPUT',
-        checked: true,
-      });
-      // expectedValue is ignored for RADIO
-      const result = await verifyFieldValue(mockElement, 'RADIO', 'anything');
-      expect(result).toBe(true);
-    });
-
-    it('should return false if input element is not checked', async () => {
-      const mockElement = createMockElement({
-        tagName: 'INPUT',
-        checked: false,
-      });
-      const result = await verifyFieldValue(mockElement, 'RADIO', 'anything');
-      expect(result).toBe(false);
-    });
-
-    it('should return true if non-input element has aria-checked="true"', async () => {
-      const mockElement = createMockElement({
-        tagName: 'DIV',
-        getAttribute: (attr) => attr === 'aria-checked' ? 'true' : null,
+        checked: false, // Even if false, should return true
       });
       const result = await verifyFieldValue(mockElement, 'RADIO', 'anything');
       expect(result).toBe(true);

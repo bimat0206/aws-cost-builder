@@ -1,23 +1,13 @@
 /**
- * Draft promoter (Mode D).
- *
- * Loads staged drafts from config/data/services/generated/, runs quality gates,
- * guides interactive cleanup, then writes validated catalog to
- * config/data/services/<service_id>.json.
- *
- * @module explorer/draft/draft_promoter
+ * Draft promoter.
+ * @module drafts/promoter
  */
 
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { join, dirname } from 'node:path';
 import * as readline from 'node:readline';
-import { slugifyServiceId, cleanLabel, normalizeText } from '../utils.js';
+import { slugifyServiceId, cleanLabel, normalizeText } from './utils.js';
 
-/**
- * @param {string} question
- * @param {string} [defaultAnswer]
- * @returns {Promise<string>}
- */
 async function prompt(question, defaultAnswer = '') {
   const rl = readline.createInterface({
     input: process.stdin,
@@ -34,11 +24,6 @@ async function prompt(question, defaultAnswer = '') {
   });
 }
 
-/**
- * @param {string} question
- * @param {boolean} defaultValue
- * @returns {Promise<boolean>}
- */
 async function confirm(question, defaultValue = false) {
   const raw = await prompt(`${question} ${defaultValue ? '[Y/n]' : '[y/N]'}`);
   if (!raw) return defaultValue;
@@ -46,10 +31,6 @@ async function confirm(question, defaultValue = false) {
   return value === 'y' || value === 'yes';
 }
 
-/**
- * @param {object} draft
- * @returns {any[]}
- */
 function flattenDimensions(draft) {
   if (Array.isArray(draft?.dimensions)) {
     return draft.dimensions.map((dim) => ({ ...dim }));
@@ -72,10 +53,6 @@ function flattenDimensions(draft) {
   return out;
 }
 
-/**
- * @param {any[]} dimensions
- * @param {{ sectionAware: boolean, stage: string }} params
- */
 function evaluateDimensionCaptureQuality(dimensions, params) {
   const { sectionAware, stage } = params;
   const total = dimensions.length;
@@ -156,9 +133,6 @@ function evaluateDimensionCaptureQuality(dimensions, params) {
   };
 }
 
-/**
- * @param {ReturnType<typeof evaluateDimensionCaptureQuality>} quality
- */
 function printQualityReport(quality) {
   console.log(`\n[Quality Gate: ${quality.stage}]`);
   console.log(`- total_dimensions: ${quality.metrics.total_dimensions}`);
@@ -181,10 +155,6 @@ function printQualityReport(quality) {
   }
 }
 
-/**
- * @param {any[]} dimensions
- * @returns {Promise<any[]>}
- */
 async function interactiveReviewDimensions(dimensions) {
   const reviewed = [];
 
@@ -241,12 +211,6 @@ async function interactiveReviewDimensions(dimensions) {
   return reviewed;
 }
 
-/**
- * @param {string} serviceId
- * @param {object} draft
- * @param {any[]} dimensions
- * @returns {object}
- */
 function buildPromotedCatalog(serviceId, draft, dimensions) {
   return {
     service_name: draft.service_name || serviceId,
@@ -265,13 +229,6 @@ function buildPromotedCatalog(serviceId, draft, dimensions) {
   };
 }
 
-/**
- * Promote a draft by service id.
- *
- * @param {string} rawServiceId
- * @param {string} rootDir
- * @returns {Promise<string|null>} Promoted catalog path or null when cancelled
- */
 export async function promoteDraft(rawServiceId, rootDir) {
   const serviceId = slugifyServiceId(rawServiceId);
   const draftPath = join(rootDir, 'config', 'data', 'services', 'generated', `${serviceId}_draft.json`);
@@ -327,14 +284,8 @@ export async function promoteDraft(rawServiceId, rootDir) {
   return productionPath;
 }
 
-/**
- * Interactive wrapper for Mode D promoter.
- *
- * @param {string} rootDir
- * @returns {Promise<string|null>}
- */
 export async function runDraftPromoter(rootDir) {
-  console.log('\n=== Draft Promoter (Mode D) ===\n');
+  console.log('\n=== Draft Promoter ===\n');
   const serviceId = await prompt('Enter draft service ID to promote (without _draft.json)');
   if (!serviceId) {
     console.log('Service ID is required.');

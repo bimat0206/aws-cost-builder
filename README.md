@@ -10,9 +10,8 @@ Capture live AWS Calculator pages with the Chrome Extension, build nested cost p
 - **HCL DSL format** — declarative, readable, Git-friendly profile files with full nested group support
 - **Runner (Mode B)** — headless or headed browser automation that fills the AWS Calculator from a saved profile
 - **Dry Run (Mode C)** — validate and resolve a profile without opening a browser
-- **Explorer (Mode D)** — discover service dimensions from a live AWS Calculator page and generate draft catalog entries
-- **Promoter (Mode E)** — promote draft catalog entries into the validated service catalog
-- **Export Archive (Mode F)** — package all profiles into a gzip-compressed `.tar.gz`
+- **Promoter (Mode D)** — promote draft catalog entries into the validated service catalog
+- **Export Archive (Mode E)** — package all profiles into a gzip-compressed `.tar.gz`
 
 ## Requirements
 
@@ -60,9 +59,6 @@ node main.js --run --profile profiles/my_project.hcl --headless
 # Validate a profile without launching a browser
 node main.js --dry-run --profile profiles/my_project.hcl
 
-# Explore a new AWS service and generate a draft catalog
-node main.js --explore
-
 # Promote a draft catalog entry
 node main.js --promote
 
@@ -76,9 +72,8 @@ node main.js --export-archive profiles.tar.gz
 |---|---|
 | `--run` | Run browser automation (Mode B) |
 | `--dry-run` | Validate/resolve only (Mode C) |
-| `--explore` | Discover service dimensions (Mode D) |
-| `--promote` | Promote a draft catalog (Mode E) |
-| `--export-archive [path]` | Export profiles as `.tar.gz` (Mode F) |
+| `--promote` | Promote a draft catalog (Mode D) |
+| `--export-archive [path]` | Export profiles as `.tar.gz` (Mode E) |
 | `--profile <path>` | Path to profile `.hcl` or `.json` (required for `--run` and `--dry-run`) |
 | `--headless` | Run browser without a visible window (only with `--run`) |
 | `--set <expr>` | Override a dimension: `"group.service.dimension=value"` |
@@ -88,7 +83,7 @@ node main.js --export-archive profiles.tar.gz
 Profiles are written in a readable HCL-like DSL. Groups can be nested to any depth.
 
 ```hcl
-schema_version = "3.0"
+schema_version = "4.0"
 project_name   = "Production Stack"
 description    = "Multi-tier AWS infrastructure estimate"
 
@@ -102,10 +97,12 @@ group "web_tier" {
       region      = "us-east-1"
       human_label = "Frontend Servers"
 
-      dimension "Operating System"             = "Linux"
-      dimension "Number of instances"          = 3
-      dimension "Instance type"                = "t3.medium"
-      dimension "Utilization (On-Demand only)" = 100
+      config_group "Compute" {
+        field "Operating System"             = "Linux"
+        field "Number of instances"          = 3
+        field "Instance type"                = "t3.medium"
+        field "Utilization (On-Demand only)" = 100
+      }
     }
   }
 
@@ -113,13 +110,15 @@ group "web_tier" {
     region      = "us-east-1"
     human_label = "Static Assets Bucket"
 
-    dimension "S3 Standard storage"      = 500
-    dimension "S3 Standard storage Unit" = "GB"
+    config_group "Storage" {
+      field "S3 Standard storage"      = 500
+      field "S3 Standard storage Unit" = "GB"
+    }
   }
 }
 ```
 
-JSON profiles (schema v2.0 and v3.0) are also supported for backwards compatibility. The loader auto-detects the format by file extension.
+JSON profiles (schema v2.0, v3.0, and v4.0) are also supported. The loader auto-detects the format by file extension.
 
 ### Nested Groups
 
@@ -138,7 +137,9 @@ group "tier1" {
       service "lambda" "processor" {
         region      = "us-east-1"
         human_label = "Event Processor"
-        dimension "Architecture" = "x86_64"
+        config_group "General" {
+          field "Architecture" = "x86_64"
+        }
       }
     }
   }
@@ -168,12 +169,7 @@ aws-cost-builder/
 │   ├── resolver/            #   Dimension resolution & override priority chain
 │   ├── emitter/             #   Artifact writing, archive writer, screenshots
 │   └── retry/               #   Retry wrapper for flaky operations
-├── explorer/                # Service dimension discovery
-│   ├── core/                #   Multi-phase exploration pipeline
-│   ├── scanner/             #   DOM scanning & option extraction
-│   ├── confidence/          #   Confidence scoring for discovered fields
-│   ├── draft/               #   Draft catalog generation & promotion
-│   └── wizard/              #   Interactive explorer TUI
+├── drafts/                  # Draft catalog generation & promotion
 ├── extension/               # Chrome Extension (Manifest V3)
 │   ├── manifest.json        #   MV3 manifest
 │   ├── popup/               #   Popup UI (HTML + JS + CSS)
@@ -182,7 +178,7 @@ aws-cost-builder/
 ├── hcl/                     # HCL DSL parser & serializer
 │   ├── parser.js            #   Recursive descent parser → ProfileDocument
 │   ├── serializer.js        #   ProfileDocument → HCL string
-│   └── index.js             #   Exports { parseHCL, serializeHCL } (supports nested groups & sections)
+│   └── index.js             #   Exports { parseHCL, serializeHCL } (supports nested groups & config groups)
 ├── profiles/                # User-created cost profiles (gitignored)
 ├── artifacts/               # Exploration artifacts & screenshots
 ├── outputs/                 # Run results (gitignored)
@@ -192,9 +188,9 @@ aws-cost-builder/
 
 ## Service Catalogs
 
-Each supported AWS service has a catalog file in `config/data/services/` that describes its dimensions, field types, and valid options. Use the **Explorer** (Mode D) to discover dimensions for new services, then **Promote** (Mode E) to add them to the catalog.
+Each supported AWS service has a catalog file in `config/data/services/` that describes its dimensions, field types, and valid options. Use **Promoter** (Mode D) to move validated draft catalogs into the main service catalog.
 
-Currently supported: **EC2**, **S3**, **Lambda** (+ any services you explore and promote).
+Currently supported: **EC2**, **S3**, **Lambda**.
 
 ## Archive Export
 
